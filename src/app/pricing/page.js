@@ -1,73 +1,153 @@
 import Pricing from "@/components/Pricing";
 import Link from "next/link";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { ArrowRight, HelpCircle } from "lucide-react";
 
 export const metadata = {
   title: "Pricing — Virtual Team Building Plans for Every Team | Teamtastic",
   description:
-    "Teamtastic pricing: Free self-service arcade for small teams, custom professional packages, and fully hosted VIP events. Get a quote tailored to your team size and budget.",
+    "Not just a game. An experience. Live-hosted team events with high-energy MC facilitation, custom inside jokes, music, and virtual confetti. Custom B2B pricing from $35-$65 per person.",
+  alternates: {
+    canonical: "https://teamtastic.events/pricing",
+  },
   openGraph: {
     title: "Teamtastic Pricing | Virtual Team Building Plans",
-    description: "Free arcade play up to 10 players. Custom quotes for professional and VIP hosted corporate events. No hidden fees.",
+    description: "Live-hosted virtual corporate events led by professional comedically-trained emcees. Transparent rates from $35-$65/pp. Enforce $400 minimum.",
     url: "https://teamtastic.events/pricing",
   },
 };
 
 const faqs = [
-  { q: "Is there a free plan?", a: "Yes — you can launch a free lobby for up to 10 players with no credit card at teamtastic.games. Standard games are available immediately." },
-  { q: "How is pricing determined for larger events?", a: "Professional and VIP packages are priced based on team size, event duration, frequency, and level of emcee facilitation. Complete our Event Quiz to get a custom quote in minutes." },
-  { q: "Do you support corporate invoicing or purchase orders?", a: "Yes. All paid packages support formal B2B invoicing, PO numbers, and structured billing for finance team approval." },
-  { q: "What's the difference between Professional and VIP?", a: "Professional packages support recurring self-hosted or lightly assisted events. VIP packages feature our founder as a dedicated live Master Emcee for the entire event." },
-  { q: "Is there a minimum team size?", a: "No minimum for the free tier. Professional packages are optimized for teams of 15–200. VIP hosted events typically serve 50–500+ participants." },
+  { 
+    q: "What if my team is small?", 
+    a: "We welcome groups of all sizes! We use a base event minimum fee of $400 so that small squads get the complete premium professional emcee host experience without any quality compromises." 
+  },
+  { 
+    q: "Can you customize the games to our company?", 
+    a: "Absolutely. With our Custom Theme Build addon, we inject your custom brand palette, corporate logo assets, customized question slides, inside company jokes, and specific player shoutouts right into the game show dashboard." 
+  },
+  { 
+    q: "Do you support international or global teams?", 
+    a: "Yes! We run virtual team builders globally across every single time zone. We also offer Snack and Prop Kit shipping internationally (advance shipping timelines apply)." 
+  },
+  { 
+    q: "What video platforms do you support?", 
+    a: "We support Zoom, Microsoft Teams, Webex, Google Meet, and custom browser streams. We handle all room pacing so your organizers can sit back and laugh alongside the team." 
+  },
+  { 
+    q: "How does billing and invoicing work?", 
+    a: "We offer B2B corporate billing! All corporate packages support formal purchase orders, structured invoicing, secure deposit payments, and standard expense approval workflows." 
+  },
 ];
 
 export default function PricingPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "name": "Teamtastic Virtual Team-Building",
+    "areaServed": "Global",
+    "provider": {
+      "@type": "Organization",
+      "name": "Teamtastic"
+    },
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": "USD",
+      "lowPrice": "35",
+      "highPrice": "65",
+      "priceSpecification": [
+        {
+          "@type": "UnitPriceSpecification",
+          "price": "35-65",
+          "unitText": "per person"
+        }
+      ]
+    }
+  };
+
   return (
-    <main className="flex flex-col min-h-screen bg-brand-dark">
+    <main className="flex flex-col min-h-screen bg-brand-dark pt-12">
+      {/* JSON-LD Schema for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Page Header */}
-      <section className="relative pt-24 pb-4 overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-pink-900/20 via-zinc-950 to-zinc-950" />
+      <section className="relative pt-20 pb-4 overflow-hidden">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-purple/10 via-zinc-950 to-zinc-950" />
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center space-y-4">
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-lg text-zinc-400 max-w-xl mx-auto">
-            Start free. Scale when you need it. Every custom package includes a free 15-minute consultation.
+          <p className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed">
+            Pick a core package matching your event structure, then tailor it with fun, dynamic add-ons below. Every hosted session is run live by an energetic comedically-trained MC.
           </p>
         </div>
       </section>
 
-      {/* Reuse Pricing Component */}
-      <Pricing />
+      {/* Overhauled Pricing & Calculator Component */}
+      <div className="pb-16">
+        <Pricing />
+      </div>
 
-      {/* Pricing FAQ */}
-      <section className="py-16 bg-zinc-950/40 border-t border-white/5">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-extrabold text-white text-center mb-10">Pricing FAQs</h2>
+      {/* Overhauled Pricing FAQ */}
+      <section className="py-20 bg-zinc-950/40 border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-purple/10 border border-brand-purple/30 text-xs font-semibold text-brand-purple">
+              <HelpCircle className="h-3.5 w-3.5 text-brand-pink" />
+              Frequently Asked Questions
+            </div>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">Pricing FAQs</h2>
+          </div>
+
           <div className="space-y-4">
             {faqs.map((faq) => (
-              <div key={faq.q} className="glassmorphism rounded-2xl p-6 border border-white/5">
-                <h3 className="font-bold text-white mb-2">{faq.q}</h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">{faq.a}</p>
+              <div 
+                key={faq.q} 
+                className="glassmorphism rounded-2xl p-6 border border-white/5 hover:border-brand-purple/10 transition-all duration-300 text-left"
+              >
+                <h3 className="font-bold text-white mb-2 flex items-start gap-2.5">
+                  <span className="text-brand-purple text-lg leading-none">?</span>
+                  <span>{faq.q}</span>
+                </h3>
+                <p className="text-sm text-zinc-400 leading-relaxed pl-5">{faq.a}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-16 text-center">
-        <div className="space-y-4">
-          <p className="text-zinc-400 text-sm flex items-center justify-center gap-2">
-            <MessageCircle className="h-4 w-4 text-purple-400" />
-            Still have questions? Take the quiz and we&apos;ll follow up personally.
+      {/* Dynamic bottom CTA section */}
+      <section className="py-24 text-center relative overflow-hidden bg-gradient-to-t from-brand-purple/10 to-transparent border-t border-white/5">
+        <div className="max-w-3xl mx-auto px-4 space-y-6 relative z-10">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-white leading-tight">
+            Because your team deserves an experience.
+          </h2>
+          <p className="text-zinc-400 max-w-lg mx-auto text-base">
+            Bring the music, trigger the soundboards, crown the champion, and make memories that last. Contact us today or lock in your pricing with our planner quiz.
           </p>
-          <Link
-            href="/#quiz"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-[0_0_25px_rgba(139,92,246,0.4)] transition-all duration-300 hover:-translate-y-1"
-          >
-            Get Your Custom Quote <ArrowRight className="h-5 w-5" />
-          </Link>
+          
+          <div className="flex flex-wrap gap-4 justify-center pt-6">
+            <Link
+              href="/#quiz"
+              className="px-8 py-4 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-brand-purple to-brand-pink hover:from-brand-purple/90 hover:to-brand-pink/90 shadow-lg shadow-brand-purple/30 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.02]"
+            >
+              🎉 Book Your Teamtastic Event
+            </Link>
+            <Link
+              href="/#quiz"
+              className="px-8 py-4 rounded-2xl text-base font-bold text-white bg-white/10 hover:bg-white/15 transition-all duration-300 hover:-translate-y-0.5 border border-white/10 hover:scale-[1.02]"
+            >
+              💳 Get Quote & Pay Deposit
+            </Link>
+            <a
+              href="mailto:hello@teamtastic.events"
+              className="px-8 py-4 rounded-2xl text-base font-bold text-zinc-300 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:-translate-y-0.5 border border-white/5 hover:scale-[1.02]"
+            >
+              Talk to Michael
+            </a>
+          </div>
         </div>
       </section>
     </main>
