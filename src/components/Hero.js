@@ -434,13 +434,13 @@ export default function Hero() {
           </div>
 
           {/* Tagline */}
-          <div className="space-y-1 pt-2">
-            <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-white">Play. Connect.</h1>
-            <div className="font-script text-brand-pink neon-glow-pink text-5xl sm:text-7xl"
-              style={{ transform: "rotate(-2deg)", display: "inline-block" }}>
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-white pt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+            <span>Play. Connect.</span>
+            <span className="font-script text-brand-pink neon-glow-pink text-5xl sm:text-7xl inline-block"
+              style={{ transform: "rotate(-2deg)" }}>
               Celebrate.
-            </div>
-          </div>
+            </span>
+          </h1>
 
           <p className="max-w-xl text-base text-zinc-400 font-medium leading-relaxed">
             Transform dry Zoom calls into electric team game shows. Live emcee-hosted events, custom trivia, meme battles, and real-time tournaments — zero downloads required.
