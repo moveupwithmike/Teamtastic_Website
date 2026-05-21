@@ -60,7 +60,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden pt-24 pb-20 md:pt-30 md:pb-28">
+    <section className="relative overflow-hidden pt-16 pb-20 md:pt-20 md:pb-28">
       <div className="absolute inset-0 -z-10" style={{
         background: "radial-gradient(ellipse 90% 70% at 50% 0%, rgba(88,28,235,0.4) 0%, rgba(10,10,46,0.98) 60%, #030712 100%)"
       }} />
@@ -70,9 +70,11 @@ export default function Hero() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center space-y-8">
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold text-purple-300 backdrop-blur-md">
-            <Sparkles className="h-3 w-3 text-amber-400 animate-pulse" />
-            Virtual Teambuilding Reimagined
+          <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/50 bg-purple-950/80 px-4.5 py-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(168,85,247,0.35)] backdrop-blur-md">
+            <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-pink-200 to-amber-200">
+              Virtual Teambuilding Reimagined
+            </span>
           </div>
 
           {/* ══ MOCK APP WINDOW ══ */}
