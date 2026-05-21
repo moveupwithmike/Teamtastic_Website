@@ -11,9 +11,12 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-2.5 group">
               <img 
                 src="/logo-highfive-transparent.png" 
-                className="h-8.5 w-auto opacity-90 group-hover:opacity-100 transition-all hover:scale-105" 
+                className="h-10 w-auto opacity-90 group-hover:opacity-100 transition-all hover:scale-105" 
                 alt="Teamtastic Logo" 
               />
+              <span className="text-lg font-extrabold tracking-tight text-white group-hover:text-brand-pink transition-colors font-sans">
+                Teamtastic
+              </span>
             </Link>
             <p className="text-sm text-zinc-400 max-w-xs">
               The high-octane corporate virtual game show your remote teams actually look forward to. Zero installations, infinite laughs.

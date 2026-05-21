@@ -33,12 +33,15 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo & Wordmark */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2.5 group">
+            <Link href="/" className="flex items-center gap-3 group">
               <img 
                 src="/logo-highfive-transparent.png" 
-                className="h-14 w-auto opacity-95 group-hover:opacity-100 transition-all hover:scale-105" 
+                className="h-[60px] w-auto opacity-95 group-hover:opacity-100 transition-all hover:scale-105" 
                 alt="Teamtastic Logo" 
               />
+              <span className="text-xl font-extrabold tracking-tight text-white group-hover:text-brand-pink transition-colors font-sans">
+                Teamtastic
+              </span>
             </Link>
           </div>
 
