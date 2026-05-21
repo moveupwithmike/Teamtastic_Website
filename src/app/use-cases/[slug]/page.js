@@ -1,5 +1,3 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { Users, ShieldCheck, Heart, Sparkles, HelpCircle, CheckCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -88,8 +86,6 @@ export default async function UseCasePage({ params }) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
-
       <main className="flex-1 pt-24 pb-20">
         {/* Main Section */}
         <section className="relative py-12 md:py-20 overflow-hidden">
@@ -155,8 +151,6 @@ export default async function UseCasePage({ params }) {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

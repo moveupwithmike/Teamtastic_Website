@@ -1,8 +1,6 @@
-import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import GameQuiz from "@/components/GameQuiz";
 import Pricing from "@/components/Pricing";
-import Footer from "@/components/Footer";
 import { Gamepad2, Sparkles, Users, Award, ArrowRight, Zap, Target, Music } from "lucide-react";
 import Link from "next/link";
 
@@ -107,8 +105,6 @@ const useCases = [
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
-
       <main className="flex-1">
         {/* Dynamic Mock Stage Hero */}
         <Hero />
@@ -258,8 +254,6 @@ export default function Home() {
         {/* SaaS & VIP Hosted Monetization Pricing */}
         <Pricing />
       </main>
-
-      <Footer />
     </div>
   );
 }

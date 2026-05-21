@@ -1,5 +1,7 @@
 import { Outfit, Caveat } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -49,7 +51,11 @@ export default function RootLayout({ children }) {
       style={{ colorScheme: "dark" }}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-purple-500 selection:text-white">
-        {children}
+        <Navbar />
+        <div className="flex-grow flex flex-col">
+          {children}
+        </div>
+        <Footer />
       </body>
     </html>
   );

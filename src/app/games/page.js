@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import gamesData from "@/lib/gamesData.json";
 import { 
   Gamepad2, Sparkles, Users, Clock, Award, 
@@ -76,8 +74,6 @@ export default function GamesCatalog() {
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
-      <Navbar />
-
       <main className="flex-1 pt-28 pb-20">
         {/* Dynamic header / breadcrumbs */}
         <section className="relative overflow-hidden py-16 border-b border-white/5 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/10 via-zinc-950 to-zinc-950">
@@ -285,8 +281,6 @@ export default function GamesCatalog() {
         </section>
 
       </main>
-
-      <Footer />
     </div>
   );
 }
