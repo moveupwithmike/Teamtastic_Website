@@ -191,37 +191,19 @@ export default function Hero() {
                     <div className="w-full grid grid-cols-2 gap-3.5 pointer-events-auto">
                       
                       {/* Top-Left: Host Emcee Spotlight */}
-                      <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-xl overflow-hidden border border-purple-500/40 bg-zinc-950/90 shadow-[0_0_15px_rgba(139,92,246,0.25)] flex items-end justify-center">
-                        {/* Spotlight Tag */}
-                        <div className="absolute top-1.5 left-2 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[8px] font-bold text-white border border-white/5 shadow-sm">
+                      <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-xl overflow-hidden border border-purple-500/40 bg-zinc-950/90 shadow-[0_0_15px_rgba(139,92,246,0.25)]">
+                        {/* Spotlight Tag - Positioned at top-right to avoid overlap with Michael/Host name in image */}
+                        <div className="absolute top-1.5 right-2 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[8px] font-bold text-white border border-white/5 shadow-sm">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse shadow-[0_0_6px_#a855f7]" />
                           🎙️ Spotlight: Host Emcee
                         </div>
                         
-                        {/* Emcee Cutout and Chest branding - Zoomed out a bit and widened to look fatter */}
-                        <div className="relative h-[125%] aspect-square flex items-end justify-center translate-y-[12%] translate-x-[6.5%]">
-                          <img
-                            src="/emcee-photorealistic-transparent.png"
-                            alt="Teamtastic Master Emcee"
-                            className="h-full w-full object-contain select-none z-10"
-                            style={{
-                              filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.6))",
-                              transform: "scaleX(1.12)"
-                            }}
-                          />
-                          {/* Chest branding - 100% perfectly locked to the emcee's chest polo pocket */}
-                          <div className="absolute top-[72.5%] left-[70.2%] -translate-x-1/2 select-none pointer-events-none flex flex-col items-center gap-[1px] w-[12%] z-20">
-                            <img 
-                              src="/logo-highfive-transparent.png" 
-                              alt="Teamtastic Logo" 
-                              className="w-full h-auto opacity-95" 
-                              style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.5))" }}
-                            />
-                            <span className="text-[4.5px] font-black text-white tracking-wide leading-none font-sans scale-[0.85] drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                              teamtastic
-                            </span>
-                          </div>
-                        </div>
+                        {/* Host Real Zoom meeting image */}
+                        <img
+                          src="/michael-host-zoom.png"
+                          alt="Michael - Teamtastic Host"
+                          className="w-full h-full object-cover object-center select-none"
+                        />
                       </div>
 
                       {/* Top-Right: Active Speaker Spotlight (Elena responding live) */}
