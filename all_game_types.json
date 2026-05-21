@@ -1,0 +1,624 @@
+[
+  {
+    "id": "jeopardy",
+    "name": "Jeopardy",
+    "description": "Classic quiz game with categories and points.",
+    "category": "Trivia",
+    "icon": "💡",
+    "color": "blue",
+    "media_types_supported": [
+      "text",
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "focus_frenzy",
+    "name": "Focus Frenzy",
+    "description": "Test your attention to detail.",
+    "category": "Puzzle",
+    "icon": "eye",
+    "color": "green",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "game_masters",
+    "name": "Game Masters",
+    "description": "Prove your gaming knowledge.",
+    "category": "Trivia",
+    "icon": "swords",
+    "color": "red",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "mystery_box",
+    "name": "Mystery Box",
+    "description": "What is inside the box?",
+    "category": "Puzzle",
+    "icon": "box",
+    "color": "indigo",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "think_fast",
+    "name": "Think Fast",
+    "description": "Answer quickly to win.",
+    "category": "Trivia",
+    "icon": "timer",
+    "color": "orange",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "concentration",
+    "name": "Concentration",
+    "description": "Classic memory matching game.",
+    "category": "Memory",
+    "icon": "brain",
+    "color": "blue",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "match_it_up",
+    "name": "Match It Up",
+    "description": "Match related items.",
+    "category": "Puzzle",
+    "icon": "link",
+    "color": "green",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "last_key_standing",
+    "name": "Last Key Standing",
+    "description": "Survival trivia.",
+    "category": "Trivia",
+    "icon": "key",
+    "color": "amber",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "what_the_meme",
+    "name": "What The Meme",
+    "description": "Caption the meme.",
+    "category": "Pop Culture",
+    "icon": "image",
+    "color": "pink",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "castle_clash",
+    "name": "Castle Clash",
+    "description": "Team battle trivia.",
+    "category": "Strategy",
+    "icon": "castle",
+    "color": "slate",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "wrong_answers_only",
+    "name": "Wrong Answers Only",
+    "description": "Give the wrong answer to win.",
+    "category": "Humor",
+    "icon": "x-circle",
+    "color": "red",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "puzzle_dash",
+    "name": "Puzzle Dash",
+    "description": "Solve puzzles against the clock.",
+    "category": "Puzzle",
+    "icon": "puzzle",
+    "color": "indigo",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "selfie_showdown",
+    "name": "Selfie Showdown",
+    "description": "Take the best selfie.",
+    "category": "Social",
+    "icon": "camera",
+    "color": "fuchsia",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "scavenger_hunt",
+    "name": "Scavenger Hunt",
+    "description": "Find items in your environment.",
+    "category": "Active",
+    "icon": "map",
+    "color": "emerald",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "spin_to_win",
+    "name": "Spin to Win",
+    "description": "Wheel of fortune style game.",
+    "category": "Luck",
+    "icon": "disc",
+    "color": "orange",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "awards_night",
+    "name": "Awards Ceremony",
+    "description": "Predict the winners.",
+    "category": "Pop Culture",
+    "icon": "award",
+    "color": "yellow",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "star_fusion",
+    "name": "Star Fusion",
+    "description": "Guess the two celebrities that were combined to create the morphed face.",
+    "category": "visual_puzzle",
+    "icon": "🌟",
+    "color": "violet",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-24T11:19:36.416511+00:00"
+  },
+  {
+    "id": "bingo",
+    "name": "Bingo",
+    "description": "Classic bingo with custom cards.",
+    "category": "Party",
+    "icon": "🎱",
+    "color": "green",
+    "media_types_supported": [
+      "text",
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "name_that_tune",
+    "name": "Name That Tune",
+    "description": "Guess the song from a short clip.",
+    "category": "Music",
+    "icon": "🎵",
+    "color": "purple",
+    "media_types_supported": [
+      "audio"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "superlatives",
+    "name": "Superlatives",
+    "description": "Vote for team members in fun categories.",
+    "category": "Team",
+    "icon": "🏆",
+    "color": "gold",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "zoom_in",
+    "name": "Where in the World",
+    "description": "Guess the image as it zooms out.",
+    "category": "Visual",
+    "icon": "🔍",
+    "color": "blue",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "masterpiece_theatre",
+    "name": "Masterpiece Theatre",
+    "description": "Art trivia and puzzles.",
+    "category": "Art",
+    "icon": "palette",
+    "color": "rose",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "scribbles_giggles",
+    "name": "Scribbles & Giggles",
+    "description": "Teams take turns drawing secretly while others race to guess — faster guesses earn more points!",
+    "category": "Drawing",
+    "icon": "🎨",
+    "color": "purple",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-03-08T15:06:28.234868+00:00"
+  },
+  {
+    "id": "split_decision",
+    "name": "Hot Takes",
+    "description": "Vote on binary choices or debates.",
+    "category": "Poll",
+    "icon": "🤔",
+    "color": "yellow",
+    "media_types_supported": [
+      "text",
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "emoji_madness",
+    "name": "Emoji Madness",
+    "description": "Decode emoji sequences into phrases.",
+    "category": "Puzzle",
+    "icon": "😎",
+    "color": "pink",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "memory_lane",
+    "name": "Memory Lane",
+    "description": "Repeat the color sequence.",
+    "category": "Memory",
+    "icon": "🧠",
+    "color": "indigo",
+    "media_types_supported": [
+      "color"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "pitch_perfect",
+    "name": "Pitch Perfect",
+    "description": "Identify the musical pitch.",
+    "category": "Music",
+    "icon": "🎤",
+    "color": "cyan",
+    "media_types_supported": [
+      "audio"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "whats_the_link",
+    "name": "What's the Link",
+    "description": "Find the common link between clues.",
+    "category": "Puzzle",
+    "icon": "🔗",
+    "color": "violet",
+    "media_types_supported": [
+      "text",
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-13T23:58:36.257197+00:00"
+  },
+  {
+    "id": "treat_yourself",
+    "name": "Treat Yourself",
+    "description": "Guess the candy from the clues!",
+    "category": "Fun",
+    "icon": "🍬",
+    "color": "pink",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-14T00:30:16.49078+00:00"
+  },
+  {
+    "id": "quiet_on_the_set",
+    "name": "Quiet on the Set",
+    "description": "Identify the movie or TV show from the set.",
+    "category": "Movies & TV",
+    "icon": "🎬",
+    "color": "gray",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-14T00:30:16.49078+00:00"
+  },
+  {
+    "id": "family_feud",
+    "name": "Family Feud",
+    "description": "Survey saying game.",
+    "category": "Trivia",
+    "icon": "users",
+    "color": "blue",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": false,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "word_jam",
+    "name": "Word Jam",
+    "description": "Your version of the popular Wordle game. Guess the word in 6 tries.",
+    "category": "word",
+    "icon": "🔤",
+    "color": "green",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "eyeconic",
+    "name": "Eyeconic",
+    "description": "Navigate a grid of distorted celebrity faces and guess who they are before time runs out!",
+    "category": "visual_puzzle",
+    "icon": "👁️",
+    "color": "amber",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-14T01:42:41.626599+00:00"
+  },
+  {
+    "id": "trivia",
+    "name": "Standard Trivia",
+    "description": "Classic trivia game. Create custom questions with text, images, or audio.",
+    "category": "general",
+    "icon": "bulb",
+    "color": "#8B5CF6",
+    "media_types_supported": [
+      "image",
+      "audio",
+      "video"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-17T15:23:57.732706+00:00"
+  },
+  {
+    "id": "line_it_up",
+    "name": "Line It Up!",
+    "description": "Players arrange items in the correct sequential order (chronological, ranking, etc.) using drag-and-drop.",
+    "category": "logic",
+    "icon": "list-ordered",
+    "color": "#8B5CF6",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-21T03:14:43.289633+00:00"
+  },
+  {
+    "id": "unjumble",
+    "name": "Unjumble",
+    "description": "Unscramble letters or words to reveal the hidden phrase.",
+    "category": "word",
+    "icon": "type",
+    "color": "#F59E0B",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-21T03:15:04.269083+00:00"
+  },
+  {
+    "id": "survey_says",
+    "name": "Survey Says",
+    "description": "Guess the most popular answers to survey questions.",
+    "category": "trivia",
+    "icon": "📊",
+    "color": "blue",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "sound_it_out",
+    "name": "Sound it Out!",
+    "description": "Decode visual rebus puzzles to find the hidden name or phrase.",
+    "category": "Puzzle",
+    "icon": "🔍",
+    "color": "indigo",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-25T01:47:32.676959+00:00"
+  },
+  {
+    "id": "fast_facts",
+    "name": "Fast Facts",
+    "description": "Rapid-fire trivia questions.",
+    "category": "Trivia",
+    "icon": "⚡",
+    "color": "red",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "checkout_challenge",
+    "name": "Checkout Challenge",
+    "description": "Test your price knowledge in this exciting checkout game!",
+    "category": "Trivia",
+    "icon": "dollar-sign",
+    "color": "emerald",
+    "media_types_supported": [
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "icon_face_off",
+    "name": "Unpixel It",
+    "description": "Identify the brand or character from the pixelated icon.",
+    "category": "visual_puzzle",
+    "icon": "🎭",
+    "color": "purple",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "mystery_mosaic",
+    "name": "Claim to Fame",
+    "description": "Reveal the image piece by piece.",
+    "category": "Puzzle",
+    "icon": "grid",
+    "color": "cyan",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-02-07T13:58:39.209183+00:00"
+  },
+  {
+    "id": "finish_the_lyric",
+    "name": "Finish the Lyric",
+    "description": "Karaoke-style song reveal — players race to buzz in and complete the missing lyric.",
+    "category": "audio",
+    "icon": "🎤",
+    "color": "purple",
+    "media_types_supported": [
+      "audio",
+      "image",
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-03-25T21:10:11.555813+00:00"
+  },
+  {
+    "id": "the_hot_seat",
+    "name": "The Hot Seat",
+    "description": "60-second speed trivia sprint — color-choice answers with point decay. One wrong answer ends your streak!",
+    "category": "trivia",
+    "icon": "🔥",
+    "color": "orange",
+    "media_types_supported": [
+      "text",
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-03-25T21:10:11.555813+00:00"
+  },
+  {
+    "id": "message_in_a_bottle",
+    "name": "Message in a Bottle",
+    "description": "Decipher the secret code hidden in the bottle cap before the time runs out.",
+    "category": "Trivia",
+    "icon": "🍾",
+    "color": "blue",
+    "media_types_supported": [
+      "image",
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-04-09T03:16:12.782056+00:00"
+  },
+  {
+    "id": "now_in_theatres",
+    "name": "Now in Theatres",
+    "description": "Guess the movie from the heavily redacted or blurred poster.",
+    "category": "Visual",
+    "icon": "🎬",
+    "color": "red",
+    "media_types_supported": [
+      "image"
+    ],
+    "is_active": true,
+    "created_at": "2026-04-09T03:18:48.112144+00:00"
+  },
+  {
+    "id": "count_me_in",
+    "name": "Count Me In",
+    "description": "Estimate the target number. The closest guess without going over takes the crown.",
+    "category": "Trivia",
+    "icon": "🏷",
+    "color": "purple",
+    "media_types_supported": [
+      "image",
+      "text"
+    ],
+    "is_active": true,
+    "created_at": "2026-04-09T03:56:39.221256+00:00"
+  }
+]
