@@ -39,6 +39,11 @@ export default function GameQuiz() {
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  
+  // Custom Anti-Bot Human Verification States
+  const [verified, setVerified] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationFailed, setVerificationFailed] = useState(false);
 
   const [formData, setFormData] = useState({
     teamSize: "",
@@ -70,9 +75,19 @@ export default function GameQuiz() {
     }
   };
 
+  const handleVerificationClick = () => {
+    setVerificationLoading(true);
+    setVerificationFailed(false);
+    setTimeout(() => {
+      setVerificationLoading(false);
+      setVerified(true);
+    }, 800);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.name) return;
+    if (!verified) return;
 
     setLoading(true);
 
@@ -278,10 +293,71 @@ export default function GameQuiz() {
                         className="w-full bg-zinc-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
+                    {/* Custom Anti-Bot Verification challenge */}
+                    <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 mt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">Anti-Bot Verification</span>
+                      </div>
+                      <p className="text-xs text-zinc-300 mb-3">
+                        Verify you are human: Tap the <strong className="text-amber-400 font-bold">Lightning Bolt</strong> icon.
+                      </p>
+
+                      {verificationLoading ? (
+                        <div className="flex items-center gap-2 text-xs text-purple-400 py-1">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Checking browser patterns...</span>
+                        </div>
+                      ) : verified ? (
+                        <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold py-1.5 bg-emerald-950/20 border border-emerald-900/30 rounded-xl px-3 animate-fade-in">
+                          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>Human verified. clear to proceed!</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-3 items-center">
+                            <button
+                              type="button"
+                              onClick={() => setVerificationFailed(true)}
+                              className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center hover:bg-zinc-800 transition-colors"
+                            >
+                              <Users className="w-4 h-4 text-zinc-500" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleVerificationClick}
+                              className={`w-10 h-10 rounded-xl bg-zinc-900 border flex items-center justify-center hover:bg-zinc-800 transition-all ${
+                                verificationFailed ? 'border-rose-500/30' : 'border-white/5'
+                              }`}
+                            >
+                              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setVerificationFailed(true)}
+                              className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center hover:bg-zinc-800 transition-colors"
+                            >
+                              <Compass className="w-4 h-4 text-zinc-500" />
+                            </button>
+                          </div>
+                          {verificationFailed && (
+                            <span className="text-[10px] text-rose-400 font-semibold animate-shake">
+                              ❌ Verification failed. Please select the correct amber Lightning Bolt.
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="pt-4">
                       <button
                         type="submit"
-                        className="w-full flex h-12 items-center justify-center gap-2 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all"
+                        disabled={!verified}
+                        className={`w-full flex h-12 items-center justify-center gap-2 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all ${
+                          !verified ? 'opacity-40 cursor-not-allowed' : 'hover:-translate-y-0.5'
+                        }`}
                       >
                         Generate My Recommendation
                         <ArrowRight className="h-4 w-4" />
@@ -417,6 +493,9 @@ export default function GameQuiz() {
                         setStep(0);
                         setCompleted(false);
                         setFormData({ teamSize: "", vibe: "", occasion: "", name: "", email: "", company: "" });
+                        setVerified(false);
+                        setVerificationLoading(false);
+                        setVerificationFailed(false);
                       }}
                       className="text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
                     >
