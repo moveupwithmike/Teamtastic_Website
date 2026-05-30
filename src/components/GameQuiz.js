@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Users, Compass, PartyPopper, CheckCircle, ArrowRight, ArrowLeft, Loader2, Gamepad2, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { PAYMENT_CONFIG } from "@/lib/stripe";
 
 const stepTitles = [
   "How big is your crew?",
@@ -377,27 +378,51 @@ export default function GameQuiz() {
                   ))}
                 </div>
 
-                {/* CTAs matching unified redirect callback context */}
-                <div className="w-full max-w-md space-y-3 pt-2">
+                {/* Dynamic High-Conversion CTAs */}
+                <div className="w-full max-w-md space-y-4 pt-4">
+                  {/* Primary CTA: Hosted MC Event Booking (Highly recommended for groups/occasions) */}
                   <a
-                    href={recommendation.gamesLink}
+                    href={`${PAYMENT_CONFIG.calendlyUrl}?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&a1=${encodeURIComponent(formData.company || "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full flex h-14 items-center justify-center gap-2 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/30 transition-all hover:-translate-y-0.5"
+                    className="w-full flex h-14 items-center justify-center gap-2 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-xl shadow-purple-500/25 hover:shadow-purple-500/35 transition-all duration-300 hover:-translate-y-0.5"
                   >
-                    Launch Free Arcade Lobby
+                    🎤 Book Hosted VIP MC Event ($200 Deposit)
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
-                  <button
-                    onClick={() => {
-                      setStep(0);
-                      setCompleted(false);
-                      setFormData({ teamSize: "", vibe: "", occasion: "", name: "", email: "", company: "" });
-                    }}
-                    className="w-full flex h-12 items-center justify-center text-xs font-semibold text-zinc-500 hover:text-white transition-colors"
+
+                  {/* Secondary CTA: SaaS Pro Plan Subscription */}
+                  <a
+                    href={`${PAYMENT_CONFIG.proSaaSLink}?prefilled_email=${encodeURIComponent(formData.email)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 hover:border-purple-500/50 shadow-md transition-all duration-300 hover:-translate-y-0.5"
                   >
-                    Retake Social Planner Quiz
-                  </button>
+                    ⚙️ Unlock Pro Self-Service ($99/mo)
+                  </a>
+
+                  {/* Tertiary CTA: Free Sandbox Sandbox Trial (Secondary outline link) */}
+                  <div className="flex items-center justify-between gap-4 pt-2">
+                    <a
+                      href={recommendation.gamesLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-zinc-400 hover:text-white transition-colors underline"
+                    >
+                      Try a Free 5-Min Sandbox Lobby
+                    </a>
+
+                    <button
+                      onClick={() => {
+                        setStep(0);
+                        setCompleted(false);
+                        setFormData({ teamSize: "", vibe: "", occasion: "", name: "", email: "", company: "" });
+                      }}
+                      className="text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      Retake Quiz
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
