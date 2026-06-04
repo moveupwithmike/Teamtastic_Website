@@ -1,5 +1,6 @@
 import Hero from "@/components/Hero";
 import GameQuiz from "@/components/GameQuiz";
+import SoloDemo from "@/components/SoloDemo";
 import Pricing from "@/components/Pricing";
 import { Gamepad2, Sparkles, Users, Award, ArrowRight, Zap, Target, Music } from "lucide-react";
 import Link from "next/link";
@@ -226,7 +227,7 @@ export default function Home() {
                     </span>
                     <h3 className="text-2xl font-bold text-white">{uc.title}</h3>
                     <p className="text-sm font-semibold text-purple-300 italic">
-                      "{uc.hook}"
+                      &ldquo;{uc.hook}&rdquo;
                     </p>
                     <p className="text-sm text-zinc-400 leading-relaxed">
                       {uc.desc}
@@ -245,6 +246,21 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Interactive Playable Solo Demo */}
+        <section className="py-20 bg-zinc-950/20 border-t border-white/5">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center space-y-4 mb-12">
+              <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl text-white">
+                Experience the Gameplay
+              </h2>
+              <p className="text-zinc-400 max-w-lg mx-auto text-base">
+                Try our playable mini-quiz to see how we sync animations, reaction triggers, and scoring to wow remote teams.
+              </p>
+            </div>
+            <SoloDemo />
           </div>
         </section>
 
