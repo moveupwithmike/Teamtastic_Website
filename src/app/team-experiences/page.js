@@ -1,4 +1,3 @@
-import Hero from "@/components/Hero";
 import GameQuiz from "@/components/GameQuiz";
 import SoloDemo from "@/components/SoloDemo";
 import Pricing from "@/components/Pricing";
@@ -9,7 +8,6 @@ import {
   Award, 
   ArrowRight, 
   Zap, 
-  Target, 
   Music, 
   Tv, 
   Lock, 
@@ -17,7 +15,6 @@ import {
   Grid, 
   Brain, 
   Wand2, 
-  CheckCircle2, 
   ChevronDown, 
   Trophy, 
   Home as HomeIcon, 
@@ -29,19 +26,20 @@ import {
   TrendingUp, 
   Globe, 
   Check,
-  Smile
+  Smile,
+  Star
 } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = {
   title: "Virtual Team Experiences & Live Hosted Game Shows | Teamtastic",
-  description: "Choose the virtual experience format that fits your team vibe. Discover live emcee-hosted game shows, custom trivia, and team-building events designed for remote and hybrid teams.",
+  description: "Choose the virtual experience format that fits your team vibe. Discover live emcee-hosted game shows, custom trivia, and team-building events designed for remote and hybrid teams of any size.",
   alternates: {
     canonical: "https://teamtastic.events/team-experiences",
   },
   openGraph: {
     title: "Virtual Team Experiences & Live Hosted Game Shows | Teamtastic",
-    description: "Choose the virtual experience format that fits your team vibe. Discover live emcee-hosted game shows, custom trivia, and team-building events designed for remote and hybrid teams.",
+    description: "Choose the virtual experience format that fits your team vibe. Discover live emcee-hosted game shows, custom trivia, and team-building events designed for remote and hybrid teams of any size.",
     url: "https://teamtastic.events/team-experiences",
   },
 };
@@ -184,9 +182,127 @@ const faqs = [
 export default function TeamExperiences() {
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="flex-1">
-        {/* Dynamic Mock Stage Hero */}
-        <Hero />
+      <main className="flex-1 bg-brand-dark">
+        
+        {/* ══ CUSTOM MOCKUP HERO ══ */}
+        <section className="relative overflow-hidden pt-24 pb-20 md:pt-32 md:pb-28">
+          <div className="absolute inset-0 -z-10" style={{
+            background: "radial-gradient(ellipse 90% 70% at 50% 0%, rgba(88,28,235,0.25) 0%, rgba(10,10,46,0.98) 60%, #030712 100%)"
+          }} />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -z-10 h-[250px] w-[700px] rounded-full blur-[90px]"
+            style={{ background: "rgba(236,72,153,0.05)" }} />
+
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-12 gap-12 items-center">
+              
+              {/* Left Column: Copy & CTAs */}
+              <div className="lg:col-span-7 space-y-8 text-left">
+                <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/30 bg-purple-950/70 px-4 py-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(168,85,247,0.2)] backdrop-blur-md">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-pink-200 to-amber-200">
+                    Virtual Teambuilding Reimagined
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                    Endless Ways to Bring <br />Your Team Together.
+                  </h1>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold flex flex-wrap items-center gap-x-2 gap-y-1.5 leading-snug">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple to-brand-pink">
+                      More Than Trivia. More Than Games.
+                    </span>
+                    <span className="text-white block w-full">A World of Team Experiences.</span>
+                  </h2>
+                  <p className="max-w-xl text-base sm:text-lg text-zinc-300 font-medium leading-relaxed pt-2">
+                    Live-hosted virtual events that spark laughter, connection, competition and celebration—designed for remote and hybrid teams of any size.
+                  </p>
+                </div>
+
+                {/* Branded Icons Row (Play, Connect, Celebrate) */}
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-brand-purple/20 flex items-center justify-center text-brand-purple border border-brand-purple/35 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                      <Gamepad2 className="h-4.5 w-4.5" />
+                    </div>
+                    <span className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Play.</span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-brand-pink/20 flex items-center justify-center text-brand-pink border border-brand-pink/35 shadow-[0_0_10px_rgba(236,72,153,0.2)]">
+                      <Users className="h-4.5 w-4.5" />
+                    </div>
+                    <span className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Connect.</span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-script text-brand-pink neon-glow-pink text-3xl rotate-[-2deg] inline-block tracking-wider transform origin-center">
+                      Celebrate.
+                    </span>
+                  </div>
+                </div>
+
+                {/* CTA Buttons */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
+                  <Link href="/#quiz"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4.5 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-[0_0_25px_rgba(139,92,246,0.4)] hover:shadow-[0_0_40px_rgba(236,72,153,0.6)] transition-all duration-300 hover:-translate-y-1">
+                    <Sparkles className="h-5 w-5 text-amber-300 animate-pulse" />
+                    Book Your Event
+                    <ArrowRight className="h-4.5 w-4.5" />
+                  </Link>
+                  <Link href="/games"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4.5 rounded-2xl text-base font-bold text-zinc-200 border border-white/10 hover:border-white/25 bg-white/5 hover:bg-white/10 hover:text-white transition-all duration-300 hover:-translate-y-1">
+                    Explore Experiences
+                  </Link>
+                </div>
+
+                {/* Stars Social Proof */}
+                <div className="flex items-center gap-3 pt-4">
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className="h-4.5 w-4.5 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold tracking-wider text-zinc-400">
+                    1,000+ 5-Star Reviews
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Column: Emcee Cutout & Participant Webcam Grid */}
+              <div className="lg:col-span-5 relative flex items-center justify-center">
+                {/* ── Background Webcam Grid ── */}
+                <div className="grid grid-cols-3 gap-2 w-full max-w-[420px] aspect-square p-2 bg-zinc-950/60 rounded-3xl border border-white/5 opacity-30 blur-[0.5px]">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((val) => {
+                    const idx = ((val - 1) % 6) + 1; 
+                    const src = `/p${idx}.png`;
+                    return (
+                      <div key={val} className="relative rounded-xl overflow-hidden aspect-video sm:aspect-square bg-zinc-900 border border-white/5">
+                        <img src={src} className="w-full h-full object-cover select-none pointer-events-none" alt="Participant" />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ── Foreground Emcee Cutout (pointing forward) ── */}
+                <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none">
+                  <img
+                    src="/emcee-energetic-transparent.png"
+                    alt="Michael - Master Emcee"
+                    className="max-h-[110%] w-auto object-contain select-none pointer-events-none translate-y-6 transform hover:scale-[1.02] transition-transform duration-500"
+                  />
+                </div>
+
+                {/* ── Yellow Handwritten Circle/Speech bubble ── */}
+                <div className="absolute -top-6 -right-4 md:-right-8 z-20 rotate-[6deg] bg-amber-400 text-zinc-950 px-4 py-2 rounded-2xl shadow-2xl font-script text-lg md:text-xl font-bold border-2 border-zinc-950 select-none pointer-events-none">
+                  Hosted by Michael! <br />
+                  <span className="float-right text-xs font-sans tracking-wide font-extrabold">— Your Host & Emcee</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
 
         {/* Social Proof / Trusted logos banner */}
         <section className="py-10 bg-zinc-950/60 border-y border-white/5 backdrop-blur-md">
@@ -588,9 +704,9 @@ export default function TeamExperiences() {
                 <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-tight">
                   Let&apos;s Create an Experience <br />Your Team Will Remember.
                 </h2>
-                <h3 className="text-2xl md:text-3xl font-extrabold text-white flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <h3 className="text-2xl md:text-3xl font-extrabold text-white flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans">
                   <span>Play. Connect.</span>
-                  <span className="font-script text-brand-pink neon-glow-pink text-3xl md:text-4xl inline-block" style={{ transform: "rotate(-2deg)" }}>Celebrate.</span>
+                  <span className="font-script text-brand-pink neon-glow-pink text-3xl md:text-4xl inline-block font-sans" style={{ transform: "rotate(-2deg)" }}>Celebrate.</span>
                 </h3>
                 <p className="text-zinc-300 text-sm md:text-base leading-relaxed">
                   Book your event today and leave the rest to us! We manage the games, screen sharing, music, and energy curation so your host can enjoy the show.
