@@ -156,6 +156,12 @@ export default function Hero() {
                   backgroundSize: "cover",
                   backgroundPosition: "center bottom"
                 }}>
+                  {/* Transparent photographic emcee welcoming players */}
+                  <img
+                    src="/emcee-transparent.png"
+                    alt="Master Emcee"
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[72%] w-auto object-contain z-20 pointer-events-none opacity-95"
+                  />
 
                   {/* Black gradient overlay to fade out top audience seats */}
                   <div className="absolute top-0 inset-x-0 h-[64%] bg-gradient-to-b from-zinc-950 via-zinc-950/95 via-zinc-950/70 to-transparent pointer-events-none z-10" />

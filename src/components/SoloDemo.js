@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Gamepad2, Award, ArrowRight, CheckCircle2, RefreshCw, Star, Mail, Building, User } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PAYMENT_CONFIG } from "@/lib/stripe";
 import { toast } from "sonner";
@@ -314,24 +315,22 @@ export default function SoloDemo() {
             </div>
 
             <div className="pt-4 border-t border-slate-800 space-y-3">
-              <p className="text-slate-400 text-xs font-semibold">Ready to scale it up?</p>
+              <p className="text-slate-400 text-xs font-semibold">Ready to play with your team?</p>
               <div className="grid grid-cols-2 gap-2">
                 <a
-                  href={PAYMENT_CONFIG.proSaaSLink}
+                  href="https://teamtastic.games"
                   target="_blank"
                   rel="noreferrer"
                   className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1"
                 >
-                  Unlock SaaS Pro ($99)
+                  Launch Free Lobby 🎮
                 </a>
-                <a
-                  href={PAYMENT_CONFIG.calendlyUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  href="/#quiz"
                   className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center"
                 >
-                  Book Live VIP Demo
-                </a>
+                  Get Hosted Quote 🎙️
+                </Link>
               </div>
             </div>
           </motion.div>

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Menu, X, Gamepad2, Users, CreditCard, Sparkles, LogIn, Star, BookOpen, PenLine } from "lucide-react";
 
 const navLinks = [
-  { href: "/virtual-team-building", label: "Team Building", icon: Users, iconColor: "text-emerald-400" },
-  { href: "/games", label: "Games", icon: Gamepad2, iconColor: "text-purple-400" },
-  { href: "/why-teamtastic", label: "Why Us", icon: Star, iconColor: "text-amber-400" },
+  { href: "/virtual-team-building", label: "Virtual Team Building", icon: Users, iconColor: "text-emerald-400" },
+  { href: "/#games", label: "Games", icon: Gamepad2, iconColor: "text-purple-400" },
+  { href: "/why-teamtastic", label: "Why Teamtastic", icon: Star, iconColor: "text-amber-400" },
   { href: "/resources", label: "Resources", icon: BookOpen, iconColor: "text-sky-400" },
   { href: "/blog", label: "Blog", icon: PenLine, iconColor: "text-zinc-400" },
   { href: "/pricing", label: "Pricing", icon: CreditCard, iconColor: "text-pink-400" },
