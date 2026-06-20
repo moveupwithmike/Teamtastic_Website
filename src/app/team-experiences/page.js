@@ -256,7 +256,7 @@ export default function TeamExperiences() {
                   </div>
 
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-brand-pink/20 flex items-center justify-center text-brand-pink border border-brand-pink/35 shadow-[0_0_10px_rgba(236,72,153,0.2)]">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 border border-orange-500/35 shadow-[0_0_10px_rgba(249,115,22,0.2)]">
                       <Users className="h-4.5 w-4.5" />
                     </div>
                     <span className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Connect.</span>
