@@ -291,7 +291,7 @@ export default function TeamExperiences() {
                     ))}
                   </div>
                   <span className="text-xs font-bold tracking-wider text-zinc-400">
-                    1,000+ 5-Star Reviews
+                    5-Star Reviews
                   </span>
                 </div>
               </div>
