@@ -379,6 +379,25 @@ export default function TeamExperiences() {
           </div>
         </section>
 
+        {/* ══ CORE VALUE PROP STATEMENT (DARK THEME WITH GRADIENTS) ══ */}
+        <section className="py-16 sm:py-20 relative overflow-hidden bg-brand-dark">
+          <div className="absolute inset-0 -z-10" style={{
+            background: "radial-gradient(circle at 50% 50%, rgba(139,92,246,0.08) 0%, transparent 70%)"
+          }} />
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-sans">
+              The Virtual Team Building Event <br className="hidden sm:inline" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple via-pink-400 to-brand-pink drop-shadow-[0_2px_15px_rgba(168,85,247,0.2)]">
+                People Actually Want to Attend.
+              </span>
+            </h2>
+            <div className="w-16 h-1 bg-gradient-to-r from-brand-purple to-brand-pink rounded-full mx-auto my-3" />
+            <p className="max-w-2xl mx-auto text-lg sm:text-xl text-zinc-300 font-medium leading-relaxed">
+              Zero technical hassle for you. Unforgettable energy, custom trivia, and deep connection for your remote team.
+            </p>
+          </div>
+        </section>
+
         {/* ══ A WORLD OF TEAM EXPERIENCES (DARK THEME) ══ */}
         <section id="games" className="py-12 md:py-16 relative">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
