@@ -30,6 +30,7 @@ import Link from "next/link";
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 import CtaBannerWithModal from "@/components/CtaBannerWithModal";
 import CustomIdeaFooterSection from "@/components/CustomIdeaFooterSection";
+import FaqSection from "@/components/FaqSection";
 
 export const metadata = {
   title: "Virtual Team Experiences & Live Hosted Game Shows | Teamtastic",
@@ -420,6 +421,9 @@ export default function TeamExperiences() {
             </div>
           </div>
         </section>
+
+        {/* ══ FAQ SECTION (MOVED UP FOR EARLY ENGAGEMENT) ══ */}
+        <FaqSection />
 
         {/* ══ HOW IT WORKS TIMELINE (DARK THEME) ══ */}
         <section className="py-12 md:py-16 bg-zinc-950/40 border-y border-white/5">
