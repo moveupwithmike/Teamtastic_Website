@@ -553,84 +553,93 @@ export default function TeamExperiences() {
                   </Link>
                 </div>
 
-                {/* ── Tailwind Device Mockups (Laptop + Phone) showing Leaderboard ── */}
-                <div className="relative pt-12 pb-12 flex items-center justify-center max-w-[450px]">
-                  {/* Laptop Mockup (No overflow-hidden on container to prevent cutting off stand/bezel) */}
-                  <div className="w-[300px] sm:w-[320px] aspect-[16/10] bg-slate-900 rounded-t-2xl border-4 border-slate-700 relative shadow-2xl z-10">
-                    {/* Laptop Screen Content */}
-                    <div className="w-full h-full bg-[#0B0B1E] p-3 text-white flex flex-col justify-between font-sans rounded-t-lg">
-                      {/* Laptop Screen Header */}
-                      <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[7px] font-bold text-white uppercase tracking-widest font-mono">Live Tournament Board</span>
+                {/* ── Tailwind Device Mockups (Monitor + Phone) showing Leaderboard ── */}
+                <div className="relative pt-12 pb-16 flex flex-col items-center justify-center max-w-[450px] mx-auto w-full">
+                  {/* Relative wrapper for Screen + Phone to ensure perfect overlap alignment without clipping */}
+                  <div className="relative z-10">
+                    {/* Monitor Screen Frame */}
+                    <div className="w-[300px] sm:w-[320px] aspect-[16/10] bg-slate-900 rounded-2xl border-4 border-slate-700 relative shadow-2xl overflow-hidden">
+                      {/* Screen Content */}
+                      <div className="w-full h-full bg-[#0B0B1E] p-3 text-white flex flex-col justify-between font-sans">
+                        {/* Monitor Screen Header */}
+                        <div className="flex items-center justify-between border-b border-white/5 pb-1.5 animate-pulse">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[7px] font-bold text-white uppercase tracking-widest font-mono">Live Tournament Board</span>
+                          </div>
+                          <span className="text-[7px] font-bold text-brand-pink uppercase tracking-wider bg-brand-pink/10 px-1.5 py-0.5 rounded border border-brand-pink/20">ACME ALL STARS!</span>
                         </div>
-                        <span className="text-[7px] font-bold text-brand-pink uppercase tracking-wider bg-brand-pink/10 px-1.5 py-0.5 rounded border border-brand-pink/20">ACME ALL STARS!</span>
+
+                        {/* Screen Leaderboard List */}
+                        <div className="space-y-1.5 flex-grow pt-3">
+                          {/* Leader 1 */}
+                          <div className="flex items-center justify-between p-1.5 bg-brand-purple/20 border border-brand-purple/30 rounded-lg">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px]">🥇</span>
+                              <span className="text-[9px] font-bold text-white">Dream Team</span>
+                            </div>
+                            <span className="text-[8px] font-mono font-bold text-brand-purple">3,850 pts</span>
+                          </div>
+
+                          {/* Leader 2 */}
+                          <div className="flex items-center justify-between p-1.5 bg-white/5 border border-white/5 rounded-lg">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px]">🥈</span>
+                              <span className="text-[9px] font-bold text-zinc-300">Quiz Masters</span>
+                            </div>
+                            <span className="text-[8px] font-mono font-semibold text-zinc-400">3,620 pts</span>
+                          </div>
+
+                          {/* Leader 3 */}
+                          <div className="flex items-center justify-between p-1.5 bg-white/5 border border-white/5 rounded-lg">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px]">🥉</span>
+                              <span className="text-[9px] font-bold text-zinc-300">Game Changers</span>
+                            </div>
+                            <span className="text-[8px] font-mono font-semibold text-zinc-400">3,450 pts</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Phone Mockup (overlapping bottom-left of the monitor) */}
+                    <div className="w-[75px] h-[145px] bg-[#0B0B1E] border-4 border-slate-700 rounded-xl absolute -bottom-6 -left-6 z-20 shadow-2xl overflow-hidden flex flex-col justify-between p-1.5 font-sans text-white">
+                      {/* Screen status bar */}
+                      <div className="flex justify-between items-center text-[5px] text-zinc-400">
+                        <span>9:41</span>
+                        <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                        <span>📶 🔋</span>
                       </div>
 
-                      {/* Screen Leaderboard List */}
-                      <div className="space-y-1.5 flex-grow pt-3">
-                        {/* Leader 1 */}
-                        <div className="flex items-center justify-between p-1.5 bg-brand-purple/20 border border-brand-purple/30 rounded-lg">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px]">🥇</span>
-                            <span className="text-[9px] font-bold text-white">Dream Team</span>
-                          </div>
-                          <span className="text-[8px] font-mono font-bold text-brand-purple">3,850 pts</span>
+                      {/* Phone Leaderboard mini */}
+                      <div className="space-y-1 my-auto">
+                        <div className="text-[6px] font-extrabold text-brand-pink border-b border-white/5 pb-1 text-center font-mono">ACME LOBBY</div>
+                        
+                        <div className="p-1 bg-brand-purple/30 rounded border border-brand-purple/20 flex justify-between items-center text-[5px] font-bold">
+                          <span>🥇 Dream</span>
+                          <span>3.8k</span>
                         </div>
-
-                        {/* Leader 2 */}
-                        <div className="flex items-center justify-between p-1.5 bg-white/5 border border-white/5 rounded-lg">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px]">🥈</span>
-                            <span className="text-[9px] font-bold text-zinc-300">Quiz Masters</span>
-                          </div>
-                          <span className="text-[8px] font-mono font-semibold text-zinc-400">3,620 pts</span>
+                        <div className="p-1 bg-white/5 rounded flex justify-between items-center text-[5px]">
+                          <span>🥈 Quiz</span>
+                          <span>3.6k</span>
                         </div>
-
-                        {/* Leader 3 */}
-                        <div className="flex items-center justify-between p-1.5 bg-white/5 border border-white/5 rounded-lg">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px]">🥉</span>
-                            <span className="text-[9px] font-bold text-zinc-300">Game Changers</span>
-                          </div>
-                          <span className="text-[8px] font-mono font-semibold text-zinc-400">3,450 pts</span>
+                        <div className="p-1 bg-white/5 rounded flex justify-between items-center text-[5px]">
+                          <span>🥉 Game</span>
+                          <span>3.4k</span>
                         </div>
                       </div>
+
+                      {/* Home Indicator */}
+                      <div className="w-8 h-0.5 bg-zinc-700 rounded-full mx-auto mt-0.5"></div>
                     </div>
                   </div>
-                  {/* Laptop keyboard base */}
-                  <div className="w-[340px] sm:w-[360px] h-[8px] bg-slate-600 rounded-b-xl -mt-[1px] relative shadow-lg z-10" />
 
-                  {/* Phone Mockup (overlapping) */}
-                  <div className="w-[75px] h-[145px] bg-[#0B0B1E] border-4 border-slate-700 rounded-xl absolute bottom-8 left-2 sm:-left-2 z-20 shadow-2xl overflow-hidden flex flex-col justify-between p-1.5 font-sans text-white">
-                    {/* Screen status bar */}
-                    <div className="flex justify-between items-center text-[5px] text-zinc-400">
-                      <span>9:41</span>
-                      <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
-                      <span>📶 🔋</span>
-                    </div>
-
-                    {/* Phone Leaderboard mini */}
-                    <div className="space-y-1 my-auto">
-                      <div className="text-[6px] font-extrabold text-brand-pink border-b border-white/5 pb-1 text-center font-mono">ACME LOBBY</div>
-                      
-                      <div className="p-1 bg-brand-purple/30 rounded border border-brand-purple/20 flex justify-between items-center text-[5px] font-bold">
-                        <span>🥇 Dream</span>
-                        <span>3.8k</span>
-                      </div>
-                      <div className="p-1 bg-white/5 rounded flex justify-between items-center text-[5px]">
-                        <span>🥈 Quiz</span>
-                        <span>3.6k</span>
-                      </div>
-                      <div className="p-1 bg-white/5 rounded flex justify-between items-center text-[5px]">
-                        <span>🥉 Game</span>
-                        <span>3.4k</span>
-                      </div>
-                    </div>
-
-                    {/* Home Indicator */}
-                    <div className="w-8 h-0.5 bg-zinc-700 rounded-full mx-auto mt-0.5"></div>
+                  {/* Monitor Stand Neck and Base */}
+                  <div className="flex flex-col items-center -mt-[1px] relative z-0">
+                    {/* Stand neck */}
+                    <div className="w-10 h-10 bg-gradient-to-b from-slate-600 to-slate-700 border-x border-slate-800/30 shadow-inner" />
+                    {/* Stand base */}
+                    <div className="w-28 h-3 bg-gradient-to-r from-slate-500 via-slate-450 to-slate-500 rounded-t-lg shadow-md border-t border-slate-400" />
                   </div>
                 </div>
               </div>
