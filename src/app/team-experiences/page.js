@@ -240,9 +240,9 @@ export default function TeamExperiences() {
                   </h1>
                   <h2 className="text-2xl sm:text-3xl font-extrabold flex flex-wrap items-center gap-x-2 gap-y-1.5 leading-snug">
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple to-brand-pink">
-                      More Than Trivia. More Than Games.
+                      More Than Trivia. More Than Games.{" "}
                     </span>
-                    <span className="text-white block w-full">A World of Team Experiences.</span>
+                    <span className="text-white">A World of Team Experiences.</span>
                   </h2>
                   <p className="max-w-xl text-base sm:text-lg text-zinc-300 font-medium leading-relaxed pt-2">
                     Live-hosted virtual events that spark laughter, connection, competition and celebration—designed for remote and hybrid teams of any size.
@@ -748,7 +748,7 @@ export default function TeamExperiences() {
                   Let&apos;s Create an Experience <br />Your Team Will Remember.
                 </h2>
                 <h3 className="text-2xl md:text-3xl font-extrabold text-white flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans">
-                  <span>Play. Connect.</span>
+                  <span>Play. Connect.{" "}</span>
                   <span className="font-script text-brand-pink neon-glow-pink text-3xl md:text-4xl inline-block font-sans" style={{ transform: "rotate(-2deg)" }}>Celebrate.</span>
                 </h3>
                 <p className="text-zinc-300 text-sm md:text-base leading-relaxed">
