@@ -29,7 +29,8 @@ import {
 import Link from "next/link";
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 import CtaBannerWithModal from "@/components/CtaBannerWithModal";
-import CustomIdeaFooterSection from "@/components/CustomIdeaFooterSection";
+import CustomIdeaSection from "@/components/CustomIdeaSection";
+import FooterCtaBanner from "@/components/FooterCtaBanner";
 import FaqSection from "@/components/FaqSection";
 
 export const metadata = {
@@ -422,8 +423,8 @@ export default function TeamExperiences() {
           </div>
         </section>
 
-        {/* ══ FAQ SECTION (MOVED UP FOR EARLY ENGAGEMENT) ══ */}
-        <FaqSection />
+        {/* ══ CUSTOM IDEA / TALK TO MICHAEL SECTION ══ */}
+        <CustomIdeaSection />
 
         {/* ══ HOW IT WORKS TIMELINE (DARK THEME) ══ */}
         <section className="py-12 md:py-16 bg-zinc-950/40 border-y border-white/5">
@@ -710,7 +711,10 @@ export default function TeamExperiences() {
           </div>
         </section>
 
-        <CustomIdeaFooterSection />
+        <FooterCtaBanner />
+
+        {/* ══ FAQ SECTION ══ */}
+        <FaqSection />
 
 
 
