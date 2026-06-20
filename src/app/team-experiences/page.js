@@ -126,15 +126,51 @@ const benefits = [
 ];
 
 const occasions = [
-  { label: "Remote Team Building", icon: HomeIcon },
-  { label: "Hybrid Team Events", icon: Layers },
-  { label: "Holiday Parties", icon: PartyPopper },
-  { label: "Employee Appreciation", icon: Heart },
-  { label: "Onboarding & New Hire", icon: UserPlus },
-  { label: "Leadership Retreats", icon: Compass },
-  { label: "Sales Kickoffs & Meetings", icon: TrendingUp },
-  { label: "Culture & DEI Initiatives", icon: Globe },
-  { label: "Milestone Celebrations", icon: Trophy }
+  { 
+    label: "Remote Team Building", 
+    icon: HomeIcon, 
+    color: "from-sky-500/10 to-sky-600/5 border-sky-500/20 text-sky-400 hover:border-sky-500/40 hover:shadow-[0_0_15px_rgba(14,165,233,0.15)]" 
+  },
+  { 
+    label: "Hybrid Team Events", 
+    icon: Layers, 
+    color: "from-indigo-500/10 to-indigo-600/5 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/40 hover:shadow-[0_0_15px_rgba(99,102,241,0.15)]" 
+  },
+  { 
+    label: "Holiday Parties", 
+    icon: PartyPopper, 
+    color: "from-rose-500/10 to-rose-600/5 border-rose-500/20 text-rose-400 hover:border-rose-500/40 hover:shadow-[0_0_15px_rgba(244,63,94,0.15)]" 
+  },
+  { 
+    label: "Employee Appreciation", 
+    icon: Heart, 
+    color: "from-red-500/10 to-red-600/5 border-red-500/20 text-red-400 hover:border-red-500/40 hover:shadow-[0_0_15px_rgba(239,68,68,0.15)]" 
+  },
+  { 
+    label: "Onboarding & New Hire", 
+    icon: UserPlus, 
+    color: "from-emerald-500/10 to-emerald-600/5 border-emerald-500/20 text-emerald-400 hover:border-emerald-500/40 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)]" 
+  },
+  { 
+    label: "Leadership Retreats", 
+    icon: Compass, 
+    color: "from-amber-500/10 to-amber-600/5 border-amber-500/20 text-amber-400 hover:border-amber-500/40 hover:shadow-[0_0_15px_rgba(245,158,11,0.15)]" 
+  },
+  { 
+    label: "Sales Kickoffs & Meetings", 
+    icon: TrendingUp, 
+    color: "from-orange-500/10 to-orange-600/5 border-orange-500/20 text-orange-400 hover:border-orange-500/40 hover:shadow-[0_0_15px_rgba(249,115,22,0.15)]" 
+  },
+  { 
+    label: "Culture & DEI Initiatives", 
+    icon: Globe, 
+    color: "from-teal-500/10 to-teal-600/5 border-teal-500/20 text-teal-400 hover:border-teal-500/40 hover:shadow-[0_0_15px_rgba(20,184,166,0.15)]" 
+  },
+  { 
+    label: "Milestone Celebrations", 
+    icon: Trophy, 
+    color: "from-yellow-500/10 to-yellow-600/5 border-yellow-500/20 text-yellow-400 hover:border-yellow-500/40 hover:shadow-[0_0_15px_rgba(234,179,8,0.15)]" 
+  }
 ];
 
 const faqs = [
@@ -287,14 +323,59 @@ export default function TeamExperiences() {
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 block">
               TRUSTED BY AMAZING COMPANIES
             </span>
-            <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 opacity-60">
-              <span className="text-xl font-bold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">Google</span>
-              <span className="text-xl font-semibold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">Microsoft</span>
-              <span className="text-xl font-bold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">amazon</span>
-              <span className="text-xl font-extrabold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">Deloitte.</span>
-              <span className="text-xl font-semibold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">HubSpot</span>
-              <span className="text-xl font-bold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">salesforce</span>
-              <span className="text-xl font-bold tracking-tight text-zinc-400 font-sans hover:text-white transition-colors cursor-default">Adobe</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+              {/* Google */}
+              <span className="text-xl font-bold tracking-tight font-sans cursor-default select-none hover:brightness-110 transition-all duration-200">
+                <span className="text-[#4285F4]">G</span>
+                <span className="text-[#EA4335]">o</span>
+                <span className="text-[#FBBC05]">o</span>
+                <span className="text-[#4285F4]">g</span>
+                <span className="text-[#34A853]">l</span>
+                <span className="text-[#EA4335]">e</span>
+              </span>
+
+              {/* Microsoft */}
+              <span className="flex items-center gap-1.5 text-xl font-semibold tracking-tight text-white font-sans cursor-default select-none hover:text-zinc-100 transition-colors">
+                <svg className="h-4.5 w-4.5 shrink-0" viewBox="0 0 23 23" fill="currentColor">
+                  <rect x="0" y="0" width="10.5" height="10.5" fill="#F25022" />
+                  <rect x="11.5" y="0" width="10.5" height="10.5" fill="#7FBA00" />
+                  <rect x="0" y="11.5" width="10.5" height="10.5" fill="#00A4EF" />
+                  <rect x="11.5" y="11.5" width="10.5" height="10.5" fill="#FFB900" />
+                </svg>
+                Microsoft
+              </span>
+
+              {/* Amazon */}
+              <span className="flex flex-col items-center justify-center cursor-default select-none hover:brightness-110 transition-all duration-200">
+                <span className="text-xl font-bold tracking-tight text-white font-sans leading-none">amazon</span>
+                <svg className="h-1.5 w-12 text-[#FF9900]" viewBox="0 0 48 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 2C10 5 38 5 46 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M41 4L46 2L43 0.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+
+              {/* Deloitte */}
+              <span className="text-xl font-extrabold tracking-tight text-white font-sans cursor-default select-none hover:text-zinc-100 transition-colors">
+                Deloitte<span className="text-[#86BC25]">.</span>
+              </span>
+
+              {/* HubSpot */}
+              <span className="text-xl font-semibold tracking-tight text-[#FF7A59] font-sans cursor-default select-none hover:brightness-110 transition-all duration-200">
+                HubSpot
+              </span>
+
+              {/* Salesforce */}
+              <span className="text-xl font-bold tracking-tight text-[#00A1E0] font-sans cursor-default select-none hover:brightness-110 transition-all duration-200">
+                salesforce
+              </span>
+
+              {/* Adobe */}
+              <span className="flex items-center gap-1.5 text-xl font-bold tracking-tight text-white font-sans cursor-default select-none hover:text-zinc-100 transition-colors">
+                <svg className="h-4.5 w-4.5 shrink-0 text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 22h4.5l3.5-8h4l3.5 8H22L12 2zm0 6l3 7H9l3-7z"/>
+                </svg>
+                Adobe
+              </span>
             </div>
           </div>
         </section>
@@ -489,9 +570,9 @@ export default function TeamExperiences() {
                 return (
                   <div
                     key={o.label}
-                    className="glassmorphism-card rounded-xl p-4 border border-white/5 hover:border-white/10 hover:bg-white/[0.03] transition-all flex flex-col items-center justify-center text-center gap-3"
+                    className={`glassmorphism-card rounded-xl p-4 border transition-all flex flex-col items-center justify-center text-center gap-3 bg-gradient-to-br ${o.color}`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-brand-purple border border-white/5">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/5 shadow-inner">
                       <Icon className="h-4 w-4" />
                     </div>
                     <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wide leading-tight">
