@@ -33,11 +33,39 @@ const testimonials = [
     gradient: "from-emerald-500 to-teal-500",
   },
   {
-    quote: "The event we hosted last night was received VERY well by our team. Huge Success!",
+    quote: "Thank you so much for your assistance. The event we hosted last night was received VERY well by our team. Huge Success! We may be interested in moving to a subscription plan in the future. Are there any promotions available if we go that route? I am thinking having 4 events a month is a good starting point.",
     author: "Corporate Partner",
     role: "Verified Host Partner",
     initials: "CP",
     gradient: "from-rose-500 to-pink-500",
+  },
+  {
+    quote: "Was a great and fun event and yes, easier to plan than expected – Horia was great to work with. Michael is a fantastic host!",
+    author: "Verified Event Host",
+    role: "Corporate Client",
+    initials: "EH",
+    gradient: "from-fuchsia-500 to-pink-500",
+  },
+  {
+    quote: "Thanks so much for helping ukengames! Our team had a great time, we have received some fantastic feedback. I've just completed the survey from the previous email. Thanks for your help with getting this experience set up for our team.",
+    author: "Uken Games Team",
+    role: "Verified Client",
+    initials: "UG",
+    gradient: "from-violet-500 to-fuchsia-500",
+  },
+  {
+    quote: "Yes, the feedback was awesome! Everyone really enjoyed themselves and they can’t stop talking about how much of a unique experience this has been. We really had a great time and will definitely be calling on you again. We’ve done other trivia games but nothing like this. By the way, Michael was really a great host.",
+    author: "Verified Client",
+    role: "Corporate Client",
+    initials: "VC",
+    gradient: "from-cyan-500 to-teal-500",
+  },
+  {
+    quote: "This event was awesome and really appreciate how well Michael was able to improvise and make our last minute event a success. Everyone was very happy.",
+    author: "Event Organizer",
+    role: "Corporate Client",
+    initials: "EO",
+    gradient: "from-yellow-500 to-amber-500",
   }
 ];
 
@@ -48,17 +76,17 @@ export default function TestimonialsCarousel() {
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
-    }, 6000);
+    }, 8000); // 8 seconds per slide to allow reading longer quotes
     return () => clearInterval(timer);
   }, []);
 
   return (
     <div className="space-y-6 text-left w-full lg:sticky lg:top-28">
-      <span className="text-xs font-bold uppercase tracking-wider text-brand-purple">
+      <span className="text-sm md:text-base font-extrabold uppercase tracking-widest text-brand-purple">
         WHAT TEAMS ARE SAYING
       </span>
 
-      <div className="glassmorphism border border-white/10 rounded-3xl p-8 relative flex flex-col justify-between shadow-2xl min-h-[380px] transition-all duration-300">
+      <div className="glassmorphism border border-white/10 rounded-3xl p-8 relative flex flex-col justify-between shadow-2xl min-h-[420px] transition-all duration-300">
         {/* Large quote icon in background */}
         <span className="text-brand-purple/10 text-8xl font-serif leading-none absolute top-4 left-4 select-none">“</span>
 
@@ -67,7 +95,7 @@ export default function TestimonialsCarousel() {
           key={activeIndex}
           className="space-y-6 z-10 flex-grow animate-in fade-in slide-in-from-bottom-2 duration-300"
         >
-          <p className="text-zinc-200 font-medium italic text-sm md:text-base leading-relaxed pt-4">
+          <p className="text-zinc-100 font-semibold italic text-base md:text-lg lg:text-xl leading-relaxed pt-4">
             &ldquo;{testimonials[activeIndex].quote}&rdquo;
           </p>
 
@@ -90,7 +118,7 @@ export default function TestimonialsCarousel() {
           </div>
 
           {/* Initials badge instead of fake faces */}
-          <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br ${testimonials[activeIndex].gradient} border-2 border-white/10 flex items-center justify-center shadow-lg`}>
+          <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br ${testimonials[activeIndex].gradient} border-2 border-white/10 flex items-center justify-center shadow-lg shrink-0`}>
             <span className="text-white font-extrabold text-base md:text-lg tracking-wider">
               {testimonials[activeIndex].initials}
             </span>
@@ -99,7 +127,7 @@ export default function TestimonialsCarousel() {
       </div>
 
       {/* Clickable Dot Indicators */}
-      <div className="flex items-center justify-center gap-2 pt-2">
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
         {testimonials.map((_, idx) => (
           <button
             key={idx}
@@ -107,7 +135,7 @@ export default function TestimonialsCarousel() {
             className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
               idx === activeIndex 
                 ? "w-6 bg-brand-purple" 
-                : "w-2 bg-zinc-700 hover:bg-zinc-600"
+                : "w-2 bg-zinc-700 hover:bg-zinc-650"
             }`}
             aria-label={`Go to testimonial ${idx + 1}`}
           />
