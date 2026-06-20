@@ -773,7 +773,7 @@ export default function TeamExperiences() {
                   className="max-h-full w-auto object-contain select-none pointer-events-none"
                 />
                 {/* Handwritten Speech bubble / yellow arrow */}
-                <div className="absolute -top-4 -left-6 md:-left-12 rotate-[-6deg] bg-amber-400 text-zinc-950 px-4 py-2 rounded-2xl shadow-xl font-script text-lg md:text-xl font-bold border-2 border-zinc-950">
+                <div className="absolute -top-16 -left-12 md:-left-24 rotate-[-6deg] bg-amber-400 text-zinc-950 px-4 py-2 rounded-2xl shadow-xl font-script text-lg md:text-xl font-bold border-2 border-zinc-950">
                   I can&apos;t wait to host your event! <br />
                   <span className="float-right text-sm font-sans tracking-wide font-extrabold">— Michael</span>
                 </div>
