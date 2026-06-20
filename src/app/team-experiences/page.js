@@ -627,10 +627,10 @@ export default function TeamExperiences() {
                 <div className="pt-2">
                   <Link
                     href="/#quiz"
-                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-bold text-zinc-950 bg-white hover:bg-zinc-200 transition-all shadow-md"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-bold text-white bg-[#D81B60] hover:bg-pink-600 shadow-md shadow-pink-500/20 hover:scale-[1.02] transition-all"
                   >
                     PLAN MY CUSTOM EVENT
-                    <ArrowRight className="h-4 w-4 text-zinc-950" />
+                    <ArrowRight className="h-4 w-4 text-white" />
                   </Link>
                 </div>
 
