@@ -238,14 +238,14 @@ export default function TeamExperiences() {
                   <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
                     Endless Ways to <br />Bring Your Team Together.
                   </h1>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold flex flex-wrap items-center gap-x-2 gap-y-1.5 leading-snug">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold leading-snug">
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple to-brand-pink">
-                      More Than Trivia. More Than Games.{" "}
-                    </span>
+                      More Than Trivia. More Than Games.
+                    </span>{" "}
                     <span className="text-white">A World of Team Experiences.</span>
                   </h2>
                   <p className="max-w-xl text-base sm:text-lg text-zinc-300 font-medium leading-relaxed pt-2">
-                    Live-hosted virtual events that spark laughter, connection, competition and celebration—designed for remote and hybrid teams of any size.
+                    Live-hosted virtual experiences that spark laughter, connection, competition, and celebration — designed for remote and hybrid teams of any size.
                   </p>
                 </div>
 
@@ -747,9 +747,9 @@ export default function TeamExperiences() {
                 <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-tight font-sans">
                   Let&apos;s Create an Experience <br />Your Team Will Remember.
                 </h2>
-                <h3 className="text-2xl md:text-3xl font-extrabold text-white flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans">
-                  <span>Play. Connect.{" "}</span>
-                  <span className="font-script text-brand-pink neon-glow-pink text-3xl md:text-4xl inline-block font-sans" style={{ transform: "rotate(-2deg)" }}>Celebrate.</span>
+                <h3 className="text-2xl md:text-3xl font-extrabold text-white font-sans leading-snug">
+                  <span>Play. Connect.</span>{" "}
+                  <span className="font-script text-brand-pink neon-glow-pink text-3xl md:text-4xl inline-block ml-2" style={{ transform: "rotate(-2deg)" }}>Celebrate.</span>
                 </h3>
                 <p className="text-zinc-300 text-sm md:text-base leading-relaxed">
                   Book your event today and leave the rest to us! We manage the games, screen sharing, music, and energy curation so your host can enjoy the show.
