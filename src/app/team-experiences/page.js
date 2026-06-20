@@ -133,12 +133,7 @@ const occasions = [
     color: "from-sky-500/10 to-sky-600/5 border-sky-500/20 text-sky-400 hover:border-sky-500/40 hover:shadow-[0_0_15px_rgba(14,165,233,0.15)]" 
   },
   { 
-    label: "Hybrid Team Events", 
-    icon: Layers, 
-    color: "from-indigo-500/10 to-indigo-600/5 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/40 hover:shadow-[0_0_15px_rgba(99,102,241,0.15)]" 
-  },
-  { 
-    label: "Holiday Parties", 
+    label: "Parties", 
     icon: PartyPopper, 
     color: "from-rose-500/10 to-rose-600/5 border-rose-500/20 text-rose-400 hover:border-rose-500/40 hover:shadow-[0_0_15px_rgba(244,63,94,0.15)]" 
   },
@@ -568,7 +563,7 @@ export default function TeamExperiences() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-4 max-w-6xl mx-auto justify-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto justify-center">
               {occasions.map((o) => {
                 const Icon = o.icon;
                 return (
