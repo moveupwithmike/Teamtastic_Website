@@ -448,7 +448,7 @@ export default function TeamExperiences() {
                 <span className="hidden md:inline text-white/10">──</span>
               </h2>
               <p className="text-zinc-400 max-w-lg mx-auto text-base">
-                Frictionless, live-hosted corporate game shows structured in three simple steps.
+                Frictionless, live-hosted corporate game shows structured in four simple steps.
               </p>
             </div>
 
