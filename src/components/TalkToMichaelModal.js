@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, ArrowLeft, Check, Sparkles, MessageSquare, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export default function TalkToMichaelModal({ isOpen, onClose }) {
+export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }) {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState({
     eventType: "",
@@ -69,7 +69,7 @@ Phone: ${answers.phone || "Not specified"}
           vibe: answers.vibe,
           occasion: answers.eventType,
           message: messageDetail,
-          lead_source: "Ask Michael's Event Concierge",
+          lead_source: isFamily ? "Ask Michael's Family Event Concierge" : "Ask Michael's Event Concierge",
           status: "New",
           created_at: new Date().toISOString(),
         },
@@ -106,6 +106,49 @@ Phone: ${answers.phone || "Not specified"}
     const recs = [];
     const pref = answers.preferences.toLowerCase();
     const vibe = answers.vibe.toLowerCase();
+
+    if (isFamily) {
+      if (pref.includes("trivia") || vibe.includes("competition")) {
+        recs.push({
+          title: "Family Trivia Showdown",
+          desc: "Fun, fast-paced trivia custom-written about your family stories, memories, and photos.",
+          badge: "Most Popular"
+        });
+        recs.push({
+          title: "Generations Battle",
+          desc: "Kids vs. adults in a high-energy showdown of trivia, memory cues, and pop culture.",
+          badge: "High Energy"
+        });
+      } else if (pref.includes("bingo") || vibe.includes("casual")) {
+        recs.push({
+          title: "Virtual Family Bingo",
+          desc: "Classic family bingo with interactive twists, live boards, and silly callouts.",
+          badge: "Fun & Social"
+        });
+        recs.push({
+          title: "Music & Memories",
+          desc: "Name that tune, audio decades, and music Bingo cards for all generations.",
+          badge: "Cooperative"
+        });
+      } else {
+        recs.push({
+          title: "Family Trivia Showdown",
+          desc: "Our most popular live-hosted family game show with personalized family trivia.",
+          badge: "Most Popular"
+        });
+        recs.push({
+          title: "Generations Battle",
+          desc: "A fun-filled clash between the kids and the adults to see who reigns supreme.",
+          badge: "High Energy"
+        });
+        recs.push({
+          title: "Custom Game Night",
+          desc: "We construct custom challenges, puzzles, and quizzes completely tailored to your family.",
+          badge: "100% Tailored"
+        });
+      }
+      return recs.slice(0, 3);
+    }
 
     if (pref.includes("trivia") || vibe.includes("competition")) {
       recs.push({
@@ -245,7 +288,16 @@ Phone: ${answers.phone || "Not specified"}
                         <h3 className="text-xl sm:text-2xl font-extrabold text-white">What kind of event are you planning?</h3>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {[
+                        {(isFamily ? [
+                          "Family reunion",
+                          "Birthday party",
+                          "Holiday gathering",
+                          "Anniversary celebration",
+                          "Graduation party",
+                          "Long-distance family night",
+                          "Custom family event",
+                          "Not sure yet"
+                        ] : [
                           "Team building",
                           "Holiday party",
                           "Employee appreciation",
@@ -253,7 +305,7 @@ Phone: ${answers.phone || "Not specified"}
                           "Celebration",
                           "Culture/DEI event",
                           "Not sure yet"
-                        ].map((option) => (
+                        ]).map((option) => (
                           <button
                             key={option}
                             onClick={() => handleSelect("eventType", option)}
@@ -343,7 +395,7 @@ Phone: ${answers.phone || "Not specified"}
                           "Escape room",
                           "Music games",
                           "Creative challenges",
-                          "Custom company content",
+                          isFamily ? "Custom family trivia & stories" : "Custom company content",
                           "Recommend for me"
                         ].map((option) => (
                           <button
@@ -387,11 +439,11 @@ Phone: ${answers.phone || "Not specified"}
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Work Email *</label>
+                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">{isFamily ? "Email Address *" : "Work Email *"}</label>
                             <input
                               type="email"
                               required
-                              placeholder="e.g. sarah@techcorp.com"
+                              placeholder={isFamily ? "e.g. sarah@gmail.com" : "e.g. sarah@techcorp.com"}
                               value={answers.email}
                               onChange={(e) => setAnswers({ ...answers, email: e.target.value })}
                               className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-brand-purple focus:ring-1 focus:ring-brand-purple/40 placeholder-zinc-650 font-sans transition-all"
@@ -401,11 +453,11 @@ Phone: ${answers.phone || "Not specified"}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">Company Name *</label>
+                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">{isFamily ? "Family / Group Name *" : "Company Name *"}</label>
                             <input
                               type="text"
                               required
-                              placeholder="e.g. TechCorp Inc."
+                              placeholder={isFamily ? "e.g. The Connor Family" : "e.g. TechCorp Inc."}
                               value={answers.company}
                               onChange={(e) => setAnswers({ ...answers, company: e.target.value })}
                               className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-brand-purple focus:ring-1 focus:ring-brand-purple/40 placeholder-zinc-650 font-sans transition-all"

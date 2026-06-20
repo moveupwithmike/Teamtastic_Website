@@ -6,7 +6,7 @@ import { Gamepad2, Heart, ShieldCheck, HelpCircle, Mail } from "lucide-react";
 
 export default function Footer() {
   const pathname = usePathname();
-  const isExperiencesPage = pathname === "/team-experiences";
+  const isExperiencesPage = pathname === "/team-experiences" || pathname === "/virtual-family-game-night";
 
   if (isExperiencesPage) {
     return (
