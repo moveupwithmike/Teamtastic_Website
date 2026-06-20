@@ -387,9 +387,9 @@ export default function TeamExperiences() {
             background: "radial-gradient(circle at 50% 50%, rgba(139,92,246,0.08) 0%, transparent 70%)"
           }} />
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
-            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-sans">
-              The Virtual Team Building Event <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-purple via-pink-400 to-brand-pink drop-shadow-[0_2px_15px_rgba(168,85,247,0.2)]">
+            <h2 className="text-2xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-sans">
+              <span className="block">The Virtual Team Building Event</span>
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-purple via-pink-400 to-brand-pink drop-shadow-[0_2px_15px_rgba(168,85,247,0.2)] mt-1 sm:mt-2">
                 People Actually Want to Attend.
               </span>
             </h2>
