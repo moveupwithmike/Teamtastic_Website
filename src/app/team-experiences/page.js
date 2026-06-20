@@ -266,6 +266,9 @@ export default function TeamExperiences() {
                   </div>
 
                   <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-brand-pink/20 flex items-center justify-center text-brand-pink border border-brand-pink/35 shadow-[0_0_10px_rgba(236,72,153,0.2)]">
+                      <PartyPopper className="h-4.5 w-4.5" />
+                    </div>
                     <span className="font-script text-brand-pink neon-glow-pink text-3xl rotate-[-2deg] inline-block tracking-wider transform origin-center">
                       Celebrate.
                     </span>
