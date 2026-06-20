@@ -27,6 +27,7 @@ import {
   Star
 } from "lucide-react";
 import Link from "next/link";
+import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 
 export const metadata = {
   title: "Virtual Team Experiences & Live Hosted Game Shows | Teamtastic",
@@ -726,48 +727,8 @@ export default function TeamExperiences() {
               </div>
               
               {/* Right Column - What Teams Are Saying Testimonial block */}
-              <div className="lg:col-span-6 space-y-6 text-left w-full lg:sticky lg:top-28">
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-purple">
-                  WHAT TEAMS ARE SAYING
-                </span>
-                
-                <div className="glassmorphism border border-white/10 rounded-3xl p-8 relative flex flex-col justify-between shadow-sm min-h-[340px]">
-                  {/* Large quote icon in background */}
-                  <span className="text-brand-purple/10 text-8xl font-serif leading-none absolute top-4 left-4 select-none">“</span>
-                  
-                  <div className="space-y-6 z-10 flex-grow">
-                    <p className="text-zinc-200 font-medium italic text-base leading-relaxed pt-4">
-                      &ldquo;Michael was AMAZING! He had our team laughing, competing, and connecting the entire time. It was the highlight of our quarter!&rdquo;
-                    </p>
-                    
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} className="h-4.5 w-4.5 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Testimonial Author Flex Row with Enlarge Headshot */}
-                  <div className="mt-8 flex items-center justify-between border-t border-white/5 pt-6 z-10 shrink-0">
-                    <div className="space-y-0.5">
-                      <span className="text-lg font-bold text-white">— HR Director</span>
-                    </div>
-                    {/* Enlarged Crop face avatar */}
-                    <img 
-                      src="/p6.png" 
-                      alt="HR Director Testimonial Crop" 
-                      className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-brand-purple/40 shadow-lg"
-                    />
-                  </div>
-                </div>
-
-                {/* Dot Indicators */}
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-purple"></span>
-                  <span className="w-2 h-2 rounded-full bg-zinc-700 hover:bg-zinc-650 cursor-pointer"></span>
-                  <span className="w-2 h-2 rounded-full bg-zinc-700 hover:bg-zinc-650 cursor-pointer"></span>
-                  <span className="w-2 h-2 rounded-full bg-zinc-700 hover:bg-zinc-650 cursor-pointer"></span>
-                </div>
+              <div className="lg:col-span-6 w-full lg:sticky lg:top-28">
+                <TestimonialsCarousel />
               </div>
 
             </div>
