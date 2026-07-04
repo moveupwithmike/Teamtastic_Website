@@ -258,7 +258,7 @@ export default function SoloDemo() {
                 Claim Your Free 15-Minute Icebreaker Lobby!
               </h4>
               <p className="text-slate-300 text-xs leading-relaxed">
-                Ready to try it with your team? Claim your starter lobby. No credit card required. Credentials sent instantly.
+                Ready to try it with your team? Enter your details and we&apos;ll send a confirmation to your email. No credit card required.
               </p>
 
               <form onSubmit={handleLeadSubmit} className="space-y-3.5 pt-2">

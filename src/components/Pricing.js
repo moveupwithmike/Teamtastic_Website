@@ -165,6 +165,19 @@ export default function Pricing() {
     setAddOns((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const saveEstimatorContext = () => {
+    try {
+      sessionStorage.setItem("teamtastic_estimator", JSON.stringify({
+        players,
+        packageType,
+        addOns,
+        estimatedTotal,
+      }));
+    } catch {
+      // sessionStorage unavailable — proceed without saving
+    }
+  };
+
   return (
     <div className="space-y-20 md:space-y-28">
       
@@ -365,7 +378,10 @@ export default function Pricing() {
                 ) : (
                   <Link
                     href={tier.href}
-                    onClick={() => track("pricing_cta_clicked", { tier_name: tier.name, tier_cta: tier.cta })}
+                    onClick={() => {
+                      track("pricing_cta_clicked", { tier_name: tier.name, tier_cta: tier.cta });
+                      if (tier.href === "/#quiz") saveEstimatorContext();
+                    }}
                     className={`w-full flex h-12 items-center justify-center rounded-xl text-sm font-bold transition-all ${tier.buttonStyle}`}
                   >
                     {tier.cta}
@@ -388,6 +404,7 @@ export default function Pricing() {
           </div>
           <Link
             href="/#quiz"
+            onClick={saveEstimatorContext}
             className="flex h-12 px-6 items-center justify-center rounded-xl text-sm font-bold bg-white text-zinc-950 hover:bg-zinc-200 transition-all shrink-0 gap-2 hover:scale-[1.02]"
           >
             Start the Quiz <ArrowRight className="h-4 w-4 text-zinc-950" />
@@ -412,6 +429,7 @@ export default function Pricing() {
             
             <Link
               href="/#quiz"
+              onClick={saveEstimatorContext}
               className="px-4 py-2.5 rounded-xl bg-brand-purple hover:bg-brand-purple/90 text-white font-bold text-xs shadow-lg shadow-brand-purple/20 transition-all hover:scale-[1.02] shrink-0"
             >
               Get My Exact Quote →

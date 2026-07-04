@@ -48,7 +48,7 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 ### 0.3 Make payment processing product-aware
 
 - [x] Add a product registry for `hosted_event_deposit`, `pro_subscription`, and `custom_content`.
-- [ ] Configure Stripe payment-link IDs or metadata for unambiguous classification.
+- [x] Configure Stripe payment-link IDs or metadata for unambiguous classification.
 - [x] Branch webhook behavior by product and `session.mode`.
 - [x] Rename analytics and email subjects appropriately:
   - deposit → `deposit_completed`
@@ -56,7 +56,7 @@ Make lead capture and revenue processing dependable first, then consolidate busi
   - custom content → `custom_content_purchased`
 - [x] Persist unknown checkouts as `unclassified`; alert without calling them deposits.
 - [x] Return a retryable webhook response when payment persistence succeeds but the required internal alert fails.
-- [ ] Register and verify the production Stripe webhook.
+- [x] Register the production Stripe webhook for `checkout.session.completed`.
 
 **Verification**
 
@@ -71,9 +71,9 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 - [x] Set the authoritative hosted-event price: `$35/person` with a `$350 minimum` for groups up to 10.
 - [x] Centralize hosted pricing in `src/lib/pricing.js`; retain the `$200 deposit` as a separate reservation payment.
 - [x] Remove the inactive `$99/month` subscription from customer-facing surfaces; keep custom content as an active quote-based service.
-- [ ] Remove unavailable CTAs; add active products to the pricing page.
-- [ ] Configure production Calendly and Stripe URLs.
-- [ ] Carry pricing-estimator selections into the quiz and lead context.
+- [x] Remove unavailable CTAs; add active products to the pricing page.
+- [x] Configure production Calendly and Stripe URLs.
+- [x] Carry pricing-estimator selections into the quiz and lead context.
 
 **Release gate:** every public price and CTA matches an active checkout path.
 
@@ -159,7 +159,7 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 
 ### 3.2 CI and observability
 
-- [ ] Fix the existing ESLint baseline.
+- [x] Fix the existing ESLint baseline.
 - [ ] Add `typecheck`, `test`, and `test:e2e` scripts.
 - [ ] Add GitHub Actions: install → lint → typecheck → tests → build.
 - [ ] Upload PostHog source maps from the production build.

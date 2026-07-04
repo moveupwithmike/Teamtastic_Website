@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Users, Compass, PartyPopper, CheckCircle, ArrowRight, ArrowLeft, Loader2, Gamepad2, ArrowUpRight } from "lucide-react";
 import { PAYMENT_CONFIG } from "@/lib/stripe";
@@ -36,6 +36,15 @@ const occasions = [
   { label: "Private Milestone Celebration", value: "private-milestone" },
 ];
 
+function teamSizeFromPlayers(players) {
+  const count = Number(players);
+  if (!Number.isFinite(count) || count < 1) return "";
+  if (count < 15) return "under-15";
+  if (count <= 50) return "15-50";
+  if (count <= 150) return "50-150";
+  return "150+";
+}
+
 export default function GameQuiz() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -54,6 +63,33 @@ export default function GameQuiz() {
     email: "",
     company: "",
   });
+  const [estimatorContext, setEstimatorContext] = useState(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("teamtastic_estimator");
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (
+          Number.isFinite(Number(saved?.players)) &&
+          ["core", "premium"].includes(saved?.packageType) &&
+          saved?.addOns &&
+          typeof saved.addOns === "object"
+        ) {
+          // This one-time hydration synchronizes quiz state with the pricing estimator.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setEstimatorContext(saved);
+          setFormData((previous) => ({
+            ...previous,
+            teamSize: teamSizeFromPlayers(saved.players),
+          }));
+        }
+        sessionStorage.removeItem("teamtastic_estimator");
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }, []);
 
   const [recommendation, setRecommendation] = useState(null);
 
@@ -100,6 +136,14 @@ export default function GameQuiz() {
         vibe: formData.vibe,
         occasion: formData.occasion,
         turnstileToken,
+        ...(estimatorContext ? { context: {
+          estimator_players: estimatorContext.players,
+          estimator_package: estimatorContext.packageType,
+          estimator_add_ons: Object.entries(estimatorContext.addOns)
+            .filter(([, v]) => v)
+            .map(([k]) => k),
+          estimator_total: estimatorContext.estimatedTotal,
+        }} : {}),
       });
       setRecommendation(result.recommendation);
       setCompleted(true);
@@ -130,6 +174,13 @@ export default function GameQuiz() {
 
         {/* Quiz Shell Container */}
         <div className="glassmorphism rounded-3xl p-8 md:p-12 shadow-2xl border border-white/10 relative min-h-[420px] flex flex-col justify-between">
+          {estimatorContext && !completed && (
+            <div className="mb-6 rounded-2xl border border-purple-400/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+              Your estimate is attached: {estimatorContext.players} players,{" "}
+              {estimatorContext.packageType === "premium" ? "Premium" : "Core"} event, approximately $
+              {Number(estimatorContext.estimatedTotal).toLocaleString()}.
+            </div>
+          )}
           <AnimatePresence mode="wait">
             {!completed && !loading && (
               <motion.div
@@ -354,7 +405,7 @@ export default function GameQuiz() {
                 <div className="w-full max-w-md space-y-4 pt-4">
                   {/* Primary CTA: Hosted MC Event Booking (Highly recommended for groups/occasions) */}
                   <a
-                    href={`${PAYMENT_CONFIG.calendlyUrl}?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&a1=${encodeURIComponent(`${formData.company || ""} | ${formData.teamSize} | ${formData.vibe} | ${formData.occasion} | ${recommendation.title} | ${submissionId}`)}`}
+                    href={`${PAYMENT_CONFIG.depositUrl}?prefilled_email=${encodeURIComponent(formData.email)}&client_reference_id=${encodeURIComponent(submissionId)}`}
                     onClick={() => track("deposit_cta_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -364,7 +415,18 @@ export default function GameQuiz() {
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
 
-                  {/* Secondary CTA: Free Sandbox Trial */}
+                  <a
+                    href={`${PAYMENT_CONFIG.calendlyUrl}?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&a1=${encodeURIComponent(`${formData.company || ""} | ${formData.teamSize} | ${formData.vibe} | ${formData.occasion} | ${recommendation.title} | ${submissionId}`)}`}
+                    onClick={() => track("booking_call_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-zinc-200 hover:bg-white/10 hover:border-white/20 transition-colors"
+                  >
+                    Book a 15-Minute Call
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
+
+                  {/* Free Sandbox Trial */}
                   <div className="flex items-center justify-between gap-4 pt-2">
                     <a
                     href={`https://teamtastic.games?${new URLSearchParams({ vibe: formData.vibe, size: formData.teamSize, occasion: formData.occasion, recommendation: recommendation.key, submission_id: submissionId }).toString()}`}
