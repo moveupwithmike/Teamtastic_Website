@@ -5,6 +5,13 @@ import Pricing from "@/components/Pricing";
 import { Gamepad2, Sparkles, Users, Award, ArrowRight, Zap, Target, Music } from "lucide-react";
 import Link from "next/link";
 
+const homeFaqs = [
+  { question: "Do players need to download anything?", answer: "No. Teamtastic runs in a web browser and works alongside Zoom, Microsoft Teams, Google Meet, or Webex." },
+  { question: "How many people can participate?", answer: "Live-hosted events support groups from small teams to 300 or more participants." },
+  { question: "Can Teamtastic customize an event?", answer: "Yes. Events can include company trivia, inside jokes, branded visuals, team names, music, and custom awards." },
+  { question: "How much does a live-hosted event cost?", answer: "Live-hosted events start at $35 per person, with a $350 minimum for groups up to 10." },
+];
+
 const games = [
   {
     title: "Lightning Feud",
@@ -104,8 +111,46 @@ const useCases = [
 ];
 
 export default function Home() {
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Teamtastic",
+      url: "https://teamtastic.events",
+      logo: "https://teamtastic.events/logo.png",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "Virtual Team Building Games",
+      serviceType: "Live-hosted virtual team building events",
+      provider: { "@type": "Organization", name: "Teamtastic", url: "https://teamtastic.events" },
+      areaServed: "Worldwide",
+      offers: { "@type": "Offer", price: "35", priceCurrency: "USD", description: "$35 per person with a $350 minimum" },
+      review: {
+        "@type": "Review",
+        author: { "@type": "Person", name: "Leah McCord" },
+        reviewBody: "The energy was amazing. Everyone was engaged and involved.",
+        reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" },
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: homeFaqs.map(({ question, answer }) => ({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: { "@type": "Answer", text: answer },
+      })),
+    },
+  ];
+
   return (
     <div className="flex flex-col min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+      />
       <main className="flex-1">
         {/* Dynamic Mock Stage Hero */}
         <Hero />

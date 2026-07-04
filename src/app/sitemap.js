@@ -1,36 +1,54 @@
-export default function sitemap() {
-  const baseUrl = "https://teamtastic.events";
+import gamesPool from "@/lib/gamesData.json";
 
-  const staticPaths = [
-    { route: "", priority: 1.0, changeFrequency: "daily" },
-    { route: "/virtual-team-building", priority: 0.95, changeFrequency: "weekly" },
-    { route: "/why-teamtastic", priority: 0.85, changeFrequency: "monthly" },
-    { route: "/pricing", priority: 0.9, changeFrequency: "weekly" },
-    { route: "/resources", priority: 0.8, changeFrequency: "weekly" },
-    { route: "/resources/faq", priority: 0.75, changeFrequency: "monthly" },
-    { route: "/resources/how-it-works", priority: 0.75, changeFrequency: "monthly" },
-    { route: "/resources/event-planning-guide", priority: 0.7, changeFrequency: "monthly" },
-    { route: "/blog", priority: 0.85, changeFrequency: "weekly" },
-    { route: "/blog/virtual-team-building-ideas", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/blog/remote-team-engagement-tips", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/blog/virtual-icebreaker-games", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/blog/corporate-game-show-activities", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/games/survey-showdown", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/games/lightning-feud", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/games/meme-battle", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/games/sound-bite-trivia", priority: 0.8, changeFrequency: "monthly" },
-    { route: "/use-cases/hr-and-people-ops", priority: 0.75, changeFrequency: "monthly" },
-    { route: "/use-cases/remote-engineering-teams", priority: 0.75, changeFrequency: "monthly" },
-    { route: "/use-cases/virtual-intern-cohorts", priority: 0.75, changeFrequency: "monthly" },
-    { route: "/use-cases/private-vip-socials", priority: 0.75, changeFrequency: "monthly" },
+const BASE = "https://teamtastic.events";
+const TODAY = new Date().toISOString().split("T")[0];
+
+function url(route, priority, changeFrequency = "monthly") {
+  return { url: `${BASE}${route}`, lastModified: TODAY, changeFrequency, priority };
+}
+
+export default function sitemap() {
+  const staticRoutes = [
+    url("",                                  1.0, "daily"),
+    url("/virtual-team-building",            0.95, "weekly"),
+    url("/pricing",                          0.9,  "weekly"),
+    url("/games",                            0.9,  "weekly"),
+    url("/activities",                       0.7,  "monthly"),   // redirects → /games
+    url("/team-experiences",                 0.85, "weekly"),
+    url("/virtual-family-game-night",        0.85, "weekly"),
+    url("/why-teamtastic",                   0.85, "monthly"),
+    url("/resources",                        0.8,  "weekly"),
+    url("/resources/faq",                    0.75),
+    url("/resources/how-it-works",           0.75),
+    url("/resources/event-planning-guide",   0.7),
+    url("/blog",                             0.85, "weekly"),
+    url("/blog/virtual-team-building-ideas", 0.8),
+    url("/blog/remote-team-engagement-tips", 0.8),
+    url("/blog/virtual-icebreaker-games",    0.8),
+    url("/blog/corporate-game-show-activities", 0.8),
+    url("/use-cases/hr-and-people-ops",      0.75),
+    url("/use-cases/remote-engineering-teams", 0.75),
+    url("/use-cases/virtual-intern-cohorts", 0.75),
+    url("/use-cases/private-vip-socials",    0.75),
+    url("/games/lightning-feud",             0.85),   // featured
+    url("/games/survey-showdown",            0.85),
+    url("/games/online-office-games",        0.85),
+    url("/games/tiny-campfire",              0.85),
   ];
 
-  const paths = staticPaths.map(({ route, priority, changeFrequency }) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date().toISOString().split("T")[0],
-    changeFrequency,
-    priority,
-  }));
+  // Generate entries for all 51 games from the authoritative data source.
+  // This prevents sitemap 404s when games are added or removed.
+  const gameRoutes = gamesPool.map((g) =>
+    url(`/games/${g.slug}`, 0.75)
+  );
 
-  return paths;
+  // De-duplicate: static featured entries take precedence over generated ones.
+  const staticGameSlugs = new Set(
+    staticRoutes.filter((r) => r.url.includes("/games/")).map((r) => r.url)
+  );
+  const uniqueGameRoutes = gameRoutes.filter(
+    (r) => !staticGameSlugs.has(r.url)
+  );
+
+  return [...staticRoutes, ...uniqueGameRoutes];
 }

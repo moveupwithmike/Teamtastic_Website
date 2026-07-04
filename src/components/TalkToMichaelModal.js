@@ -3,9 +3,12 @@
 import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, ArrowLeft, Check, Sparkles, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import { getCorporateConciergeRecs, getFamilyConciergeRecs } from "@/lib/recommendations";
+import { PAYMENT_CONFIG } from "@/lib/stripe";
 
 export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }) {
   const [step, setStep] = useState(1);
@@ -109,107 +112,20 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
     onClose();
   };
 
-  const getRecommendations = () => {
-    const recs = [];
-    const pref = answers.preferences.toLowerCase();
-    const vibe = answers.vibe.toLowerCase();
+  const getRecommendations = () =>
+    isFamily
+      ? getFamilyConciergeRecs(answers.preferences, answers.vibe)
+      : getCorporateConciergeRecs(answers.preferences, answers.vibe);
 
-    if (isFamily) {
-      if (pref.includes("trivia") || vibe.includes("competition")) {
-        recs.push({
-          title: "Family Trivia Showdown",
-          desc: "Fun, fast-paced trivia custom-written about your family stories, memories, and photos.",
-          badge: "Most Popular"
-        });
-        recs.push({
-          title: "Generations Battle",
-          desc: "Kids vs. adults in a high-energy showdown of trivia, memory cues, and pop culture.",
-          badge: "High Energy"
-        });
-      } else if (pref.includes("bingo") || vibe.includes("casual")) {
-        recs.push({
-          title: "Virtual Family Bingo",
-          desc: "Classic family bingo with interactive twists, live boards, and silly callouts.",
-          badge: "Fun & Social"
-        });
-        recs.push({
-          title: "Music & Memories",
-          desc: "Name that tune, audio decades, and music Bingo cards for all generations.",
-          badge: "Cooperative"
-        });
-      } else {
-        recs.push({
-          title: "Family Trivia Showdown",
-          desc: "Our most popular live-hosted family game show with personalized family trivia.",
-          badge: "Most Popular"
-        });
-        recs.push({
-          title: "Generations Battle",
-          desc: "A fun-filled clash between the kids and the adults to see who reigns supreme.",
-          badge: "High Energy"
-        });
-        recs.push({
-          title: "Custom Game Night",
-          desc: "We construct custom challenges, puzzles, and quizzes completely tailored to your family.",
-          badge: "100% Tailored"
-        });
-      }
-      return recs.slice(0, 3);
-    }
-
-    if (pref.includes("trivia") || vibe.includes("competition")) {
-      recs.push({
-        title: "Signature Trivia Jam",
-        desc: "A high-octane buzzer trivia showdown custom-themed for your brand and culture.",
-        badge: "Most Popular"
-      });
-      recs.push({
-        title: "Game Show Challenge",
-        desc: "Classic TV-style game shows with live scoreboards, buzzers, and friendly banter.",
-        badge: "High Energy"
-      });
-    } else if (pref.includes("escape") || vibe.includes("solving")) {
-      recs.push({
-        title: "Escape Room Adventures",
-        desc: "Cooperative team-based logic puzzles, secret codes, and escape rooms.",
-        badge: "Cooperative"
-      });
-      recs.push({
-        title: "Mystery Mosaic",
-        desc: "Solve collaborative clues to unlock puzzle tiles and unveil your custom team photo.",
-        badge: "Collaboration"
-      });
-    } else if (pref.includes("bingo") || pref.includes("music")) {
-      recs.push({
-        title: "Music Bingo Mania",
-        desc: "High-energy sound riffs, song clips, custom boards, and dancing in your seats.",
-        badge: "Fun & Social"
-      });
-      recs.push({
-        title: "Sound Bite Trivia",
-        desc: "Guess movie clips, audio memes, and retro sounds in a fast-paced audio quiz.",
-        badge: "Music & Audio"
-      });
-    } else {
-      recs.push({
-        title: "Signature Trivia Jam",
-        desc: "Our most popular corporate team-building experience featuring custom company trivia.",
-        badge: "Most Popular"
-      });
-      recs.push({
-        title: "Game Show Challenge",
-        desc: "Tv-style mini games, buzzer battle, and interactive team-vs-team modes.",
-        badge: "High Energy"
-      });
-      recs.push({
-        title: "Custom Celebration",
-        desc: "A hand-crafted mixture of drawing canvases, trivia, and team awards.",
-        badge: "100% Tailored"
-      });
-    }
-
-    return recs.slice(0, 3);
-  };
+  const depositUrl = `${PAYMENT_CONFIG.depositUrl}${PAYMENT_CONFIG.depositUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
+    prefilled_email: answers.email,
+    client_reference_id: submissionId,
+  })}`;
+  const calendlyUrl = `${PAYMENT_CONFIG.calendlyUrl}${PAYMENT_CONFIG.calendlyUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
+    name: answers.name,
+    email: answers.email,
+    a1: `${answers.company}; ${answers.groupSize}; ${answers.eventType}; ${answers.vibe}`,
+  })}`;
 
   return (
     <AnimatePresence>
@@ -536,12 +452,13 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
 
                         <div className="space-y-3">
                           {getRecommendations().map((rec, idx) => (
-                            <div
+                            <Link
                               key={idx}
-                              className="p-4 rounded-2xl border border-white/5 bg-white/3 flex flex-col justify-between gap-1 hover:border-brand-purple/35 transition-colors"
+                              href={`/games/${rec.slug}`}
+                              className="block p-4 rounded-2xl border border-white/5 bg-white/3 flex flex-col justify-between gap-1 hover:border-brand-purple/35 transition-colors group"
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <h4 className="text-sm font-extrabold text-zinc-100">{rec.title}</h4>
+                                <h4 className="text-sm font-extrabold text-zinc-100 group-hover:text-white transition-colors">{rec.title}</h4>
                                 <span className="text-[8px] bg-brand-purple/20 text-purple-300 border border-brand-purple/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                                   {rec.badge}
                                 </span>
@@ -549,16 +466,29 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
                               <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
                                 {rec.desc}
                               </p>
-                            </div>
+                            </Link>
                           ))}
                         </div>
                       </div>
 
-                      <button
-                        onClick={handleReset}
-                        className="w-full flex h-11 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-sm transition-all"
-                      >
-                        Done
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <a
+                          href={depositUrl}
+                          onClick={() => track("deposit_cta_clicked", { source: isFamily ? "family_concierge" : "corporate_concierge" })}
+                          className="flex min-h-11 items-center justify-center rounded-xl bg-[#D81B60] px-4 text-center text-sm font-bold text-white hover:bg-pink-600"
+                        >
+                          Reserve with $200 deposit
+                        </a>
+                        <a
+                          href={calendlyUrl}
+                          onClick={() => track("booking_call_clicked", { source: isFamily ? "family_concierge" : "corporate_concierge" })}
+                          className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-center text-sm font-bold text-white hover:bg-white/10"
+                        >
+                          Book a planning call
+                        </a>
+                      </div>
+                      <button onClick={handleReset} className="w-full text-xs font-semibold text-zinc-500 hover:text-zinc-300">
+                        Close
                       </button>
                     </motion.div>
                   )}

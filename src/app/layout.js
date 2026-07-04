@@ -3,7 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Toaster } from "sonner";
-import PostHogProvider from "@/components/PostHogProvider";
+import ConsentBanner from "@/components/ConsentBanner";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -19,8 +19,11 @@ const caveat = Caveat({
 
 export const metadata = {
   title: "Virtual Team Building Activities & Online Games | Teamtastic",
-  description: "Virtual team building that teams actually love. 20+ live interactive games including trivia, escape rooms, and music rounds for remote/hybrid teams. Free to try.",
+  description: "Live-hosted virtual team building games for remote and hybrid teams, with custom trivia, game shows, and zero downloads. Free to try.",
   metadataBase: new URL("https://teamtastic.events"),
+  alternates: {
+    canonical: "https://teamtastic.events",
+  },
   openGraph: {
     title: "Virtual Team Building Activities & Online Games | Teamtastic",
     description: "Virtual team building that teams actually love. 20+ live interactive games including trivia, escape rooms, and music rounds for remote/hybrid teams.",
@@ -53,7 +56,7 @@ export default function RootLayout({ children }) {
       style={{ colorScheme: "dark" }}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-purple-500 selection:text-white">
-        <PostHogProvider />
+        <ConsentBanner />
         <Toaster richColors position="bottom-right" theme="dark" />
         <Navbar />
         <div className="flex-grow flex flex-col">

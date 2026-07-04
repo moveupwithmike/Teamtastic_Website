@@ -32,10 +32,12 @@ import CtaBannerWithModal from "@/components/CtaBannerWithModal";
 import CustomIdeaSection from "@/components/CustomIdeaSection";
 import FooterCtaBanner from "@/components/FooterCtaBanner";
 import FaqSection from "@/components/FaqSection";
+import { corporateFaqs } from "@/lib/corporate-faqs";
+import CorporateLeadForm from "@/components/CorporateLeadForm";
 
 export const metadata = {
   title: "Virtual Team Experiences & Live Hosted Game Shows | Teamtastic",
-  description: "Choose the virtual experience format that fits your team vibe. Discover live emcee-hosted game shows, custom trivia, and team-building events designed for remote and hybrid teams of any size.",
+  description: "Live-hosted virtual team experiences for remote and hybrid teams, including custom trivia, game shows, and collaborative challenges.",
   alternates: {
     canonical: "https://teamtastic.events/team-experiences",
   },
@@ -176,8 +178,29 @@ const occasions = [
 
 
 export default function TeamExperiences() {
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "Live-Hosted Virtual Team Experiences",
+      serviceType: "Corporate virtual team building",
+      provider: { "@type": "Organization", name: "Teamtastic", url: "https://teamtastic.events" },
+      areaServed: "Worldwide",
+      offers: { "@type": "Offer", price: "35", priceCurrency: "USD", description: "$35 per person with a $350 minimum and a $200 reservation deposit" },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: corporateFaqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.q,
+        acceptedAnswer: { "@type": "Answer", text: faq.a },
+      })),
+    },
+  ];
   return (
     <div className="flex flex-col min-h-screen bg-brand-dark">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <main className="flex-1 bg-brand-dark text-white">
         
         {/* ══ CUSTOM HERO (DARK THEME) ══ */}
@@ -243,7 +266,7 @@ export default function TeamExperiences() {
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
-                  <Link href="/#quiz"
+                  <Link href="#availability"
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4.5 rounded-2xl text-base font-bold text-white bg-[#D81B60] hover:bg-pink-600 shadow-[0_4px_14px_rgba(216,27,96,0.3)] transition-all duration-300 hover:-translate-y-1">
                     BOOK YOUR EVENT
                     <ArrowRight className="h-4.5 w-4.5" />
@@ -253,6 +276,9 @@ export default function TeamExperiences() {
                     Explore Experiences
                   </Link>
                 </div>
+                <p className="text-xs font-semibold text-zinc-300">
+                  From $35/person · $350 minimum · Reserve with a $200 deposit
+                </p>
 
                 {/* Stars Social Proof */}
                 <div className="flex items-center gap-3 pt-4">
@@ -284,6 +310,17 @@ export default function TeamExperiences() {
               </div>
 
             </div>
+          </div>
+        </section>
+
+        <section id="availability" className="scroll-mt-24 border-y border-white/5 bg-zinc-950/50 py-16">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div className="space-y-4">
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-purple">Built for busy event planners</span>
+              <h2 className="text-3xl font-extrabold text-white sm:text-5xl">Know your options before you leave this page.</h2>
+              <p className="text-zinc-300">Tell us the essentials and we’ll confirm availability, the best-fit format, and exact pricing. Your answers are saved securely, including your campaign details, so you never have to repeat yourself.</p>
+            </div>
+            <CorporateLeadForm />
           </div>
         </section>
 
@@ -603,7 +640,7 @@ export default function TeamExperiences() {
 
                 <div className="pt-2">
                   <Link
-                    href="/#quiz"
+                    href="#availability"
                     className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-bold text-white bg-[#D81B60] hover:bg-pink-600 shadow-md shadow-pink-500/20 hover:scale-[1.02] transition-all"
                   >
                     PLAN MY CUSTOM EVENT
@@ -715,6 +752,13 @@ export default function TeamExperiences() {
 
         {/* ══ FAQ SECTION ══ */}
         <FaqSection />
+
+        <div className="fixed bottom-4 right-4 z-30 hidden rounded-2xl border border-white/10 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur md:block">
+          <p className="mb-2 px-2 text-[11px] font-semibold text-zinc-300">From $35/person · $350 minimum</p>
+          <Link href="#availability" className="inline-flex items-center gap-2 rounded-xl bg-[#D81B60] px-5 py-3 text-sm font-bold text-white hover:bg-pink-600">
+            Get availability & pricing <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
 
 
 

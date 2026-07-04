@@ -14,6 +14,33 @@ export function generateStaticParams() {
   return gamesPool.map(g => ({ slug: g.slug }));
 }
 
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const game = gamesPool.find(g => g.slug === slug);
+  if (!game) return {};
+
+  const title = `${game.title} — Virtual Team Building Game | Teamtastic`;
+  const description = `${game.tagline} Perfect for remote and hybrid teams. ${game.players} players · ${game.time}. Book a live-hosted Teamtastic event today.`;
+  const canonical = `https://teamtastic.events/games/${game.slug}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      images: [{ url: "/teamtastic_website_mockup.png", width: 1920, height: 1080, alt: game.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
+
 export default async function GamePage({ params }) {
   const { slug } = await params;
   const game = gamesData[slug];

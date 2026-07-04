@@ -442,11 +442,14 @@ export default function Hero() {
           </div>
 
           {/* Tagline */}
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-white pt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
-            <span>Play. Connect.</span>
-            <span className="font-script text-brand-pink neon-glow-pink text-5xl sm:text-7xl inline-block"
-              style={{ transform: "rotate(-2deg)" }}>
-              Celebrate.
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-white pt-2 text-center">
+            <span className="block">Virtual Team Building Games</span>
+            <span className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-3xl sm:text-5xl">
+              <span>Play. Connect.</span>
+              <span className="font-script text-brand-pink neon-glow-pink text-5xl sm:text-7xl inline-block"
+                style={{ transform: "rotate(-2deg)" }}>
+                Celebrate.
+              </span>
             </span>
           </h1>
 
@@ -465,6 +468,9 @@ export default function Hero() {
               Try a Free Game
             </a>
           </div>
+          <p className="text-xs font-semibold text-zinc-300">
+            Live-hosted events from $35/person · $350 minimum · Reserve with a $200 deposit
+          </p>
 
         </div>
       </div>

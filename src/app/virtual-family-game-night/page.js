@@ -76,7 +76,7 @@ const occasions = [
 // Family Testimonials
 const testimonials = [
   {
-    quote: "Michael was incredible! He had our entire family laughing the whole time. Best night year!",
+    quote: "Michael was incredible! He had our entire family laughing the whole time. Best night of the year!",
     family: "The Johnson Family",
     initials: "JF",
     color: "from-purple-500 to-indigo-500"
@@ -88,7 +88,7 @@ const testimonials = [
     color: "from-pink-500 to-rose-500"
   },
   {
-    quote: "everyone, from age 8 to 80, was engaged and smiling. Absolutely perfect!",
+    quote: "Everyone, from age 8 to 80, was engaged and smiling. Absolutely perfect!",
     family: "The Anderson Family",
     initials: "AF",
     color: "from-amber-500 to-orange-500"
@@ -143,8 +143,36 @@ export default function FamilyGameNightPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "Live Virtual Family Game Night",
+      serviceType: "Live-hosted virtual family entertainment",
+      provider: { "@type": "Organization", name: "Teamtastic", url: "https://teamtastic.events" },
+      areaServed: "Worldwide",
+      offers: { "@type": "Offer", price: "35", priceCurrency: "USD", description: "$35 per person with a $350 minimum and a $200 reservation deposit" },
+      review: testimonials.map((item) => ({
+        "@type": "Review",
+        author: { "@type": "Organization", name: item.family },
+        reviewBody: item.quote,
+        reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" },
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: familyFaqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.q,
+        acceptedAnswer: { "@type": "Answer", text: faq.a },
+      })),
+    },
+  ];
+
   return (
     <div className="bg-[#FFFFFF] text-zinc-800 font-sans min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <main className="overflow-hidden">
         
         {/* ══ HERO SECTION (LIGHT THEME) ══ */}
@@ -210,6 +238,9 @@ export default function FamilyGameNightPage() {
                     Plan Your Game Night
                   </button>
                 </div>
+                <p className="text-sm font-bold text-zinc-700">
+                  Live-hosted events start at $35/person · $350 minimum · $200 reserves your date
+                </p>
               </div>
               
               {/* Right Column Visual Cutout & Zoom grid */}
@@ -262,7 +293,7 @@ export default function FamilyGameNightPage() {
                     ))}
                   </div>
                   <span className="text-xs font-bold text-zinc-800 tracking-tight">
-                    1,000+ Verified 5-Star Reviews
+                    Loved by families across generations
                   </span>
                 </div>
 

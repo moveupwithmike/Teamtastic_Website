@@ -7,6 +7,7 @@ import { PAYMENT_CONFIG } from "@/lib/stripe";
 import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import Link from "next/link";
 
 const stepTitles = [
   "How big is your crew?",
@@ -393,13 +394,18 @@ export default function GameQuiz() {
 
                 {/* Grid list of included games */}
                 <div className="my-6 w-full max-w-md grid grid-cols-2 gap-4">
-                  {recommendation.games.map((g) => (
-                    <div key={g} className="px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-xl flex items-center gap-2">
-                      <Gamepad2 className="h-4 w-4 text-pink-400" />
-                      <span className="text-xs font-semibold text-zinc-200">{g}</span>
-                    </div>
+                  {(recommendation.slugs || recommendation.games).map((g, i) => (
+                    <Link
+                      key={g}
+                      href={`/games/${recommendation.slugs ? recommendation.slugs[i] : g.toLowerCase().replace(/ /g, "-")}`}
+                      className="px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-xl flex items-center gap-2 hover:border-purple-500/30 hover:bg-zinc-900/80 transition-colors group"
+                    >
+                      <Gamepad2 className="h-4 w-4 text-pink-400 shrink-0" />
+                      <span className="text-xs font-semibold text-zinc-200 group-hover:text-white transition-colors">{recommendation.games[i]}</span>
+                    </Link>
                   ))}
                 </div>
+
 
                 {/* Dynamic High-Conversion CTAs */}
                 <div className="w-full max-w-md space-y-4 pt-4">
