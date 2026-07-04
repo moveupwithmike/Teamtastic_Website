@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Toaster } from "sonner";
+import PostHogProvider from "@/components/PostHogProvider";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -52,6 +53,7 @@ export default function RootLayout({ children }) {
       style={{ colorScheme: "dark" }}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-purple-500 selection:text-white">
+        <PostHogProvider />
         <Toaster richColors position="bottom-right" theme="dark" />
         <Navbar />
         <div className="flex-grow flex flex-col">

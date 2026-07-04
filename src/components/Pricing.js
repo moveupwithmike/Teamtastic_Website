@@ -21,6 +21,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import Link from "next/link";
+import { track } from "@/lib/analytics";
 
 const tiers = [
   {
@@ -355,6 +356,7 @@ export default function Pricing() {
                 {tier.href.startsWith("mailto:") ? (
                   <a
                     href={tier.href}
+                    onClick={() => track("pricing_cta_clicked", { tier_name: tier.name, tier_cta: tier.cta })}
                     className={`w-full flex h-12 items-center justify-center rounded-xl text-sm font-bold transition-all ${tier.buttonStyle}`}
                   >
                     {tier.cta}
@@ -362,6 +364,7 @@ export default function Pricing() {
                 ) : (
                   <Link
                     href={tier.href}
+                    onClick={() => track("pricing_cta_clicked", { tier_name: tier.name, tier_cta: tier.cta })}
                     className={`w-full flex h-12 items-center justify-center rounded-xl text-sm font-bold transition-all ${tier.buttonStyle}`}
                   >
                     {tier.cta}

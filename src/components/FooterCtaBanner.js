@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import TalkToMichaelModal from "./TalkToMichaelModal";
+import { track } from "@/lib/analytics";
 
 export default function FooterCtaBanner() {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,7 +36,7 @@ export default function FooterCtaBanner() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <button
-                  onClick={() => setIsOpen(true)}
+                  onClick={() => { track("concierge_modal_opened", { source: "footer_cta_banner" }); setIsOpen(true); }}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-zinc-355 border border-white/15 bg-white/5 hover:bg-white/10 hover:text-white transition-all hover:scale-[1.02] cursor-pointer"
                 >
                   Talk to Michael

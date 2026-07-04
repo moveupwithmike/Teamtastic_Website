@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRight, ArrowLeft, Check, Sparkles, MessageSquare, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { X, ArrowRight, ArrowLeft, Check, Sparkles, Loader2 } from "lucide-react";
+import { captureLead, createSubmissionId } from "@/lib/lead-client";
+import { track } from "@/lib/analytics";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }) {
   const [step, setStep] = useState(1);
@@ -21,6 +23,11 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
 
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const [submissionId, setSubmissionId] = useState(() => createSubmissionId());
+  const handleTurnstileToken = useCallback((token) => setTurnstileToken(token), []);
 
   const handleSelect = (field, value) => {
     setAnswers((prev) => ({ ...prev, [field]: value }));
@@ -34,56 +41,44 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!answers.name || !answers.email || !answers.company) return;
+    if (!turnstileToken) {
+      setError("Please complete secure verification.");
+      return;
+    }
 
     setLoading(true);
-
-    const states = [
-      "Analyzing your team dynamics...",
-      "Matching vibes with emcee schedules...",
-      "Drafting custom package recommendations...",
-    ];
-
-    for (let i = 0; i < states.length; i++) {
-      setLoadingMessage(states[i]);
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    }
-
+    setLoadingMessage("Securely saving your event brief…");
+    setError("");
+    const source = isFamily ? "michael_family_concierge" : "michael_event_concierge";
+    track("lead_submit_attempted", { source, teamSize: answers.groupSize, vibe: answers.vibe, occasion: answers.eventType });
     try {
-      // Concatenate conversational responses for the leads DB message column
-      const messageDetail = `
-Event Type: ${answers.eventType}
-Group Size: ${answers.groupSize}
-Desired Vibe: ${answers.vibe}
-Preferences: ${answers.preferences}
-Preferred Date: ${answers.eventDate || "Not specified"}
-Phone: ${answers.phone || "Not specified"}
-      `.trim();
-
-      // Sync lead directly to Supabase DB leads table
-      const { error } = await supabase.from("leads").insert([
-        {
-          name: answers.name,
-          email: answers.email,
-          company: answers.company,
-          team_size: answers.groupSize,
-          vibe: answers.vibe,
-          occasion: answers.eventType,
-          message: messageDetail,
-          lead_source: isFamily ? "Ask Michael's Family Event Concierge" : "Ask Michael's Event Concierge",
-          status: "New",
-          created_at: new Date().toISOString(),
+      await captureLead({
+        submissionId,
+        source,
+        name: answers.name,
+        email: answers.email,
+        company: answers.company,
+        phone: answers.phone,
+        teamSize: answers.groupSize,
+        vibe: answers.vibe,
+        occasion: answers.eventType,
+        turnstileToken,
+        context: {
+          preferences: answers.preferences,
+          preferredEventDate: answers.eventDate,
+          recommendations: getRecommendations().map((item) => item.title),
         },
-      ]);
-
-      if (error) {
-        console.warn("Supabase lead integration warning:", error.message);
-      }
+      });
+      track("lead_captured", { source, teamSize: answers.groupSize, vibe: answers.vibe, occasion: answers.eventType });
+      setStep(6);
     } catch (err) {
-      console.error("Supabase connect failed locally, using mock response:", err);
+      setError(err.message || "We couldn't save your event brief. Please retry.");
+      track("lead_capture_failed", { source, code: err.code });
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-    setStep(6);
   };
 
   const handleReset = () => {
@@ -98,7 +93,19 @@ Phone: ${answers.phone || "Not specified"}
       phone: "",
       eventDate: "",
     });
+    setSubmissionId(createSubmissionId());
+    setTurnstileToken("");
+    setTurnstileReset((value) => value + 1);
+    setError("");
     setStep(1);
+    onClose();
+  };
+
+  const handleClose = () => {
+    if (step === 6) {
+      handleReset();
+      return;
+    }
     onClose();
   };
 
@@ -213,7 +220,7 @@ Phone: ${answers.phone || "Not specified"}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute inset-0 bg-black/85 backdrop-blur-sm"
           />
 
@@ -241,7 +248,7 @@ Phone: ${answers.phone || "Not specified"}
 
             {/* Close Button */}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="absolute top-4 right-4 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-all z-20"
             >
               <X className="h-5 w-5" />
@@ -487,9 +494,12 @@ Phone: ${answers.phone || "Not specified"}
                           />
                         </div>
 
+                        <TurnstileWidget onToken={handleTurnstileToken} resetKey={turnstileReset} />
+                        {error && <p role="alert" className="text-xs text-rose-400">{error}</p>}
                         <button
                           type="submit"
-                          className="w-full flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold text-white bg-[#D81B60] hover:bg-pink-600 shadow-lg shadow-pink-500/20 hover:scale-[1.01] uppercase tracking-wider transition-all cursor-pointer"
+                          disabled={loading || !turnstileToken}
+                          className="w-full flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold text-white bg-[#D81B60] hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-pink-500/20 hover:scale-[1.01] uppercase tracking-wider transition-all cursor-pointer"
                         >
                           Send My Event Details
                           <ArrowRight className="h-4 w-4" />
@@ -512,7 +522,7 @@ Phone: ${answers.phone || "Not specified"}
                         <div>
                           <h3 className="text-xl font-extrabold text-white">Event Brief Sent!</h3>
                           <p className="text-xs text-zinc-400">
-                            Thanks! Michael will follow up with experience recommendations and next steps.
+                            Thanks! Michael will follow up with experience recommendations within one business day.
                           </p>
                         </div>
                       </div>

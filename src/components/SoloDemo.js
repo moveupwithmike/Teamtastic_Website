@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Gamepad2, Award, ArrowRight, CheckCircle2, RefreshCw, Star, Mail, Building, User } from "lucide-react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { PAYMENT_CONFIG } from "@/lib/stripe";
 import { toast } from "sonner";
+import { captureLead, createSubmissionId } from "@/lib/lead-client";
+import { track } from "@/lib/analytics";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 const questions = [
   {
@@ -56,8 +57,13 @@ export default function SoloDemo() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const [submissionId] = useState(() => createSubmissionId());
+  const handleTurnstileToken = useCallback((token) => setTurnstileToken(token), []);
 
   const startQuiz = () => {
+    track("quiz_started", { source: "playable_demo" });
     setGameState("playing");
     setCurrentIdx(0);
     setScore(0);
@@ -70,9 +76,13 @@ export default function SoloDemo() {
     setSelectedOption(opt);
     setIsAnswered(true);
 
-    if (opt === questions[currentIdx].correct) {
-      setScore((prev) => prev + 1);
-    }
+    const isCorrect = opt === questions[currentIdx].correct;
+    if (isCorrect) setScore((prev) => prev + 1);
+    track("demo_question_answered", {
+      source: "playable_demo",
+      question_index: currentIdx + 1,
+      is_correct: isCorrect,
+    });
   };
 
   const nextQuestion = () => {
@@ -92,27 +102,30 @@ export default function SoloDemo() {
       return;
     }
     setSubmitting(true);
+    track("lead_submit_attempted", { source: "playable_demo" });
 
     try {
-      // Save lead into shared Supabase database
-      const { error } = await supabase.from("leads").insert({
+      if (!turnstileToken) throw new Error("Please complete secure verification.");
+      await captureLead({
+        submissionId,
+        source: "playable_demo",
         name,
         email,
         company: company || "Sandbox / Individual",
-        lead_source: "website",
         vibe: "social",
         occasion: "team-building",
-        team_size: "15-50",
-        status: "new", // triggers welcome email trigger
+        teamSize: "15-50",
+        turnstileToken,
+        context: { demoScore: score, demoQuestionCount: questions.length },
       });
-
-      if (error) throw error;
-
       setGameState("lead_captured");
-      toast.success("Starter lobby credentials queued! Check your inbox.");
+      track("lead_captured", { source: "playable_demo", teamSize: "15-50", vibe: "social" });
+      toast.success("Your free-game link is ready.");
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to submit lead: " + err.message);
+      track("lead_capture_failed", { source: "playable_demo", code: err.code });
+      toast.error(err.message || "Failed to submit. Please retry.");
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
     } finally {
       setSubmitting(false);
     }
@@ -284,9 +297,10 @@ export default function SoloDemo() {
                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
                   />
                 </div>
+                <TurnstileWidget onToken={handleTurnstileToken} resetKey={turnstileReset} />
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !turnstileToken}
                   className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-[0_4px_12px_rgba(139,92,246,0.3)] flex items-center justify-center gap-1.5 text-xs"
                 >
                   {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Claim Free Starter Lobby 🎁"}
@@ -308,9 +322,9 @@ export default function SoloDemo() {
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-2xl font-black text-white">Starter Code Queued!</h3>
+              <h3 className="text-2xl font-black text-white">You&apos;re Ready to Play!</h3>
               <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
-                Check your inbox at <strong className="text-purple-300">{email}</strong> for instructions and login credentials to host your starter event.
+                We sent a confirmation to <strong className="text-purple-300">{email}</strong>. Launch a free lobby below whenever your team is ready.
               </p>
             </div>
 

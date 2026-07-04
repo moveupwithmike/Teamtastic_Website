@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Users, Compass, PartyPopper, CheckCircle, ArrowRight, ArrowLeft, Loader2, Gamepad2, ArrowUpRight } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { PAYMENT_CONFIG } from "@/lib/stripe";
+import { captureLead, createSubmissionId } from "@/lib/lead-client";
+import { track } from "@/lib/analytics";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 const stepTitles = [
   "How big is your crew?",
@@ -38,12 +40,11 @@ export default function GameQuiz() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
-  
-  // Custom Anti-Bot Human Verification States
-  const [verified, setVerified] = useState(false);
-  const [verificationLoading, setVerificationLoading] = useState(false);
-  const [verificationFailed, setVerificationFailed] = useState(false);
+  const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const [submissionId, setSubmissionId] = useState(() => createSubmissionId());
+  const handleTurnstileToken = useCallback((token) => setTurnstileToken(token), []);
 
   const [formData, setFormData] = useState({
     teamSize: "",
@@ -57,7 +58,9 @@ export default function GameQuiz() {
   const [recommendation, setRecommendation] = useState(null);
 
   const handleSelect = (field, value) => {
+    if (step === 0) track("quiz_started", { source: "event_quiz" });
     setFormData((prev) => ({ ...prev, [field]: value }));
+    track("quiz_step_completed", { source: "event_quiz", step: step + 1, [field]: value });
     setTimeout(() => {
       handleNext();
     }, 300);
@@ -75,92 +78,40 @@ export default function GameQuiz() {
     }
   };
 
-  const handleVerificationClick = () => {
-    setVerificationLoading(true);
-    setVerificationFailed(false);
-    setTimeout(() => {
-      setVerificationLoading(false);
-      setVerified(true);
-    }, 800);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.name) return;
-    if (!verified) return;
+    if (!turnstileToken) {
+      setError("Please complete secure verification.");
+      return;
+    }
 
     setLoading(true);
-
-    // Mock high-energy AI SDR evaluation steps
-    const loadingStates = [
-      "Analyzing group dynamics...",
-      "Consulting the game show oracle...",
-      "Custom-prepping your live arcade recommendation...",
-    ];
-
-    for (let i = 0; i < loadingStates.length; i++) {
-      setLoadingMessage(loadingStates[i]);
-      await new Promise((resolve) => setTimeout(resolve, 800));
-    }
-
+    setError("");
+    track("lead_submit_attempted", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion });
     try {
-      // Sync storefront lead directly to shared Supabase DB leads table
-      const { error } = await supabase.from("leads").insert([
-        {
-          name: formData.name,
-          email: formData.email,
-          company: formData.company || "N/A",
-          team_size: formData.teamSize,
-          vibe: formData.vibe,
-          occasion: formData.occasion,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      
-      // Note: If leads table doesn't exist yet, we catch error gracefully to let lead proceed.
-      if (error) console.warn("Supabase lead sync logged (will proceed with fallback):", error.message);
+      const result = await captureLead({
+        submissionId,
+        source: "event_quiz",
+        name: formData.name,
+        email: formData.email,
+        company: formData.company,
+        teamSize: formData.teamSize,
+        vibe: formData.vibe,
+        occasion: formData.occasion,
+        turnstileToken,
+      });
+      setRecommendation(result.recommendation);
+      setCompleted(true);
+      track("lead_captured", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: result.recommendation.key });
     } catch (err) {
-      console.warn("Supabase connection skipped locally. Proceeding to recommendation:", err);
+      setError(err.message);
+      track("lead_capture_failed", { source: "event_quiz", code: err.code, retryable: err.retryable });
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
+    } finally {
+      setLoading(false);
     }
-
-    // Evaluate customized game package based on vibe selection
-    let gameRec = {
-      title: "Lightning Feud + Meme Battle",
-      games: ["Lightning Feud", "What the Meme"],
-      badge: "Highly Competitive & Hilarious",
-      desc: "Perfect for fast-paced corporate teams who love friendly banter. Buzz in on rapid family-feud trivia, and complete the round by styling the most upvoted memes.",
-      gamesLink: "https://teamtastic.games?vibe=competitive&size=" + formData.teamSize,
-    };
-
-    if (formData.vibe === "social") {
-      gameRec = {
-        title: "Sound Bite Trivia + Conversation Starter",
-        games: ["Sound Bite Trivia", "Tell a Fun Fact"],
-        badge: "Chill & Hilarious",
-        desc: "Great for routine social hours. Guess classic movie sound clips, audio riffs, and discover funny, authenticated secrets from your colleagues in a safe format.",
-        gamesLink: "https://teamtastic.games?vibe=social&size=" + formData.teamSize,
-      };
-    } else if (formData.vibe === "collaborative") {
-      gameRec = {
-        title: "Virtual Escape Room + Drawing Masterpiece",
-        games: ["Boss Raid Escape", "Canvas Co-op"],
-        badge: "Brainy & Collaborative",
-        desc: "Designed for engineering and logical teams. Split into secure virtual rooms, crack puzzle codes, and build shared drawing masterpieces together against a clock.",
-        gamesLink: "https://teamtastic.games?vibe=collaborative&size=" + formData.teamSize,
-      };
-    } else if (formData.vibe === "icebreaker") {
-      gameRec = {
-        title: "Rapid Fire Standup + Dynamic Icebreaker",
-        games: ["Quick Buzz", "Standup Trivia"],
-        badge: "Fast-Paced & Connecting",
-        desc: "Supercharge your morning syncs. Zero preparation required. Spark instant laughter in under 5 minutes with low-stress, engaging check-ins.",
-        gamesLink: "https://teamtastic.games?vibe=icebreaker&size=" + formData.teamSize,
-      };
-    }
-
-    setRecommendation(gameRec);
-    setLoading(false);
-    setCompleted(true);
   };
 
   return (
@@ -293,70 +244,15 @@ export default function GameQuiz() {
                         className="w-full bg-zinc-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
-                    {/* Custom Anti-Bot Verification challenge */}
-                    <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 mt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">Anti-Bot Verification</span>
-                      </div>
-                      <p className="text-xs text-zinc-300 mb-3">
-                        Verify you are human: Tap the <strong className="text-amber-400 font-bold">Lightning Bolt</strong> icon.
-                      </p>
-
-                      {verificationLoading ? (
-                        <div className="flex items-center gap-2 text-xs text-purple-400 py-1">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Checking browser patterns...</span>
-                        </div>
-                      ) : verified ? (
-                        <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold py-1.5 bg-emerald-950/20 border border-emerald-900/30 rounded-xl px-3 animate-fade-in">
-                          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span>Human verified. clear to proceed!</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex gap-3 items-center">
-                            <button
-                              type="button"
-                              onClick={() => setVerificationFailed(true)}
-                              className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center hover:bg-zinc-800 transition-colors"
-                            >
-                              <Users className="w-4 h-4 text-zinc-500" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={handleVerificationClick}
-                              className={`w-10 h-10 rounded-xl bg-zinc-900 border flex items-center justify-center hover:bg-zinc-800 transition-all ${
-                                verificationFailed ? 'border-rose-500/30' : 'border-white/5'
-                              }`}
-                            >
-                              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setVerificationFailed(true)}
-                              className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center hover:bg-zinc-800 transition-colors"
-                            >
-                              <Compass className="w-4 h-4 text-zinc-500" />
-                            </button>
-                          </div>
-                          {verificationFailed && (
-                            <span className="text-[10px] text-rose-400 font-semibold animate-shake">
-                              ❌ Verification failed. Please select the correct amber Lightning Bolt.
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <TurnstileWidget onToken={handleTurnstileToken} resetKey={turnstileReset} />
+                    {error && <p role="alert" className="text-sm text-rose-400">{error}</p>}
 
                     <div className="pt-4">
                       <button
                         type="submit"
-                        disabled={!verified}
+                        disabled={!turnstileToken || loading}
                         className={`w-full flex h-12 items-center justify-center gap-2 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all ${
-                          !verified ? 'opacity-40 cursor-not-allowed' : 'hover:-translate-y-0.5'
+                          !turnstileToken || loading ? 'opacity-40 cursor-not-allowed' : 'hover:-translate-y-0.5'
                         }`}
                       >
                         Generate My Recommendation
@@ -414,8 +310,8 @@ export default function GameQuiz() {
                 className="flex-1 flex flex-col items-center justify-center text-center space-y-4"
               >
                 <Loader2 className="h-10 w-10 text-purple-500 animate-spin" />
-                <h3 className="text-lg font-bold text-white uppercase tracking-wider">AI SDR Orchestration</h3>
-                <p className="text-zinc-400 text-sm animate-pulse">{loadingMessage}</p>
+                <h3 className="text-lg font-bold text-white">Saving your event details…</h3>
+                <p className="text-zinc-400 text-sm">Your recommendation will be ready in a moment.</p>
               </motion.div>
             )}
 
@@ -458,12 +354,13 @@ export default function GameQuiz() {
                 <div className="w-full max-w-md space-y-4 pt-4">
                   {/* Primary CTA: Hosted MC Event Booking (Highly recommended for groups/occasions) */}
                   <a
-                    href={`${PAYMENT_CONFIG.calendlyUrl}?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&a1=${encodeURIComponent(formData.company || "")}`}
+                    href={`${PAYMENT_CONFIG.calendlyUrl}?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&a1=${encodeURIComponent(`${formData.company || ""} | ${formData.teamSize} | ${formData.vibe} | ${formData.occasion} | ${recommendation.title} | ${submissionId}`)}`}
+                    onClick={() => track("deposit_cta_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex h-14 items-center justify-center gap-2 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-xl shadow-purple-500/25 hover:shadow-purple-500/35 transition-all duration-300 hover:-translate-y-0.5"
                   >
-                    🎤 Book Hosted VIP MC Event ($200 Deposit)
+                    Reserve Your Event — $200 Deposit
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
 
@@ -480,12 +377,13 @@ export default function GameQuiz() {
                   {/* Tertiary CTA: Free Sandbox Sandbox Trial (Secondary outline link) */}
                   <div className="flex items-center justify-between gap-4 pt-2">
                     <a
-                      href={recommendation.gamesLink}
+                    href={`https://teamtastic.games?${new URLSearchParams({ vibe: formData.vibe, size: formData.teamSize, occasion: formData.occasion, recommendation: recommendation.key, submission_id: submissionId }).toString()}`}
+                    onClick={() => track("free_game_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs font-medium text-zinc-400 hover:text-white transition-colors underline"
                     >
-                      Try a Free 5-Min Sandbox Lobby
+                      Launch a Free Game
                     </a>
 
                     <button
@@ -493,9 +391,10 @@ export default function GameQuiz() {
                         setStep(0);
                         setCompleted(false);
                         setFormData({ teamSize: "", vibe: "", occasion: "", name: "", email: "", company: "" });
-                        setVerified(false);
-                        setVerificationLoading(false);
-                        setVerificationFailed(false);
+                        setSubmissionId(createSubmissionId());
+                        setTurnstileToken("");
+                        setTurnstileReset((value) => value + 1);
+                        setError("");
                       }}
                       className="text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
                     >
