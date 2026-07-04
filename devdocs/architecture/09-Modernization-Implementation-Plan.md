@@ -11,18 +11,18 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 
 ### 0.1 Activate reliable lead delivery
 
-- [ ] Confirm Vercel Production contains Supabase, Turnstile, and Resend variables.
-- [ ] Configure the `notify-new-lead` Supabase Edge Function with:
+- [x] Confirm Vercel Production contains Supabase, Turnstile, and Resend variables.
+- [x] Configure the `notify-new-lead` Supabase Edge Function with:
   - `LEAD_NOTIFICATION_WEBHOOK_SECRET`
   - `RESEND_API_KEY`
   - `RESEND_FROM_EMAIL`
   - `INTERNAL_NOTIFICATION_EMAIL`
-- [ ] Store matching `lead_notification_function_url` and `lead_notification_webhook_secret` values in Supabase Vault.
-- [ ] Apply `202607030001_reliable_lead_capture.sql`.
-- [ ] Confirm the migration removes legacy trigger `on_lead_created` and creates only `leads_notify_after_insert`.
-- [ ] Confirm anonymous roles cannot insert into `leads` or access delivery/payment tables.
-- [ ] Add an operational query for leads missing notification-delivery rows.
-- [ ] Add a retry schedule for pending/failed notification deliveries.
+- [x] Store matching `lead_notification_function_url` and `lead_notification_webhook_secret` values in Supabase Vault.
+- [x] Apply `202607030001_reliable_lead_capture.sql`.
+- [x] Confirm the migration removes legacy trigger `on_lead_created` and creates only `leads_notify_after_insert`.
+- [x] Confirm anonymous roles cannot insert into `leads` or access delivery/payment tables.
+- [x] Add an operational query for leads missing notification-delivery rows.
+- [x] Add a retry schedule for pending/failed notification deliveries.
 
 **Verification**
 
@@ -35,10 +35,10 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 
 ### 0.2 Correct customer-facing promises
 
-- [ ] Replace playable-demo “credentials sent instantly” copy with an honest confirmation and free-lobby link.
-- [ ] Create source-specific customer email content for quiz, demo, corporate concierge, and family concierge.
-- [ ] Define and display a realistic response-time expectation for concierge leads.
-- [ ] Reset concierge state after completed submissions and preserve it only for unfinished forms.
+- [x] Replace playable-demo “credentials sent instantly” copy with an honest confirmation and free-lobby link.
+- [x] Create source-specific customer email content for quiz, demo, corporate concierge, and family concierge.
+- [x] Define and display a realistic response-time expectation for concierge leads.
+- [x] Reset concierge state after completed submissions and preserve it only for unfinished forms.
 
 **Verification**
 
@@ -47,15 +47,15 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 
 ### 0.3 Make payment processing product-aware
 
-- [ ] Add a product registry for `hosted_event_deposit`, `pro_subscription`, and `custom_content`.
+- [x] Add a product registry for `hosted_event_deposit`, `pro_subscription`, and `custom_content`.
 - [ ] Configure Stripe payment-link IDs or metadata for unambiguous classification.
-- [ ] Branch webhook behavior by product and `session.mode`.
-- [ ] Rename analytics and email subjects appropriately:
+- [x] Branch webhook behavior by product and `session.mode`.
+- [x] Rename analytics and email subjects appropriately:
   - deposit → `deposit_completed`
   - subscription → `subscription_started`
   - custom content → `custom_content_purchased`
-- [ ] Persist unknown checkouts as `unclassified`; alert without calling them deposits.
-- [ ] Return a retryable webhook response when payment persistence succeeds but the required internal alert fails.
+- [x] Persist unknown checkouts as `unclassified`; alert without calling them deposits.
+- [x] Return a retryable webhook response when payment persistence succeeds but the required internal alert fails.
 - [ ] Register and verify the production Stripe webhook.
 
 **Verification**
@@ -68,9 +68,9 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 
 ### 0.4 Resolve commercial configuration
 
-- [ ] Decide and document the authoritative hosted-event price floor.
-- [ ] Reconcile `$35/person`, `$40/person`, `$400 minimum`, and the `$200 deposit`.
-- [ ] Decide whether the `$99/month` subscription and custom-content product are currently sellable.
+- [x] Set the authoritative hosted-event price: `$35/person` with a `$350 minimum` for groups up to 10.
+- [x] Centralize hosted pricing in `src/lib/pricing.js`; retain the `$200 deposit` as a separate reservation payment.
+- [x] Remove the inactive `$99/month` subscription from customer-facing surfaces; keep custom content as an active quote-based service.
 - [ ] Remove unavailable CTAs; add active products to the pricing page.
 - [ ] Configure production Calendly and Stripe URLs.
 - [ ] Carry pricing-estimator selections into the quiz and lead context.
@@ -202,4 +202,3 @@ Make lead capture and revenue processing dependable first, then consolidate busi
 - All indexed pages have valid metadata and sitemap coverage.
 - CI enforces lint, types, tests, and production build.
 - Production operations have monitoring queries and rollback instructions.
-

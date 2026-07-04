@@ -18,8 +18,7 @@ Step 0 teamSize → Step 1 vibe → Step 2 occasion → Step 3 name/email/compan
   → POST /api/leads (server computes recommendation from vibe)
   → Result screen: package + 3 CTAs
        1º Reserve Your Event — $200 Deposit  → Calendly (deposit_cta_clicked)
-       2º Unlock Pro Self-Service $99/mo     → Stripe link (NO tracking event)
-       3º Launch a Free Game                 → teamtastic.games (free_game_clicked)
+       2º Launch a Free Game                 → teamtastic.games (free_game_clicked)
 ```
 
 Selections auto-advance after 300 ms; Back/Next nav with progress dots; on submit failure the Turnstile token is cleared and the widget re-rendered via `resetKey`.
@@ -27,7 +26,7 @@ Selections auto-advance after 300 ms; Back/Next nav with progress dots; on submi
 **Issues:**
 - **`quiz_started` over-fires.** It's emitted inside `handleSelect` whenever `step === 0` (GameQuiz.js:61), so going Back to step 0 and re-selecting, or retaking the quiz, fires it again — inflating the funnel's entry count. Guard with a `hasStarted` ref. Same design in SoloDemo is correct (fires in `startQuiz`).
 - **Step-gating hack.** Next-button disable uses `!formData[Object.keys(formData)[step]]` (GameQuiz.js:289) — it depends on the *insertion order of object keys* matching step order. Works today; breaks silently if anyone reorders/adds a field to `formData`. Map step → field explicitly.
-- **Secondary CTA untracked.** The $99/mo link is the only result-screen CTA without a `track()` call, so quiz→SaaS conversion is invisible (doc 05 taxonomy).
+- The unavailable $99/mo subscription CTA has been removed. The result screen now presents only the hosted-event deposit and free-game paths.
 - **Recommendation duplication drift already happened.** The quiz previously computed recommendations client-side; the API now computes them server-side from `vibe` via [recommendations.js](../../src/lib/recommendations.js). Good. But the fallback (`getRecommendation()` defaults to `competitive`) means a lead with a missing/typo'd vibe silently gets a competitive package rather than an error — acceptable, but worth knowing.
 
 ## Flow 2 — Playable Demo (`playable_demo`)

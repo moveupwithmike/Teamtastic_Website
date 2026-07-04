@@ -145,7 +145,7 @@ Create three canonical modules:
 
 Recommendations reference real catalog slugs, not free-form game titles. The quiz and concierge use one recommendation service with an audience parameter (`corporate` or `family`).
 
-Pricing components render from the product registry. Resolve the current $35/$40 contradiction and decide whether the $99/month product is genuinely offered before exposing it anywhere.
+Pricing components render from the product registry. The hosted-event rule is $35 per person with a $350 minimum for groups up to 10. The $99/month subscription is inactive, while custom-content projects are active and quoted by scope.
 
 Carry estimator selections into the quiz and then into `leads.context`; never make the user repeat information.
 
@@ -288,4 +288,3 @@ Move scraping tools and raw captures under `tools/catalog-import/`, move `jimp` 
 7. **P1:** add tests and CI, then enforce lint.
 8. **P2:** refactor catalog rendering and image delivery.
 9. **P2:** archive scraping assets, remove dead code, and modernize project documentation.
-

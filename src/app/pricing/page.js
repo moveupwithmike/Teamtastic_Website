@@ -1,17 +1,18 @@
 import Pricing from "@/components/Pricing";
+import { HOSTED_PRICING } from "@/lib/pricing";
 import Link from "next/link";
 import { ArrowRight, HelpCircle } from "lucide-react";
 
 export const metadata = {
   title: "Pricing — Virtual Team Building Plans for Every Team | Teamtastic",
   description:
-    "Not just a game. An experience. Live-hosted team events with high-energy MC facilitation, custom inside jokes, music, and virtual confetti. Custom B2B pricing from $35-$65 per person.",
+    `Not just a game. An experience. Live-hosted team events with high-energy MC facilitation, custom inside jokes, music, and virtual confetti. Pricing starts at $${HOSTED_PRICING.corePerPerson} per person with a $${HOSTED_PRICING.minimum} minimum.`,
   alternates: {
     canonical: "https://teamtastic.events/pricing",
   },
   openGraph: {
     title: "Teamtastic Pricing | Virtual Team Building Plans",
-    description: "Live-hosted virtual corporate events led by professional comedically-trained emcees. Transparent rates from $35-$65/pp. Enforce $400 minimum.",
+    description: `Live-hosted virtual corporate events led by professional emcees. Rates start at $${HOSTED_PRICING.corePerPerson} per person with a $${HOSTED_PRICING.minimum} minimum for groups up to ${HOSTED_PRICING.minimumGroupSize}.`,
     url: "https://teamtastic.events/pricing",
   },
 };
@@ -19,11 +20,11 @@ export const metadata = {
 const faqs = [
   { 
     q: "What if my team is small?", 
-    a: "We welcome groups of all sizes! We use a base event minimum fee of $400 so that small squads get the complete premium professional emcee host experience without any quality compromises." 
+    a: `We welcome groups of all sizes. Live-hosted events start at $${HOSTED_PRICING.corePerPerson} per person, with a $${HOSTED_PRICING.minimum} minimum for groups up to ${HOSTED_PRICING.minimumGroupSize}.`
   },
   { 
     q: "Can you customize the games to our company?", 
-    a: "Absolutely. With our Custom Theme Build addon, we inject your custom brand palette, corporate logo assets, customized question slides, inside company jokes, and specific player shoutouts right into the game show dashboard." 
+    a: "Absolutely. Custom content is quoted based on scope and can include branded questions, company inside jokes, themed rounds, custom visuals, and presentation content."
   },
   { 
     q: "Do you support international or global teams?", 

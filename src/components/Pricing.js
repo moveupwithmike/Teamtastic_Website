@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { track } from "@/lib/analytics";
+import { HOSTED_PRICING } from "@/lib/pricing";
 
 const tiers = [
   {
@@ -106,8 +107,8 @@ const addOnsList = [
   {
     icon: Palette,
     iconColor: "text-cyan-400",
-    title: "Custom Theme Build",
-    text: "+$200. Complete design customizer injecting your branding colors, logos, and custom inside joke question packs.",
+    title: "Custom Content Build",
+    text: "Custom quote based on scope. Add branded questions, inside jokes, themed rounds, visuals, and presentation content.",
   },
   {
     icon: Clock,
@@ -147,14 +148,14 @@ export default function Pricing() {
   });
 
   const estimatedTotal = useMemo(() => {
-    // Core is $40 per player, Premium is $58 per player
-    // Minimum fee of $400 is enforced
-    let base = Math.max(players * (packageType === "core" ? 40 : 58), 400);
+    const perPerson = packageType === "core"
+      ? HOSTED_PRICING.corePerPerson
+      : HOSTED_PRICING.premiumPerPerson;
+    let base = Math.max(players * perPerson, HOSTED_PRICING.minimum);
 
     if (addOns.kits) base += players * 30; // kits: +$30/pp
     if (addOns.awards) base += 250;       // awards: +$250
     if (addOns.premiumHost) base += 300;  // premiumHost: +$300
-    if (addOns.customTheme) base += 200;  // customTheme: +$200
     if (addOns.extraTime) base += 150;    // extraTime: +$150
 
     return base;
@@ -492,7 +493,7 @@ export default function Pricing() {
                 ${estimatedTotal.toLocaleString()}
               </div>
               <span className="text-[9px] text-zinc-500 font-medium leading-none block">
-                Includes minimum base host fee of $400
+                {`Includes minimum base host fee of $${HOSTED_PRICING.minimum}`}
               </span>
             </div>
 
@@ -559,7 +560,7 @@ export default function Pricing() {
                     : "bg-white/5 border-white/10 text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>🎨 Custom Theme Build (+$200)</span>
+                <span>🎨 Custom Content Build (Custom Quote)</span>
                 <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${addOns.customTheme ? "border-brand-purple bg-brand-purple" : "border-zinc-700"}`}>
                   {addOns.customTheme && <Check className="h-2 w-2 text-white stroke-[3px]" />}
                 </span>
@@ -580,6 +581,11 @@ export default function Pricing() {
                 </span>
               </button>
             </div>
+            {addOns.customTheme && (
+              <p className="mt-4 text-left text-xs text-cyan-300">
+                Custom content is quoted separately based on the amount of writing, design, and production work required.
+              </p>
+            )}
           </div>
 
         </div>

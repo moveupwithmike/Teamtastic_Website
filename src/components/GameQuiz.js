@@ -364,17 +364,7 @@ export default function GameQuiz() {
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
 
-                  {/* Secondary CTA: SaaS Pro Plan Subscription */}
-                  <a
-                    href={`${PAYMENT_CONFIG.proSaaSLink}?prefilled_email=${encodeURIComponent(formData.email)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 hover:border-purple-500/50 shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                  >
-                    ⚙️ Unlock Pro Self-Service ($99/mo)
-                  </a>
-
-                  {/* Tertiary CTA: Free Sandbox Sandbox Trial (Secondary outline link) */}
+                  {/* Secondary CTA: Free Sandbox Trial */}
                   <div className="flex items-center justify-between gap-4 pt-2">
                     <a
                     href={`https://teamtastic.games?${new URLSearchParams({ vibe: formData.vibe, size: formData.teamSize, occasion: formData.occasion, recommendation: recommendation.key, submission_id: submissionId }).toString()}`}

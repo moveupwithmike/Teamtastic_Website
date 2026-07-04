@@ -12,10 +12,10 @@ Cross-referenced from docs 01–06. Ordered by severity within each section.
 | A4 | **Silent notification loss is undetectable** — failed `pg_net` call leaves no `notification_deliveries` row; no automatic retry | DB trigger → Edge Function | Doc 04 gaps 1–2. Add "leads with zero deliveries" query + pg_cron retry. |
 | A5 | **Lead vocabulary is fragmented** — modal stores display strings, quiz stores enums, demo fabricates `team-building` occasion | leads table | Doc 03. Normalize at `/api/leads` boundary. |
 | A6 | **Recommendation engines ×2 recommending mostly nonexistent games** (6 of 8 quiz titles, most concierge titles absent from the 51-game catalog) | recommendations.js + TalkToMichaelModal | Doc 02 gaps 4–5. Consolidate; key to real `gamesData` slugs so recs can link to `/games/[slug]`. |
-| A7 | **Pricing contradictions** — $35/pp banner vs $40/pp+$400-min estimator; $99/mo Pro sold in quiz but absent from pricing page | Pricing, CtaBanner, GameQuiz | Doc 06. |
+| A7 | **Inactive subscription cleanup** — $99/mo Pro is no longer sold; retain webhook classification only for legacy Stripe events | Stripe webhook | Doc 06. |
 | A8 | **No consent banner** — consent flag is honored but nothing sets it; `granted` persistence branch unreachable | analytics.js / instrumentation-client.js | Doc 05 gap 6. |
 | A9 | Concierge modal shows previous lead's success screen if reopened after submit | TalkToMichaelModal | Doc 03. Reset on close from step 6. |
-| A10 | `customContentLink` product has no UI; `calendlyEmbedCode` dead export | stripe.js | Doc 06 gaps 3–4. |
+| A10 | Custom-content work is quote-based; estimator selection still needs to enter lead context | Pricing → quiz | Doc 06 gaps 3–5. |
 | A11 | Pricing estimator total never enters the lead payload | Pricing → GameQuiz | Doc 06 gap 5; `context` JSONB is the natural carrier. |
 
 ## B. SEO gaps
@@ -35,7 +35,7 @@ Cross-referenced from docs 01–06. Ordered by severity within each section.
 | C1 | `lead_captured` double-fired (client + server) under different distinct IDs — counts ~2× |
 | C2 | No identity stitching: server events (incl. `deposit_completed`) unjoinable to client journeys; no `identify`/`alias` anywhere |
 | C3 | `quiz_started` re-fires on step-0 re-selection (funnel entry inflated) |
-| C4 | Untracked: quiz $99/mo CTA, game-detail launch CTA, demo results view, pricing estimator interactions, banner "Book Your Event" clicks |
+| C4 | Untracked: game-detail launch CTA, demo results view, pricing estimator interactions, banner "Book Your Event" clicks |
 | C5 | Property naming split camelCase/snake_case across events |
 | C6 | `capture_exceptions` on but no source-map upload (no CI) — minified prod stack traces |
 
@@ -56,7 +56,7 @@ Cross-referenced from docs 01–06. Ordered by severity within each section.
 
 ## E. Per-game-flow issues (quick index)
 
-- **Event Quiz:** C3 over-firing; D6 gating hack; untracked $99 CTA (C4); Calendly `a1` smuggling won't reach Stripe (A2); server recommendation falls back silently to `competitive`.
+- **Event Quiz:** C3 over-firing; D6 gating hack; Calendly `a1` smuggling won't reach Stripe (A2); server recommendation falls back silently to `competitive`.
 - **Playable Demo:** A1 broken credentials promise; A5 fabricated segment values; missing results-view event (C4).
 - **Concierge (corporate + family):** A5 vocabulary drift; A6 duplicate/fictional recommendations; A9 stale-state on reopen.
 - **Catalog / detail pages:** B1–B5; untracked launch CTA (C4); dead JSON fields; `launch=<slug>` contract with teamtastic.games is undocumented and untested (doc 02).

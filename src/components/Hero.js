@@ -251,7 +251,7 @@ export default function Hero() {
                       {/* Meme Prompt Card */}
                       <div className="px-3.5 py-1.5 rounded-xl bg-purple-950/95 border border-purple-500/40 text-center shadow-[0_0_15px_rgba(139,92,246,0.2)] backdrop-blur-sm max-w-[280px]">
                         <p className="text-[9.5px] font-extrabold text-white tracking-wide leading-tight">
-                          "When a quick 5-Minute meeting hits the 50-Minute Mark ⏰"
+                          &quot;When a quick 5-Minute meeting hits the 50-Minute Mark ⏰&quot;
                         </p>
                       </div>
                     </div>
@@ -268,7 +268,7 @@ export default function Hero() {
                         </div>
                         <div className="px-1 py-0.5">
                           <p className="text-[7.5px] font-bold text-zinc-100 leading-tight">
-                            "This meeting could have been a Slack message..."
+                            &quot;This meeting could have been a Slack message...&quot;
                           </p>
                           <div className="w-full h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
                             <div className="h-full bg-emerald-500 rounded-full" style={{ width: "42%" }} />
@@ -286,7 +286,7 @@ export default function Hero() {
                         </div>
                         <div className="px-1 py-0.5">
                           <p className="text-[7.5px] font-bold text-zinc-100 leading-tight">
-                            "Still waiting for 'any other business' to wrap up..."
+                            &quot;Still waiting for &apos;any other business&apos; to wrap up...&quot;
                           </p>
                           <div className="w-full h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
                             <div className="h-full bg-purple-500 rounded-full" style={{ width: "28%" }} />
@@ -304,7 +304,7 @@ export default function Hero() {
                         </div>
                         <div className="px-1 py-0.5">
                           <p className="text-[7.5px] font-bold text-zinc-100 leading-tight">
-                            "I had a family, a life, dreams... before slide 42."
+                            &quot;I had a family, a life, dreams... before slide 42.&quot;
                           </p>
                           <div className="w-full h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
                             <div className="h-full bg-blue-500 rounded-full" style={{ width: "18%" }} />
@@ -322,7 +322,7 @@ export default function Hero() {
                         </div>
                         <div className="px-1 py-0.5">
                           <p className="text-[7.5px] font-bold text-zinc-100 leading-tight">
-                            "'Just one last slide...' *starts a new 10-slide deck*"
+                            &quot;&apos;Just one last slide...&apos; *starts a new 10-slide deck*&quot;
                           </p>
                           <div className="w-full h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
                             <div className="h-full bg-pink-500 rounded-full" style={{ width: "12%" }} />

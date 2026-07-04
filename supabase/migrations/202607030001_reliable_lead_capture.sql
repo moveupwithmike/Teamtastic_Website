@@ -69,7 +69,9 @@ create table if not exists public.stripe_events (
 alter table public.notification_deliveries enable row level security;
 alter table public.stripe_events enable row level security;
 
-revoke insert, update, delete on public.leads from anon, authenticated;
+drop policy if exists "Allow public submissions" on public.leads;
+revoke all on public.leads from anon;
+grant select, insert, update, delete on public.leads to authenticated;
 revoke all on public.notification_deliveries from anon, authenticated;
 revoke all on public.stripe_events from anon, authenticated;
 
@@ -116,6 +118,9 @@ create trigger leads_notify_after_insert
 after insert on public.leads
 for each row execute function public.notify_new_lead();
 
+revoke all on function public.notify_new_lead() from public, anon, authenticated;
+drop function if exists public.trigger_new_lead_webhook();
+
 create or replace function public.retry_pending_lead_notifications()
 returns void
 language plpgsql
@@ -156,6 +161,8 @@ begin
   end loop;
 end;
 $$;
+
+revoke all on function public.retry_pending_lead_notifications() from public, anon, authenticated;
 
 do $$
 declare

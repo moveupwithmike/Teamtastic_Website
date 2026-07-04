@@ -67,7 +67,7 @@ export default function VirtualTeamBuildingIdeas() {
           {/* Intro */}
           <div className="prose prose-invert prose-zinc max-w-none mb-12 space-y-4">
             <p className="text-lg text-zinc-300 leading-relaxed">
-              Virtual team building has a reputation problem. Most remote employees have sat through at least one awkward Zoom happy hour, half-hearted trivia session, or "fun fact" icebreaker that felt more like homework than a party.
+              Virtual team building has a reputation problem. Most remote employees have sat through at least one awkward Zoom happy hour, half-hearted trivia session, or &quot;fun fact&quot; icebreaker that felt more like homework than a party.
             </p>
             <p className="text-zinc-400 leading-relaxed">
               The good news: the problem isn&apos;t virtual team building itself — it&apos;s the format. When done right, virtual events can create real moments of connection, laughter, and shared memory that bond distributed teams just as effectively as in-person events. Sometimes more so.

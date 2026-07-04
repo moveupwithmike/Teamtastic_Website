@@ -100,7 +100,7 @@ export default async function UseCasePage({ params }) {
                 {uc.title}
               </h1>
               <p className="text-xl font-bold text-purple-300 italic">
-                "{uc.hook}"
+                &quot;{uc.hook}&quot;
               </p>
               
               {/* Problem/Solution Box */}

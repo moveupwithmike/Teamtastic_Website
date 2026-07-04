@@ -27,7 +27,7 @@ The **Teamtastic marketing storefront** at `teamtastic.events`. It sells live, e
   External conversion surfaces (linked, not owned by this repo):
    · teamtastic.games      — free game lobbies / self-service arcade
    · Calendly + Stripe     — $200-deposit hosted-event booking
-   · Stripe Payment Links  — $99/mo Pro subscription, custom-content add-on
+   · Custom-content projects — quoted based on writing, design, and production scope
 ```
 
 ## Tech stack

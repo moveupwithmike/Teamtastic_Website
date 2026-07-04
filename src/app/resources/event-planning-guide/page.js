@@ -67,6 +67,7 @@ export default function EventPlanningGuide() {
     const saved = localStorage.getItem("teamtastic_planning_checklist");
     if (saved) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCheckedTasks(JSON.parse(saved));
       } catch (e) {
         console.error("Failed to parse checklist state", e);

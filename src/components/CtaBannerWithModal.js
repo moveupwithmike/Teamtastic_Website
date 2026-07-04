@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import TalkToMichaelModal from "./TalkToMichaelModal";
 import { track } from "@/lib/analytics";
+import { hostedStartingPriceCopy } from "@/lib/pricing";
 
 export default function CtaBannerWithModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,7 +23,7 @@ export default function CtaBannerWithModal() {
               Let&apos;s find the right experience for your team.
             </p>
             <p className="text-xs text-pink-200/90 font-medium">
-              Teamtastic experiences start at $35 per person, with final pricing based on group size, event format, and customization.
+              {hostedStartingPriceCopy()}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
