@@ -328,11 +328,11 @@
     "slug": "jeopardy",
     "title": "Jeopardy",
     "tagline": "Classic quiz game with categories and points.",
-    "description": "Classic quiz game with categories and points. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A polished category-and-points quiz show for teams that love classic trivia strategy. Players choose topics, weigh risk against reward, and race to control the board before the final wager.",
     "category": "competitive",
     "heroColor": "#3B82F6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 120",
+    "time": "30 - 60 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -344,18 +344,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Choose a category and point value",
+        "desc": "Choose a category and point value"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer before another team steals",
+        "desc": "Answer before another team steals"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Make a final wager and reveal the winner",
+        "desc": "Make a final wager and reveal the winner"
       }
     ],
     "testimonials": [
@@ -382,11 +382,11 @@
     "slug": "focus-frenzy",
     "title": "Focus Frenzy",
     "tagline": "Test your attention to detail.",
-    "description": "Test your attention to detail. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A fast visual challenge where tiny details make all the difference. Teams scan images, spot changes, and stay sharp through quick rounds that reward careful observation.",
     "category": "collaborative",
     "heroColor": "#10B981",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "20 - 35 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -398,18 +398,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Study the visual prompt",
+        "desc": "Study the visual prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Spot the hidden detail or difference",
+        "desc": "Spot the hidden detail or difference"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Lock answers before the timer expires",
+        "desc": "Lock answers before the timer expires"
       }
     ],
     "testimonials": [
@@ -436,11 +436,11 @@
     "slug": "game-masters",
     "title": "Game Masters",
     "tagline": "Prove your gaming knowledge.",
-    "description": "Prove your gaming knowledge. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A playful trivia battle built around video game culture, arcade references, and controller-era nostalgia. It works especially well for tech teams, gamer groups, and anyone who enjoys a little friendly bragging.",
     "category": "competitive",
     "heroColor": "#EF4444",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "25 - 45 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -452,18 +452,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Pick a gaming category",
+        "desc": "Pick a gaming category"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer trivia and identify references",
+        "desc": "Answer trivia and identify references"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Stack points across bonus rounds",
+        "desc": "Stack points across bonus rounds"
       }
     ],
     "testimonials": [
@@ -490,11 +490,11 @@
     "slug": "mystery-box",
     "title": "Mystery Box",
     "tagline": "What is inside the box?",
-    "description": "What is inside the box? A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A curiosity-driven guessing game where clues reveal what is hidden inside the box. Each round builds suspense as teams decide when they know enough to submit a confident answer.",
     "category": "collaborative",
     "heroColor": "#6366F1",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 180",
+    "time": "20 - 40 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -506,18 +506,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Open the first clue",
+        "desc": "Open the first clue"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Discuss guesses with your team",
+        "desc": "Discuss guesses with your team"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit before the final reveal",
+        "desc": "Submit before the final reveal"
       }
     ],
     "testimonials": [
@@ -544,11 +544,11 @@
     "slug": "think-fast",
     "title": "Think Fast",
     "tagline": "Answer quickly to win.",
-    "description": "Answer quickly to win. A premium interactive high-energy experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A rapid-response game for groups that want instant energy. Questions come quickly, points move fast, and the leaderboard can flip in a single round.",
     "category": "high-energy",
     "heroColor": "#F59E0B",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 200",
+    "time": "15 - 30 min",
     "vibe": "Electric & Energetic",
     "skill": "Speed Recognition",
     "badge": "Fast-Paced",
@@ -560,18 +560,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the prompt quickly",
+        "desc": "Read the prompt quickly"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Buzz in or submit your answer",
+        "desc": "Buzz in or submit your answer"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Watch speed bonuses shift the standings",
+        "desc": "Watch speed bonuses shift the standings"
       }
     ],
     "testimonials": [
@@ -598,11 +598,11 @@
     "slug": "concentration",
     "title": "Concentration",
     "tagline": "Classic memory matching game.",
-    "description": "Classic memory matching game. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A memory-matching game that turns simple cards into a team communication challenge. Players track positions, remember patterns, and help each other make smarter matches.",
     "category": "chill",
     "heroColor": "#3B82F6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 100",
+    "time": "20 - 35 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -614,18 +614,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Reveal two tiles",
+        "desc": "Reveal two tiles"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Remember what appeared where",
+        "desc": "Remember what appeared where"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Clear the board with the most matches",
+        "desc": "Clear the board with the most matches"
       }
     ],
     "testimonials": [
@@ -652,11 +652,11 @@
     "slug": "match-it-up",
     "title": "Match It Up",
     "tagline": "Match related items.",
-    "description": "Match related items. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A connection-making game where teams pair related items under pressure. It is easy to learn, surprisingly strategic, and great for custom company or industry content.",
     "category": "collaborative",
     "heroColor": "#10B981",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "20 - 40 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -668,18 +668,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Review the item bank",
+        "desc": "Review the item bank"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Pair each clue with its match",
+        "desc": "Pair each clue with its match"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Confirm the set before time runs out",
+        "desc": "Confirm the set before time runs out"
       }
     ],
     "testimonials": [
@@ -706,11 +706,11 @@
     "slug": "last-key-standing",
     "title": "Last Key Standing",
     "tagline": "Survival trivia.",
-    "description": "Survival trivia. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A survival trivia format where every answer matters. Players stay alive by choosing correctly, while suspense builds as the field narrows toward one final champion.",
     "category": "competitive",
     "heroColor": "#F59E0B",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 200",
+    "time": "20 - 35 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -722,18 +722,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Answer each elimination question",
+        "desc": "Answer each elimination question"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Stay in the game with correct picks",
+        "desc": "Stay in the game with correct picks"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Outlast the room in the final round",
+        "desc": "Outlast the room in the final round"
       }
     ],
     "testimonials": [
@@ -760,11 +760,11 @@
     "slug": "what-the-meme",
     "title": "What The Meme",
     "tagline": "Caption the meme.",
-    "description": "Caption the meme. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A caption contest that turns workplace humor into a live voting game. Teams write their funniest responses, then the room votes to decide whose joke lands best.",
     "category": "creative",
     "heroColor": "#EC4899",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 250",
+    "time": "20 - 45 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -776,18 +776,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the meme prompt",
+        "desc": "Read the meme prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Write a caption as a team",
+        "desc": "Write a caption as a team"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Vote on the funniest submission",
+        "desc": "Vote on the funniest submission"
       }
     ],
     "testimonials": [
@@ -814,11 +814,11 @@
     "slug": "castle-clash",
     "title": "Castle Clash",
     "tagline": "Team battle trivia.",
-    "description": "Team battle trivia. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A team-vs-team trivia battle with a light strategy layer. Correct answers help defend your castle, attack opponents, and create dramatic comeback moments.",
     "category": "competitive",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 180",
+    "time": "25 - 45 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -830,18 +830,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Join a castle team",
+        "desc": "Join a castle team"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer to earn attacks or shields",
+        "desc": "Answer to earn attacks or shields"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Defend your tower through the final clash",
+        "desc": "Defend your tower through the final clash"
       }
     ],
     "testimonials": [
@@ -868,11 +868,11 @@
     "slug": "wrong-answers-only",
     "title": "Wrong Answers Only",
     "tagline": "Give the wrong answer to win.",
-    "description": "Give the wrong answer to win. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A comedy-first game where intentionally bad answers are the goal. Players try to be clever, ridiculous, and unexpected while the group votes on the best wrong response.",
     "category": "creative",
     "heroColor": "#EF4444",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 200",
+    "time": "15 - 35 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -884,18 +884,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the serious prompt",
+        "desc": "Read the serious prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Submit the funniest wrong answer",
+        "desc": "Submit the funniest wrong answer"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Vote for the most creative miss",
+        "desc": "Vote for the most creative miss"
       }
     ],
     "testimonials": [
@@ -922,11 +922,11 @@
     "slug": "puzzle-dash",
     "title": "Puzzle Dash",
     "tagline": "Solve puzzles against the clock.",
-    "description": "Solve puzzles against the clock. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A timed puzzle race for teams that like logic, pattern spotting, and collaboration. Each challenge is short enough to keep momentum high while still rewarding clear thinking.",
     "category": "collaborative",
     "heroColor": "#6366F1",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 120",
+    "time": "20 - 40 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -938,18 +938,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Open the next puzzle",
+        "desc": "Open the next puzzle"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Work through clues together",
+        "desc": "Work through clues together"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit before the clock runs out",
+        "desc": "Submit before the clock runs out"
       }
     ],
     "testimonials": [
@@ -976,11 +976,11 @@
     "slug": "selfie-showdown",
     "title": "Selfie Showdown",
     "tagline": "Take the best selfie.",
-    "description": "Take the best selfie. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A light photo challenge that gets everyone smiling on camera. Players respond to prompts with quick selfies, then the group votes on the most creative or hilarious entry.",
     "category": "chill",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -992,18 +992,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Receive a selfie prompt",
+        "desc": "Receive a selfie prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Take and submit your photo",
+        "desc": "Take and submit your photo"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Vote for the standout shot",
+        "desc": "Vote for the standout shot"
       }
     ],
     "testimonials": [
@@ -1030,11 +1030,11 @@
     "slug": "scavenger-hunt",
     "title": "Scavenger Hunt",
     "tagline": "Find items in your environment.",
-    "description": "Find items in your environment. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A movement-friendly game that sends players searching their real space for prompt-based items. It breaks up screen fatigue and gives the event a burst of physical energy.",
     "category": "chill",
     "heroColor": "#059669",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 200",
+    "time": "20 - 45 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1046,18 +1046,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Hear the item prompt",
+        "desc": "Hear the item prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Find something nearby fast",
+        "desc": "Find something nearby fast"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Show it on camera for points",
+        "desc": "Show it on camera for points"
       }
     ],
     "testimonials": [
@@ -1084,11 +1084,11 @@
     "slug": "spin-to-win",
     "title": "Spin to Win",
     "tagline": "Wheel of fortune style game.",
-    "description": "Wheel of fortune style game. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A wheel-driven game where each spin changes the challenge. The mix of categories, bonus spaces, and surprise outcomes keeps the room watching every turn.",
     "category": "chill",
     "heroColor": "#F59E0B",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 40 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1100,18 +1100,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Spin the virtual wheel",
+        "desc": "Spin the virtual wheel"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Play the category it lands on",
+        "desc": "Play the category it lands on"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Collect points or bonus rewards",
+        "desc": "Collect points or bonus rewards"
       }
     ],
     "testimonials": [
@@ -1138,11 +1138,11 @@
     "slug": "awards-night",
     "title": "Awards Ceremony",
     "tagline": "Predict the winners.",
-    "description": "Predict the winners. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A prediction and voting game inspired by award-show drama. Teams guess winners, react to reveals, and celebrate funny custom categories tailored to your group.",
     "category": "creative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 200",
+    "time": "20 - 40 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1154,18 +1154,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Review the award category",
+        "desc": "Review the award category"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Predict or vote on the winner",
+        "desc": "Predict or vote on the winner"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Celebrate the reveal and bonus points",
+        "desc": "Celebrate the reveal and bonus points"
       }
     ],
     "testimonials": [
@@ -1192,11 +1192,11 @@
     "slug": "star-fusion",
     "title": "Star Fusion",
     "tagline": "Guess the two celebrities that were combined to create the morphed face.",
-    "description": "Guess the two celebrities that were combined to create the morphed face. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A celebrity face-mashup challenge that rewards pop-culture recall and quick recognition. The more confidently teams identify both faces, the faster the points add up.",
     "category": "creative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "20 - 35 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1208,18 +1208,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Study the fused face",
+        "desc": "Study the fused face"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Name both celebrities",
+        "desc": "Name both celebrities"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Use hints if your team gets stuck",
+        "desc": "Use hints if your team gets stuck"
       }
     ],
     "testimonials": [
@@ -1246,11 +1246,11 @@
     "slug": "bingo",
     "title": "Bingo",
     "tagline": "Classic bingo with custom cards.",
-    "description": "Classic bingo with custom cards. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A flexible bingo format that can be classic, themed, or customized around your company culture. It is simple enough for any group and lively enough to anchor a full social hour.",
     "category": "creative",
     "heroColor": "#10B981",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 300",
+    "time": "20 - 45 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1262,18 +1262,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Open your custom card",
+        "desc": "Open your custom card"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Mark squares as calls appear",
+        "desc": "Mark squares as calls appear"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Call bingo and verify the win",
+        "desc": "Call bingo and verify the win"
       }
     ],
     "testimonials": [
@@ -1300,11 +1300,11 @@
     "slug": "name-that-tune",
     "title": "Name That Tune",
     "tagline": "Guess the song from a short clip.",
-    "description": "Guess the song from a short clip. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A music guessing game built around short audio clips and fast recognition. Teams compete to identify songs, artists, eras, or lyrics before the rest of the room catches on.",
     "category": "chill",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 200",
+    "time": "20 - 45 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1316,18 +1316,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Listen to the short clip",
+        "desc": "Listen to the short clip"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Submit the song or artist",
+        "desc": "Submit the song or artist"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Climb the board with streak bonuses",
+        "desc": "Climb the board with streak bonuses"
       }
     ],
     "testimonials": [
@@ -1354,11 +1354,11 @@
     "slug": "superlatives",
     "title": "Superlatives",
     "tagline": "Vote for team members in fun categories.",
-    "description": "Vote for team members in fun categories. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A social voting game that celebrates the people in the room. Custom categories keep it positive, funny, and personal without putting anyone on the spot for too long.",
     "category": "chill",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 250",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1370,18 +1370,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the superlative category",
+        "desc": "Read the superlative category"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Vote for the best fit",
+        "desc": "Vote for the best fit"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Reveal the winner with the group",
+        "desc": "Reveal the winner with the group"
       }
     ],
     "testimonials": [
@@ -1408,11 +1408,11 @@
     "slug": "zoom-in",
     "title": "Where in the World",
     "tagline": "Guess the image as it zooms out.",
-    "description": "Guess the image as it zooms out. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A visual geography game where the image slowly reveals its location. Teams use landmarks, context clues, and gut instinct to guess before the zoom-out gives it away.",
     "category": "creative",
     "heroColor": "#3B82F6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "20 - 40 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1424,18 +1424,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Watch the image reveal",
+        "desc": "Watch the image reveal"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Discuss the location clues",
+        "desc": "Discuss the location clues"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit your best guess early for more points",
+        "desc": "Submit your best guess early for more points"
       }
     ],
     "testimonials": [
@@ -1462,11 +1462,11 @@
     "slug": "masterpiece-theatre",
     "title": "Masterpiece Theatre",
     "tagline": "Art trivia and puzzles.",
-    "description": "Art trivia and puzzles. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "An art-inspired trivia and recognition game with a refined but playful feel. Players identify works, artists, styles, or visual details while the host keeps the tone approachable.",
     "category": "creative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 140",
+    "time": "20 - 40 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1478,18 +1478,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "View the artwork prompt",
+        "desc": "View the artwork prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer the art or culture clue",
+        "desc": "Answer the art or culture clue"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Earn bonuses for quick recognition",
+        "desc": "Earn bonuses for quick recognition"
       }
     ],
     "testimonials": [
@@ -1516,11 +1516,11 @@
     "slug": "scribbles-giggles",
     "title": "Scribbles & Giggles",
     "tagline": "Teams take turns drawing secretly while others race to guess — faster guesses earn more points!",
-    "description": "Teams take turns drawing secretly while others race to guess — faster guesses earn more points! A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A drawing-and-guessing party game where imperfect art is part of the fun. Teams interpret sketches in real time, making it great for laughter and low-pressure participation.",
     "category": "creative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 45 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1532,18 +1532,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Draw the secret prompt",
+        "desc": "Draw the secret prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Guess your teammates sketches",
+        "desc": "Guess your teammates sketches"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Score faster with quicker guesses",
+        "desc": "Score faster with quicker guesses"
       }
     ],
     "testimonials": [
@@ -1570,11 +1570,11 @@
     "slug": "split-decision",
     "title": "Hot Takes",
     "tagline": "Vote on binary choices or debates.",
-    "description": "Vote on binary choices or debates. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A quick opinion game built around either-or choices and playful debates. It gets people talking without needing deep prep, then reveals where the group agrees or splits.",
     "category": "chill",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 250",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1586,18 +1586,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Choose your side",
+        "desc": "Choose your side"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "See how the room voted",
+        "desc": "See how the room voted"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Defend your take for bonus laughs",
+        "desc": "Defend your take for bonus laughs"
       }
     ],
     "testimonials": [
@@ -1624,11 +1624,11 @@
     "slug": "emoji-madness",
     "title": "Emoji Madness",
     "tagline": "Decode emoji sequences into phrases.",
-    "description": "Decode emoji sequences into phrases. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A decode-the-emoji game where tiny icons become movies, phrases, songs, or workplace jokes. It is colorful, fast, and easy for mixed groups to jump into.",
     "category": "collaborative",
     "heroColor": "#EC4899",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 200",
+    "time": "15 - 35 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -1640,18 +1640,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the emoji sequence",
+        "desc": "Read the emoji sequence"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Translate it into the hidden answer",
+        "desc": "Translate it into the hidden answer"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit before another team solves it",
+        "desc": "Submit before another team solves it"
       }
     ],
     "testimonials": [
@@ -1678,11 +1678,11 @@
     "slug": "memory-lane",
     "title": "Memory Lane",
     "tagline": "Repeat the color sequence.",
-    "description": "Repeat the color sequence. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A sequence-memory game that gets harder round by round. Players repeat colors or patterns from memory, creating tense moments as streaks grow longer.",
     "category": "chill",
     "heroColor": "#6366F1",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 120",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1694,18 +1694,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Watch the sequence",
+        "desc": "Watch the sequence"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Repeat it in the correct order",
+        "desc": "Repeat it in the correct order"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Survive longer patterns for more points",
+        "desc": "Survive longer patterns for more points"
       }
     ],
     "testimonials": [
@@ -1732,11 +1732,11 @@
     "slug": "whats-the-link",
     "title": "What's the Link",
     "tagline": "Find the common link between clues.",
-    "description": "Find the common link between clues. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A clue-connection game where teams search for the common thread. It rewards lateral thinking as players connect people, places, phrases, or images that first seem unrelated.",
     "category": "collaborative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 40 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -1748,18 +1748,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Review the clue set",
+        "desc": "Review the clue set"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Find the shared connection",
+        "desc": "Find the shared connection"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit the link before hints appear",
+        "desc": "Submit the link before hints appear"
       }
     ],
     "testimonials": [
@@ -1786,11 +1786,11 @@
     "slug": "treat-yourself",
     "title": "Treat Yourself",
     "tagline": "Guess the candy from the clues!",
-    "description": "Guess the candy from the clues! A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A candy-themed guessing game filled with clues, wordplay, and sweet nostalgia. It is light, quick, and perfect as a playful break during a longer event.",
     "category": "chill",
     "heroColor": "#EC4899",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 140",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1802,18 +1802,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the candy clue",
+        "desc": "Read the candy clue"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Guess the treat",
+        "desc": "Guess the treat"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Use hints if the sugar rush stalls",
+        "desc": "Use hints if the sugar rush stalls"
       }
     ],
     "testimonials": [
@@ -1840,11 +1840,11 @@
     "slug": "quiet-on-the-set",
     "title": "Quiet on the Set",
     "tagline": "Identify the movie or TV show from the set.",
-    "description": "Identify the movie or TV show from the set. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A movie and TV recognition game focused on sets, scenes, and visual context. Teams identify the title from partial clues before the full reveal hits the screen.",
     "category": "chill",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 40 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1856,18 +1856,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Study the set image",
+        "desc": "Study the set image"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Name the movie or show",
+        "desc": "Name the movie or show"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Score extra for early guesses",
+        "desc": "Score extra for early guesses"
       }
     ],
     "testimonials": [
@@ -1894,11 +1894,11 @@
     "slug": "word-jam",
     "title": "Word Jam",
     "tagline": "Your version of the popular Wordle game. Guess the word in 6 tries.",
-    "description": "Your version of the popular Wordle game. Guess the word in 6 tries. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A word-guessing challenge inspired by daily puzzle habits. Players use letter feedback, deduction, and team discussion to solve the hidden word in limited tries.",
     "category": "chill",
     "heroColor": "#10B981",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 120",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -1910,18 +1910,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Enter your first word guess",
+        "desc": "Enter your first word guess"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Use letter feedback to narrow options",
+        "desc": "Use letter feedback to narrow options"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Solve before the attempt limit runs out",
+        "desc": "Solve before the attempt limit runs out"
       }
     ],
     "testimonials": [
@@ -1948,11 +1948,11 @@
     "slug": "eyeconic",
     "title": "Eyeconic",
     "tagline": "Navigate a grid of distorted celebrity faces and guess who they are before time runs out!",
-    "description": "Navigate a grid of distorted celebrity faces and guess who they are before time runs out! A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A distorted-face recognition game for pop-culture fans. Teams navigate warped celebrity images and race to identify the person before the clues become obvious.",
     "category": "creative",
     "heroColor": "#F59E0B",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "20 - 35 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -1964,18 +1964,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "View the distorted face",
+        "desc": "View the distorted face"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Guess the celebrity",
+        "desc": "Guess the celebrity"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Unlock clearer clues if needed",
+        "desc": "Unlock clearer clues if needed"
       }
     ],
     "testimonials": [
@@ -2002,11 +2002,11 @@
     "slug": "trivia",
     "title": "Standard Trivia",
     "tagline": "Classic trivia game. Create custom questions with text, images, or audio.",
-    "description": "Classic trivia game. Create custom questions with text, images, or audio. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A clean, flexible trivia format that can use text, image, audio, or custom company questions. It is the dependable choice when you want familiar gameplay with professional hosting.",
     "category": "competitive",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 250",
+    "time": "20 - 60 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -2018,18 +2018,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Join the trivia round",
+        "desc": "Join the trivia round"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer each question on your device",
+        "desc": "Answer each question on your device"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Track team scores through the finale",
+        "desc": "Track team scores through the finale"
       }
     ],
     "testimonials": [
@@ -2056,11 +2056,11 @@
     "slug": "line-it-up",
     "title": "Line It Up!",
     "tagline": "Players arrange items in the correct sequential order (chronological, ranking, etc.) using drag-and-drop.",
-    "description": "Players arrange items in the correct sequential order (chronological, ranking, etc.) using drag-and-drop. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A sequencing challenge where teams put items in the correct order. Rounds can cover timelines, rankings, prices, sizes, or custom business facts.",
     "category": "collaborative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 40 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -2072,18 +2072,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Review the items",
+        "desc": "Review the items"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Drag them into the right order",
+        "desc": "Drag them into the right order"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit the sequence for scoring",
+        "desc": "Submit the sequence for scoring"
       }
     ],
     "testimonials": [
@@ -2110,11 +2110,11 @@
     "slug": "unjumble",
     "title": "Unjumble",
     "tagline": "Unscramble letters or words to reveal the hidden phrase.",
-    "description": "Unscramble letters or words to reveal the hidden phrase. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A word scramble game that starts simple and ramps into trickier phrases. Teams work together to rearrange letters or words before the timer beats them.",
     "category": "chill",
     "heroColor": "#F59E0B",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "4 - 140",
+    "time": "15 - 30 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -2126,18 +2126,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the scrambled letters",
+        "desc": "Read the scrambled letters"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Rearrange them into the answer",
+        "desc": "Rearrange them into the answer"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit once the phrase clicks",
+        "desc": "Submit once the phrase clicks"
       }
     ],
     "testimonials": [
@@ -2164,11 +2164,11 @@
     "slug": "survey-says",
     "title": "Survey Says",
     "tagline": "Guess the most popular answers to survey questions.",
-    "description": "Guess the most popular answers to survey questions. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A survey-answer game where teams try to predict what most people said. It blends trivia instincts with people-reading, making every reveal feel social and suspenseful.",
     "category": "competitive",
     "heroColor": "#3B82F6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 250",
+    "time": "25 - 50 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -2180,18 +2180,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Hear the survey question",
+        "desc": "Hear the survey question"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Guess a top answer",
+        "desc": "Guess a top answer"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Steal or secure points on the board",
+        "desc": "Steal or secure points on the board"
       }
     ],
     "testimonials": [
@@ -2218,11 +2218,11 @@
     "slug": "sound-it-out",
     "title": "Sound it Out!",
     "tagline": "Decode visual rebus puzzles to find the hidden name or phrase.",
-    "description": "Decode visual rebus puzzles to find the hidden name or phrase. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A rebus puzzle game where pictures, words, and sounds hide a familiar phrase. Teams decode each visual clue and race to say the answer out loud or submit it.",
     "category": "collaborative",
     "heroColor": "#6366F1",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 150",
+    "time": "15 - 35 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -2234,18 +2234,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Inspect the rebus puzzle",
+        "desc": "Inspect the rebus puzzle"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Sound out the hidden phrase",
+        "desc": "Sound out the hidden phrase"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit before the reveal",
+        "desc": "Submit before the reveal"
       }
     ],
     "testimonials": [
@@ -2272,11 +2272,11 @@
     "slug": "fast-facts",
     "title": "Fast Facts",
     "tagline": "Rapid-fire trivia questions.",
-    "description": "Rapid-fire trivia questions. A premium interactive high-energy experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A rapid-fire facts game for groups that want speed and momentum. Short questions, quick scoring, and streak bonuses make it ideal for energizing the room.",
     "category": "high-energy",
     "heroColor": "#EF4444",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "8 - 220",
+    "time": "15 - 30 min",
     "vibe": "Electric & Energetic",
     "skill": "Speed Recognition",
     "badge": "Fast-Paced",
@@ -2288,18 +2288,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the quick question",
+        "desc": "Read the quick question"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer before the countdown ends",
+        "desc": "Answer before the countdown ends"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Build a streak for bonus points",
+        "desc": "Build a streak for bonus points"
       }
     ],
     "testimonials": [
@@ -2326,11 +2326,11 @@
     "slug": "checkout-challenge",
     "title": "Checkout Challenge",
     "tagline": "Test your price knowledge in this exciting checkout game!",
-    "description": "Test your price knowledge in this exciting checkout game! A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A price-guessing game where everyday products become surprisingly competitive. Teams estimate costs, compare instincts, and try to get closest without overshooting.",
     "category": "competitive",
     "heroColor": "#059669",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 35 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -2342,18 +2342,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "View the product",
+        "desc": "View the product"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Estimate the checkout price",
+        "desc": "Estimate the checkout price"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Win the round by landing closest",
+        "desc": "Win the round by landing closest"
       }
     ],
     "testimonials": [
@@ -2380,11 +2380,11 @@
     "slug": "icon-face-off",
     "title": "Unpixel It",
     "tagline": "Identify the brand or character from the pixelated icon.",
-    "description": "Identify the brand or character from the pixelated icon. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A visual reveal game where pixelated icons sharpen over time. Teams earn more by identifying brands, characters, or objects while the image is still hard to read.",
     "category": "creative",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "15 - 35 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -2396,18 +2396,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Watch the pixelated image clear",
+        "desc": "Watch the pixelated image clear"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Guess as early as you dare",
+        "desc": "Guess as early as you dare"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Score more for faster recognition",
+        "desc": "Score more for faster recognition"
       }
     ],
     "testimonials": [
@@ -2434,11 +2434,11 @@
     "slug": "mystery-mosaic",
     "title": "Claim to Fame",
     "tagline": "Reveal the image piece by piece.",
-    "description": "Reveal the image piece by piece. A premium interactive collaborative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A gradual-reveal image game that turns recognition into suspense. Teams uncover pieces of a famous person, place, or object and decide when to lock in a guess.",
     "category": "collaborative",
     "heroColor": "#06B6D4",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 35 min",
     "vibe": "Puzzle & Team Solving",
     "skill": "Logical Deduction",
     "badge": "Cooperative",
@@ -2450,18 +2450,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Reveal the image piece by piece",
+        "desc": "Reveal the image piece by piece"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Discuss who or what it might be",
+        "desc": "Discuss who or what it might be"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Claim points with an early answer",
+        "desc": "Claim points with an early answer"
       }
     ],
     "testimonials": [
@@ -2488,11 +2488,11 @@
     "slug": "finish-the-lyric",
     "title": "Finish the Lyric",
     "tagline": "Karaoke-style song reveal — players race to buzz in and complete the missing lyric.",
-    "description": "Karaoke-style song reveal — players race to buzz in and complete the missing lyric. A premium interactive chill experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A music game where players complete missing lyrics from familiar songs. It brings karaoke energy without requiring anyone to sing solo unless they want to.",
     "category": "chill",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 200",
+    "time": "20 - 45 min",
     "vibe": "Casual & Playful",
     "skill": "Quick Thinking",
     "badge": "Arcade Live",
@@ -2504,18 +2504,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Hear or read the lyric setup",
+        "desc": "Hear or read the lyric setup"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Buzz in with the missing line",
+        "desc": "Buzz in with the missing line"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Earn bonuses for speed and accuracy",
+        "desc": "Earn bonuses for speed and accuracy"
       }
     ],
     "testimonials": [
@@ -2542,11 +2542,11 @@
     "slug": "the-hot-seat",
     "title": "The Hot Seat",
     "tagline": "60-second speed trivia sprint — color-choice answers with point decay. One wrong answer ends your streak!",
-    "description": "60-second speed trivia sprint — color-choice answers with point decay. One wrong answer ends your streak! A premium interactive high-energy experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A high-pressure speed trivia sprint built around streaks and risk. One player or team takes the seat while the room watches the timer, point decay, and sudden misses.",
     "category": "high-energy",
     "heroColor": "#F59E0B",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 120",
+    "time": "15 - 30 min",
     "vibe": "Electric & Energetic",
     "skill": "Speed Recognition",
     "badge": "Fast-Paced",
@@ -2558,18 +2558,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Enter the timed hot seat",
+        "desc": "Enter the timed hot seat"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Answer as many as possible",
+        "desc": "Answer as many as possible"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Protect your streak from a wrong answer",
+        "desc": "Protect your streak from a wrong answer"
       }
     ],
     "testimonials": [
@@ -2596,11 +2596,11 @@
     "slug": "message-in-a-bottle",
     "title": "Message in a Bottle",
     "tagline": "Decipher the secret code hidden in the bottle cap before the time runs out.",
-    "description": "Decipher the secret code hidden in the bottle cap before the time runs out. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A code-breaking challenge wrapped in a playful mystery theme. Teams decipher symbols, clues, or hidden messages before the final hint makes the answer obvious.",
     "category": "competitive",
     "heroColor": "#3B82F6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 140",
+    "time": "20 - 35 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -2612,18 +2612,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Inspect the coded clue",
+        "desc": "Inspect the coded clue"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Work out the hidden message",
+        "desc": "Work out the hidden message"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Submit the solution before time runs out",
+        "desc": "Submit the solution before time runs out"
       }
     ],
     "testimonials": [
@@ -2650,11 +2650,11 @@
     "slug": "now-in-theatres",
     "title": "Now in Theatres",
     "tagline": "Guess the movie from the heavily redacted or blurred poster.",
-    "description": "Guess the movie from the heavily redacted or blurred poster. A premium interactive creative experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "A movie-poster guessing game where redaction and blur create the challenge. Film fans race to identify titles from colors, shapes, cast hints, and partial artwork.",
     "category": "creative",
     "heroColor": "#EF4444",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 160",
+    "time": "20 - 40 min",
     "vibe": "Laugh-Out-Loud Banter",
     "skill": "Out-Of-The-Box",
     "badge": "Imagination",
@@ -2666,18 +2666,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "View the obscured poster",
+        "desc": "View the obscured poster"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Guess the movie title",
+        "desc": "Guess the movie title"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Use reveals if your team needs help",
+        "desc": "Use reveals if your team needs help"
       }
     ],
     "testimonials": [
@@ -2704,11 +2704,11 @@
     "slug": "count-me-in",
     "title": "Count Me In",
     "tagline": "Estimate the target number. The closest guess without going over takes the crown.",
-    "description": "Estimate the target number. The closest guess without going over takes the crown. A premium interactive competitive experience custom-tailored for professional corporate team-building. Playable in seconds directly in any modern desktop or mobile browser.",
+    "description": "An estimation game where the closest answer wins, as long as it does not go over. It creates fun debate because confident guesses can still lose to careful judgment.",
     "category": "competitive",
     "heroColor": "#8B5CF6",
-    "players": "4 - 250+",
-    "time": "15 - 45 min",
+    "players": "6 - 180",
+    "time": "15 - 30 min",
     "vibe": "Challenging & Competitive",
     "skill": "General Knowledge",
     "badge": "Pure Battle",
@@ -2720,18 +2720,18 @@
     "howToPlay": [
       {
         "step": "1",
-        "title": "Join the Room",
-        "desc": "Scan the QR code or click the invite link on your phone. No logins needed."
+        "title": "Read the estimation prompt",
+        "desc": "Read the estimation prompt"
       },
       {
         "step": "2",
-        "title": "Compete & Laugh",
-        "desc": "Submit answers, vote on memes, or solve puzzles together under a live countdown timer."
+        "title": "Choose a number with your team",
+        "desc": "Choose a number with your team"
       },
       {
         "step": "3",
-        "title": "Crown the Champion",
-        "desc": "Celebrate with dynamic leaderboard animations, confetti showers, and team awards."
+        "title": "Win by getting closest without going over",
+        "desc": "Win by getting closest without going over"
       }
     ],
     "testimonials": [
@@ -2752,5 +2752,103 @@
       }
     ],
     "isOriginal": false
+  },
+  {
+    "id": "ready-set-pitch",
+    "slug": "ready-set-pitch",
+    "title": "Ready, Set, Pitch!",
+    "tagline": "Spin the wheel, land a wild product, and pitch it like you mean it.",
+    "description": "Spin the wheel, land a wild product, and pitch it like you mean it. Professional MC hosting. Spin-the-wheel product assignments. Timed brainstorm huddles. Live voting, leaderboard & confetti",
+    "category": "creative",
+    "heroColor": "#f59e0b",
+    "players": "6 - 150+",
+    "time": "60 min",
+    "vibe": "Creative & High-energy & Collaborative",
+    "skill": "Out-Of-The-Box",
+    "badge": "Creative",
+    "includes": [
+      "Professional MC hosting",
+      "Spin-the-wheel product assignments",
+      "Timed brainstorm huddles",
+      "Live voting, leaderboard & confetti"
+    ],
+    "howToPlay": [
+      {
+        "step": "1",
+        "title": "Spin for your product",
+        "desc": "The wheel assigns every team a hilariously unexpected product or idea to sell."
+      },
+      {
+        "step": "2",
+        "title": "Brainstorm on the clock",
+        "desc": "Teams huddle against a countdown to craft their angle, slogan, and big promises."
+      },
+      {
+        "step": "3",
+        "title": "Pitch, vote & crown a winner",
+        "desc": "Each team delivers their pitch live, everyone votes for their favorite, and the champions get the confetti."
+      }
+    ],
+    "testimonials": [],
+    "faqs": [
+      {
+        "q": "Do we need sales or presentation experience?",
+        "a": "Not at all! The products are intentionally absurd, so polish doesn't win — creativity and laughs do. Our host keeps it fun and low-pressure."
+      },
+      {
+        "q": "How do teams deliver their pitch?",
+        "a": "One or more teammates simply unmute and pitch live on Zoom, Teams, or Meet. The host hypes every pitch and runs the voting."
+      }
+    ],
+    "isOriginal": true
+  },
+  {
+    "id": "powerpoint-roulette",
+    "slug": "powerpoint-roulette",
+    "title": "PowerPoint Roulette",
+    "tagline": "Present a slide deck you've never seen. Comedy guaranteed.",
+    "description": "Present a slide deck you've never seen. Comedy guaranteed. Professional MC hosting. Surprise slide decks assigned by the wheel. Quick-prep huddle timer. Live voting, leaderboard & confetti",
+    "category": "creative",
+    "heroColor": "#0ea5e9",
+    "players": "6 - 100+",
+    "time": "60 min",
+    "vibe": "Laugh-Out-Loud Banter",
+    "skill": "Quick Thinking",
+    "badge": "Imagination",
+    "includes": [
+      "Professional MC hosting",
+      "Surprise slide decks assigned by the wheel",
+      "Quick-prep huddle timer",
+      "Live voting, leaderboard & confetti"
+    ],
+    "howToPlay": [
+      {
+        "step": "1",
+        "title": "Spin for a mystery deck",
+        "desc": "The wheel hands every team a slide deck they've never laid eyes on."
+      },
+      {
+        "step": "2",
+        "title": "Huddle for a hot minute",
+        "desc": "A short prep timer lets teams pick their presenter and invent a game plan."
+      },
+      {
+        "step": "3",
+        "title": "Present, laugh, vote",
+        "desc": "Presenters improvise through their slides live, the audience votes, and the smoothest talker takes the crown."
+      }
+    ],
+    "testimonials": [],
+    "faqs": [
+      {
+        "q": "Do we have to create the slides?",
+        "a": "Nope — we bring the decks. That's the fun: you improvise a confident presentation of slides you're seeing for the first time."
+      },
+      {
+        "q": "What if someone is too shy to present?",
+        "a": "In team mode a volunteer presents for the group, and teammates can jump in to help. Nobody is ever forced to present solo."
+      }
+    ],
+    "isOriginal": true
   }
 ]

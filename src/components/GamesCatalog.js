@@ -91,7 +91,7 @@ export default function GamesCatalog() {
             <div className="flex flex-wrap justify-center gap-6 pt-4 text-xs font-semibold text-zinc-500 uppercase tracking-widest">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5">
                 <Gamepad2 className="h-4 w-4 text-purple-400" />
-                <span>51 Custom Modules</span>
+                <span>{gamesData.length} Custom Modules</span>
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5">
                 <Users className="h-4 w-4 text-emerald-400" />

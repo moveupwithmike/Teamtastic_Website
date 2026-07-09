@@ -1,7 +1,15 @@
-import { Gamepad2, Users, Clock, Award, CheckCircle, ArrowRight, ShieldCheck, Heart } from "lucide-react";
+import { Gamepad2, Users, Clock, Award, CheckCircle, ArrowRight, ShieldCheck, Heart, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import gamesPool from "@/lib/gamesData.json";
+
+const categoryLabels = {
+  "high-energy": "High Energy",
+  competitive: "Competitive",
+  creative: "Creative",
+  collaborative: "Collaborative",
+  chill: "Chill",
+};
 
 // Map array to object with slug keys
 const gamesData = {};
@@ -31,12 +39,13 @@ export async function generateMetadata({ params }) {
       title,
       description,
       url: canonical,
-      images: [{ url: "/teamtastic_website_mockup.png", width: 1920, height: 1080, alt: game.title }],
+      images: [{ url: "/teamtastic-og.png", width: 1200, height: 630, alt: `${game.title} by Teamtastic` }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: ["/teamtastic-og.png"],
     },
   };
 }
@@ -49,8 +58,38 @@ export default async function GamePage({ params }) {
     notFound();
   }
 
+  const relatedGames = gamesPool
+    .filter((g) => g.category === game.category && g.slug !== game.slug)
+    .slice(0, 3);
+
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Games", item: "https://teamtastic.events/games" },
+        { "@type": "ListItem", position: 2, name: game.title, item: `https://teamtastic.events/games/${game.slug}` },
+      ],
+    },
+  ];
+  if (game.faqs?.length) {
+    structuredData.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: game.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.q,
+        acceptedAnswer: { "@type": "Answer", text: faq.a },
+      })),
+    });
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <main className="flex-1 pt-24 pb-20">
         {/* Game Hero */}
         <section className="relative py-12 md:py-20 overflow-hidden">
@@ -72,6 +111,18 @@ export default async function GamePage({ params }) {
                 <p className="text-zinc-400 text-base leading-relaxed">
                   {game.description}
                 </p>
+
+                {/* What's Included */}
+                {game.includes?.length > 0 && (
+                  <ul className="space-y-2 pt-2">
+                    {game.includes.map((item) => (
+                      <li key={item} className="flex items-center gap-2.5 text-sm text-zinc-300">
+                        <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
@@ -164,6 +215,62 @@ export default async function GamePage({ params }) {
             </div>
           </div>
         </section>
+
+        {/* Game FAQs */}
+        {game.faqs?.length > 0 && (
+          <section className="py-16 md:py-24 border-t border-white/5">
+            <div className="mx-auto max-w-3xl px-4 sm:px-6">
+              <h2 className="text-2xl font-extrabold tracking-tight sm:text-4xl text-white text-center mb-12">
+                {game.title} FAQs
+              </h2>
+              <div className="space-y-6">
+                {game.faqs.map((faq) => (
+                  <div key={faq.q} className="glassmorphism rounded-2xl p-6 border border-white/5 bg-zinc-900/30">
+                    <h3 className="flex items-start gap-3 text-base font-bold text-white">
+                      <HelpCircle className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
+                      {faq.q}
+                    </h3>
+                    <p className="text-sm text-zinc-400 leading-relaxed mt-3 pl-8">{faq.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Related Games — internal links within the same category */}
+        {relatedGames.length > 0 && (
+          <section className="py-16 border-t border-white/5 bg-zinc-950/30">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6">
+              <h2 className="text-xl font-extrabold tracking-tight sm:text-2xl text-white text-center mb-10">
+                More {categoryLabels[game.category] || "Team"} Games
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {relatedGames.map((g) => (
+                  <Link
+                    key={g.slug}
+                    href={`/games/${g.slug}`}
+                    className="glassmorphism rounded-2xl p-6 border border-white/5 bg-zinc-900/30 hover:border-purple-500/30 hover:-translate-y-0.5 transition-all group"
+                  >
+                    <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
+                      {g.title}
+                    </h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed mt-2 line-clamp-2">{g.tagline}</p>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-400 mt-4">
+                      Explore Game
+                      <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <div className="text-center mt-8">
+                <Link href="/games" className="text-sm font-semibold text-zinc-400 hover:text-white underline transition-colors">
+                  Browse all {gamesPool.length} games
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
