@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, ArrowLeft, Check, Sparkles, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
 import TurnstileWidget from "@/components/TurnstileWidget";
@@ -117,7 +118,9 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
       ? getFamilyConciergeRecs(answers.preferences, answers.vibe)
       : getCorporateConciergeRecs(answers.preferences, answers.vibe);
 
-  const depositUrl = `${PAYMENT_CONFIG.depositUrl}${PAYMENT_CONFIG.depositUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
+  const depositBaseUrl = isFamily ? PAYMENT_CONFIG.familyDepositUrl : PAYMENT_CONFIG.depositUrl;
+  const depositAmount = isFamily ? "$100" : "$200";
+  const depositUrl = `${depositBaseUrl}${depositBaseUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
     prefilled_email: answers.email,
     client_reference_id: submissionId,
   })}`;
@@ -173,10 +176,12 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
             {/* Header Concierge Status */}
             <div className="px-6 pt-6 sm:px-8 sm:pt-8 flex items-center gap-3 shrink-0">
               <div className="relative w-10 h-10 rounded-full overflow-hidden border border-brand-purple shrink-0 bg-zinc-900 flex items-center justify-center">
-                <img
+                <Image
                   src="/emcee-engaged-transparent.png"
                   alt="Michael"
-                  className="w-full h-full object-cover scale-110 object-top"
+                  fill
+                  sizes="40px"
+                  className="object-cover scale-110 object-top"
                 />
               </div>
               <div className="text-left">
@@ -477,7 +482,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
                           onClick={() => track("deposit_cta_clicked", { source: isFamily ? "family_concierge" : "corporate_concierge" })}
                           className="flex min-h-11 items-center justify-center rounded-xl bg-[#D81B60] px-4 text-center text-sm font-bold text-white hover:bg-pink-600"
                         >
-                          Reserve with $200 deposit
+                          Reserve with {depositAmount} deposit
                         </a>
                         <a
                           href={calendlyUrl}

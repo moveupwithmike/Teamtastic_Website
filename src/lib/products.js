@@ -38,6 +38,7 @@ export function classifyStripeSession(session) {
   const linkId = paymentLinkId(session);
   if (linkId && linkId === process.env.STRIPE_PRO_PAYMENT_LINK_ID) return PRODUCT_KEYS.PRO;
   if (linkId && linkId === process.env.STRIPE_DEPOSIT_PAYMENT_LINK_ID) return PRODUCT_KEYS.DEPOSIT;
+  if (linkId && linkId === process.env.STRIPE_FAMILY_DEPOSIT_PAYMENT_LINK_ID) return PRODUCT_KEYS.DEPOSIT;
 
   // Calendly-created paid bookings do not use a Teamtastic Payment Link.
   if (!linkId && session.mode === "payment") return PRODUCT_KEYS.DEPOSIT;

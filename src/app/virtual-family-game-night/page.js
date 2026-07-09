@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   Trophy, 
   Calendar, 
@@ -151,7 +152,7 @@ export default function FamilyGameNightPage() {
       serviceType: "Live-hosted virtual family entertainment",
       provider: { "@type": "Organization", name: "Teamtastic", url: "https://teamtastic.events" },
       areaServed: "Worldwide",
-      offers: { "@type": "Offer", price: "35", priceCurrency: "USD", description: "$35 per person with a $350 minimum and a $200 reservation deposit" },
+      offers: { "@type": "Offer", price: "35", priceCurrency: "USD", description: "$35 per person with a $250 minimum and a $100 reservation deposit" },
       review: testimonials.map((item) => ({
         "@type": "Review",
         author: { "@type": "Organization", name: item.family },
@@ -239,7 +240,7 @@ export default function FamilyGameNightPage() {
                   </button>
                 </div>
                 <p className="text-sm font-bold text-zinc-700">
-                  Live-hosted events start at $35/person · $350 minimum · $200 reserves your date
+                  Live-hosted events start at $35/person · $250 minimum · $100 reserves your date
                 </p>
               </div>
               
@@ -261,7 +262,7 @@ export default function FamilyGameNightPage() {
                       key={i} 
                       className="aspect-[4/3] rounded-2xl border-2 border-white bg-slate-900 overflow-hidden shadow-xl hover:scale-105 transition-all duration-300 relative"
                     >
-                      <img src={src} className="w-full h-full object-cover" alt="Family Zoom Feed" />
+                      <Image src={src} fill sizes="(min-width: 768px) 160px, 130px" className="object-cover" alt="Family Zoom Feed" />
                       {/* Zoom style overlay badge */}
                       <span className="absolute bottom-1.5 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[8px] font-bold text-white font-mono uppercase tracking-wider">
                         {["Home Base", "Sarah & Kids", "Grandma", "Uncle Leo"][i]}
@@ -272,9 +273,11 @@ export default function FamilyGameNightPage() {
 
                 {/* Michael emcee cutout overlay */}
                 <div className="relative w-[340px] sm:w-[400px] h-auto pointer-events-none select-none z-10 mt-12 self-end">
-                  <img
+                  <Image
                     src="/emcee-engaged-transparent.png"
                     alt="Michael - Master Emcee"
+                    width={819}
+                    height={1024}
                     className="w-full h-auto object-contain"
                   />
                   
@@ -456,7 +459,9 @@ export default function FamilyGameNightPage() {
               <div className="flex items-center gap-6 text-left max-w-xl">
                 <div className="hidden sm:grid grid-cols-2 gap-2 w-32 shrink-0">
                   {["/family-zoom-1.png", "/family-zoom-4.png"].map((src, idx) => (
-                    <img key={idx} src={src} className="rounded-xl border border-white/10 aspect-[4/3] object-cover" alt="Family Zoom" />
+                    <div key={src} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10">
+                      <Image src={src} fill sizes="64px" className="object-cover" alt="Family Zoom" />
+                    </div>
                   ))}
                 </div>
                 <div className="space-y-3">
@@ -500,10 +505,12 @@ export default function FamilyGameNightPage() {
                     className="group flex flex-col rounded-2xl overflow-hidden border border-zinc-150 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 bg-white"
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100 relative">
-                      <img
+                      <Image
                         src={occ.img}
                         alt={occ.label}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        sizes="(min-width: 1024px) 160px, (min-width: 768px) 33vw, 50vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-purple-600 shadow border border-purple-100/50">
                         <Icon className="w-4.5 h-4.5" />
@@ -646,19 +653,6 @@ export default function FamilyGameNightPage() {
                       aria-label={`Testimonial ${idx + 1}`}
                     />
                   ))}
-                </div>
-
-                <hr className="border-zinc-150" />
-
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-0.5 text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                  <span className="text-xs font-black text-zinc-450 uppercase tracking-wider font-mono">
-                    over 300+ families served.
-                  </span>
                 </div>
 
               </div>

@@ -27,6 +27,7 @@ import {
   Star
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 import CtaBannerWithModal from "@/components/CtaBannerWithModal";
 import CustomIdeaSection from "@/components/CustomIdeaSection";
@@ -296,9 +297,11 @@ export default function TeamExperiences() {
               {/* Right Column: Hero Zoom Monitor Mockup */}
               <div className="lg:col-span-5 relative flex items-center justify-center">
                 {/* Waving monitor image with background removed */}
-                <img
+                <Image
                   src="/hero-zoom-monitor.png"
                   alt="Teamtastic Live Zoom Event"
+                  width={1024}
+                  height={768}
                   className="w-full max-w-[500px] h-auto object-contain select-none pointer-events-none drop-shadow-[0_15px_40px_rgba(139,92,246,0.25)]"
                 />
 
@@ -324,11 +327,29 @@ export default function TeamExperiences() {
           </div>
         </section>
 
+        <section className="border-b border-white/5 bg-gradient-to-r from-rose-950/35 via-zinc-950 to-amber-950/25 py-12">
+          <div className="mx-auto grid max-w-6xl items-center gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
+            <div>
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">Planning Q4?</span>
+              <h2 className="mt-3 text-3xl font-extrabold text-white">Book the virtual holiday party before December fills.</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                Holiday Trivia Spectacular, Name That Holiday Tune, winter games, and custom year-in-review rounds. A $200 deposit locks your date.
+              </p>
+            </div>
+            <Link
+              href="/virtual-holiday-party"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#D81B60] px-7 text-sm font-bold text-white transition hover:bg-pink-600"
+            >
+              Plan a holiday party <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
         {/* ══ TRUSTED LOGOS BANNER (DARK THEME) ══ */}
         <section className="py-8 bg-zinc-950/60 border-y border-white/5 backdrop-blur-md">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center space-y-4">
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 block">
-              TRUSTED BY AMAZING COMPANIES
+              OUR HOST HAS EMCEED EVENTS FOR TEAMS AT
             </span>
             <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
               {/* Google */}
