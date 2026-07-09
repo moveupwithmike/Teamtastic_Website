@@ -202,7 +202,7 @@ export default function TeamExperiences() {
   return (
     <div className="flex flex-col min-h-screen bg-brand-dark">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
-      <main className="flex-1 bg-brand-dark text-white">
+      <main className="flex-1 bg-brand-dark text-white pb-20 md:pb-0">
         
         {/* ══ CUSTOM HERO (DARK THEME) ══ */}
         <section className="relative overflow-hidden pt-24 pb-12 md:pt-32 md:pb-16">
@@ -774,9 +774,20 @@ export default function TeamExperiences() {
         {/* ══ FAQ SECTION ══ */}
         <FaqSection />
 
+        {/* Desktop floating CTA */}
         <div className="fixed bottom-4 right-4 z-30 hidden rounded-2xl border border-white/10 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur md:block">
           <p className="mb-2 px-2 text-[11px] font-semibold text-zinc-300">From $35/person · $350 minimum</p>
           <Link href="#availability" className="inline-flex items-center gap-2 rounded-xl bg-[#D81B60] px-5 py-3 text-sm font-bold text-white hover:bg-pink-600">
+            Get availability & pricing <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {/* Mobile sticky bottom bar */}
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-zinc-950/95 px-4 py-3 shadow-2xl backdrop-blur md:hidden">
+          <Link
+            href="#availability"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#D81B60] px-5 text-sm font-bold text-white hover:bg-pink-600"
+          >
             Get availability & pricing <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

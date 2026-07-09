@@ -9,6 +9,7 @@ const SOURCES = new Set([
   "playable_demo",
   "michael_event_concierge",
   "michael_family_concierge",
+  "holiday_party_money_page",
 ]);
 const buckets = new Map();
 

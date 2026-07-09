@@ -23,6 +23,7 @@ import {
   Compass
 } from "lucide-react";
 import TalkToMichaelModal from "@/components/TalkToMichaelModal";
+import CorporateLeadForm from "@/components/CorporateLeadForm";
 
 // 6 Experience Cards for Families
 const experiences = [
@@ -242,6 +243,9 @@ export default function FamilyGameNightPage() {
                 <p className="text-sm font-bold text-zinc-700">
                   Live-hosted events start at $35/person · $250 minimum · $100 reserves your date
                 </p>
+                <Link href="#availability" className="inline-flex items-center gap-1.5 text-sm font-bold text-purple-600 hover:text-purple-700 underline underline-offset-4 transition-colors">
+                  Or check a date now, no call needed
+                </Link>
               </div>
               
               {/* Right Column Visual Cutout & Zoom grid */}
@@ -330,6 +334,22 @@ export default function FamilyGameNightPage() {
                 <span>Celebrate</span>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ══ QUICK AVAILABILITY CHECK ══ */}
+        <section id="availability" className="scroll-mt-24 py-16 bg-slate-50 border-b border-zinc-200/50">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div className="space-y-4 text-left">
+              <span className="text-xs font-black uppercase tracking-widest text-purple-600 font-mono">Skip the back-and-forth</span>
+              <h2 className="text-3xl sm:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
+                Check a date in <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">30 seconds.</span>
+              </h2>
+              <p className="text-zinc-650 max-w-lg leading-relaxed font-medium">
+                Tell us the basics and Michael will confirm availability and the best-fit game night format. No obligation.
+              </p>
+            </div>
+            <CorporateLeadForm isFamily />
           </div>
         </section>
 

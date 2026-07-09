@@ -44,7 +44,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!answers.name || !answers.email || !answers.company) return;
+    if (!answers.name || !answers.email || (!isFamily && !answers.company)) return;
     if (!turnstileToken) {
       setError("Please complete secure verification.");
       return;
@@ -61,7 +61,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
         source,
         name: answers.name,
         email: answers.email,
-        company: answers.company,
+        company: answers.company || (isFamily ? `${answers.name}'s Family` : ""),
         phone: answers.phone,
         teamSize: answers.groupSize,
         vibe: answers.vibe,
@@ -381,10 +381,10 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">{isFamily ? "Family / Group Name *" : "Company Name *"}</label>
+                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400">{isFamily ? "Family / Group Name (Optional)" : "Company Name *"}</label>
                             <input
                               type="text"
-                              required
+                              required={!isFamily}
                               placeholder={isFamily ? "e.g. The Connor Family" : "e.g. TechCorp Inc."}
                               value={answers.company}
                               onChange={(e) => setAnswers({ ...answers, company: e.target.value })}
@@ -452,7 +452,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-xs font-extrabold text-amber-300 uppercase tracking-wider">
                           <Sparkles className="h-4 w-4 animate-spin text-amber-400" />
-                          Recommended for {answers.company}:
+                          Recommended for {answers.company || (isFamily ? "your family" : "your team")}:
                         </div>
 
                         <div className="space-y-3">

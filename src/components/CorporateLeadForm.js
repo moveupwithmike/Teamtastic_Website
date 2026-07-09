@@ -17,15 +17,18 @@ const initialForm = {
 };
 
 export default function CorporateLeadForm({
-  source = "michael_event_concierge",
-  entryPoint = "corporate_landing_inline",
-  eyebrow = "Fast event check",
+  isFamily = false,
+  source = isFamily ? "michael_family_concierge" : "michael_event_concierge",
+  entryPoint = isFamily ? "family_landing_inline" : "corporate_landing_inline",
+  eyebrow = isFamily ? "Fast family check" : "Fast event check",
   title = "Get availability and pricing",
-  subtitle = "$35 per person · $350 minimum · $200 reserves your date",
-  successTitle = "Your event brief is saved.",
+  subtitle = isFamily
+    ? "$35 per person · $250 minimum · $100 reserves your date"
+    : "$35 per person · $350 minimum · $200 reserves your date",
+  successTitle = isFamily ? "Your game night request is saved." : "Your event brief is saved.",
   successBody = "Michael will follow up within one business day. You can reserve your date now or choose a planning call.",
   submitLabel = "Check availability",
-  depositLabel = "Reserve with $200 deposit",
+  depositLabel = isFamily ? "Reserve with $100 deposit" : "Reserve with $200 deposit",
   defaultOccasion = "",
 } = {}) {
   const [form, setForm] = useState({ ...initialForm, occasion: defaultOccasion });
@@ -41,7 +44,8 @@ export default function CorporateLeadForm({
     [event.target.name]: event.target.value,
   }));
 
-  const depositUrl = `${PAYMENT_CONFIG.depositUrl}${PAYMENT_CONFIG.depositUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
+  const baseDepositUrl = isFamily ? PAYMENT_CONFIG.familyDepositUrl : PAYMENT_CONFIG.depositUrl;
+  const depositUrl = `${baseDepositUrl}${baseDepositUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
     prefilled_email: form.email,
     client_reference_id: submissionId,
   })}`;
@@ -130,21 +134,52 @@ export default function CorporateLeadForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <input required name="name" value={form.name} onChange={update} placeholder="Your name" aria-label="Your name" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
         <input required type="email" name="email" value={form.email} onChange={update} placeholder="Work email" aria-label="Work email" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
-        <input required name="company" value={form.company} onChange={update} placeholder="Company" aria-label="Company" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
-        <select required name="teamSize" value={form.teamSize} onChange={update} aria-label="Team size" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
-          <option value="">Team size</option>
-          <option value="under-15">Under 15</option><option value="15-50">15–50</option>
-          <option value="50-150">50–150</option><option value="150+">150+</option>
+        <input required={!isFamily} name="company" value={form.company} onChange={update} placeholder={isFamily ? "Family / group name (optional)" : "Company"} aria-label={isFamily ? "Family or group name" : "Company"} className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
+        <select required name="teamSize" value={form.teamSize} onChange={update} aria-label={isFamily ? "Group size" : "Team size"} className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+          {isFamily ? (
+            <>
+              <option value="">Group size</option>
+              <option value="under-10">Under 10</option><option value="10-25">10–25</option>
+              <option value="25-50">25–50</option><option value="50+">50+</option>
+            </>
+          ) : (
+            <>
+              <option value="">Team size</option>
+              <option value="under-15">Under 15</option><option value="15-50">15–50</option>
+              <option value="50-150">50–150</option><option value="150+">150+</option>
+            </>
+          )}
         </select>
         <select required name="occasion" value={form.occasion} onChange={update} aria-label="Occasion" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
-          <option value="">What are you planning?</option>
-          <option value="social-hour">Team social</option><option value="holiday">Holiday event</option>
-          <option value="onboarding">Onboarding</option><option value="private-milestone">Milestone celebration</option>
+          {isFamily ? (
+            <>
+              <option value="">What are you planning?</option>
+              <option value="birthday">Birthday</option><option value="reunion">Reunion</option>
+              <option value="holiday">Holiday gathering</option><option value="anniversary">Anniversary</option>
+              <option value="graduation">Graduation</option><option value="long-distance">Long-distance family night</option>
+            </>
+          ) : (
+            <>
+              <option value="">What are you planning?</option>
+              <option value="social-hour">Team social</option><option value="holiday">Holiday event</option>
+              <option value="onboarding">Onboarding</option><option value="private-milestone">Milestone celebration</option>
+            </>
+          )}
         </select>
-        <select required name="vibe" value={form.vibe} onChange={update} aria-label="Preferred vibe" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
-          <option value="">Preferred vibe</option>
-          <option value="competitive">Competitive</option><option value="social">Funny and social</option>
-          <option value="collaborative">Collaborative</option><option value="icebreaker">Easy icebreaker</option>
+        <select name="vibe" value={form.vibe} onChange={update} aria-label="Preferred vibe (optional)" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+          {isFamily ? (
+            <>
+              <option value="">Preferred vibe (optional)</option>
+              <option value="high-energy">High-energy competition</option><option value="funny-casual">Funny and casual</option>
+              <option value="creative-silly">Creative and silly</option><option value="celebration">Celebration and awards</option>
+            </>
+          ) : (
+            <>
+              <option value="">Preferred vibe (optional)</option>
+              <option value="competitive">Competitive</option><option value="social">Funny and social</option>
+              <option value="collaborative">Collaborative</option><option value="icebreaker">Easy icebreaker</option>
+            </>
+          )}
         </select>
       </div>
       <div className="mt-5"><TurnstileWidget onToken={handleToken} resetKey={turnstileReset} /></div>
