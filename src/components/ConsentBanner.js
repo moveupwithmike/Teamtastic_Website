@@ -46,7 +46,7 @@ export default function ConsentBanner() {
       <div className="space-y-1">
         <p className="text-sm font-bold text-white">We use analytics cookies</p>
         <p className="text-xs text-zinc-400 leading-relaxed">
-          We use PostHog to understand how people use Teamtastic so we can improve the experience. No personal data is shared with third parties.
+          We use PostHog to understand how people use Teamtastic. If you accept, we also enable ad measurement (Meta, Google) to see which campaigns bring real leads. We never sell your data.
         </p>
       </div>
 

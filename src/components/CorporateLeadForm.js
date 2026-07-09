@@ -78,6 +78,12 @@ export default function CorporateLeadForm({
         context: { entry_point: entryPoint },
       });
       setStatus("success");
+      track("lead_captured", {
+        source,
+        team_size: form.teamSize,
+        occasion: form.occasion,
+        vibe: form.vibe,
+      });
     } catch (leadError) {
       setError(leadError.message || "We couldn't save your details. Please try again.");
       setStatus("idle");
