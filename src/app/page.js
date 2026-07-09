@@ -179,6 +179,26 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="border-b border-white/5 bg-gradient-to-r from-rose-950/40 via-zinc-950 to-amber-950/30 py-12">
+          <div className="mx-auto grid max-w-7xl items-center gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">Q4 holiday parties</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">
+                December dates book fast. Lock your virtual holiday party early.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                Live-hosted holiday trivia, Name That Holiday Tune, Survey Showdown, and custom company year-in-review rounds. Book by September 30 for a free custom company-trivia round.
+              </p>
+            </div>
+            <Link
+              href="/virtual-holiday-party"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#D81B60] px-7 text-sm font-bold text-white shadow-[0_0_24px_rgba(216,27,96,0.25)] transition hover:bg-pink-600"
+            >
+              Plan a holiday party <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
         {/* Dynamic Activity catalog grid */}
         <section id="games" className="py-20 md:py-28 relative">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

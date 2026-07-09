@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import TalkToMichaelModal from "./TalkToMichaelModal";
 import { track } from "@/lib/analytics";
@@ -46,9 +47,11 @@ export default function FooterCtaBanner() {
 
             {/* Right Column Emcee Image */}
             <div className="relative w-[280px] h-[340px] md:w-[320px] md:h-[400px] shrink-0 self-end -mb-12 md:-mb-16 z-10 flex items-end justify-center">
-              <img
+              <Image
                 src="/emcee-engaged-transparent.png"
                 alt="Michael - Master Emcee"
+                width={819}
+                height={1024}
                 className="max-h-full w-auto object-contain select-none pointer-events-none"
               />
               {/* Handwritten Speech bubble / yellow arrow */}

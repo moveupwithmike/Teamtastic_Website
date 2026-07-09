@@ -101,12 +101,12 @@ export default function VirtualHolidayPartyGames() {
           </section>
 
           <section className="glassmorphism rounded-2xl p-8 border border-purple-500/20 bg-purple-500/5 mb-14">
-            <h2 className="text-2xl font-extrabold text-white mb-3">Need a Hosted Holiday Game?</h2>
+            <h2 className="text-2xl font-extrabold text-white mb-3">Need a Hosted Holiday Party?</h2>
             <p className="text-zinc-400 mb-6">
-              Teamtastic can run a live-hosted virtual holiday game show with custom trivia, music rounds, survey prompts, and a real emcee.
+              Teamtastic can run the full virtual holiday party: custom trivia, music rounds, Survey Showdown, awards, and a live emcee. December dates book fast, and a $200 deposit locks yours.
             </p>
-            <Link href="/#quiz" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all">
-              Plan My Holiday Event <ArrowRight className="h-4 w-4" />
+            <Link href="/virtual-holiday-party" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all">
+              Plan My Holiday Party <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
 

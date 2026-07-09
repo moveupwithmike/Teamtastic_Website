@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Mic, MicOff, Video, VideoOff, MonitorUp, Smile, PhoneOff, Settings } from "lucide-react";
 
@@ -121,7 +122,7 @@ export default function Hero() {
                   </div>
                   {/* Mock App Logo & Wordmark in Title Bar */}
                   <div className="flex items-center gap-2 border-l border-white/10 pl-3">
-                    <img src="/logo-highfive-transparent.png" className="h-12 w-auto" alt="Teamtastic" />
+                    <Image src="/logo-highfive-transparent.png" width={96} height={96} className="h-12 w-auto" alt="Teamtastic" />
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] bg-zinc-900/80 px-4 py-1.5 rounded-full border border-white/15 flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,0,0,0.4)]">
@@ -138,7 +139,7 @@ export default function Hero() {
                 <div className="flex flex-col border-r border-white/5">
                   {leftTiles.map(({ src, label, muted }) => (
                     <div key={label} className="flex-1 relative overflow-hidden border-b border-white/5 last:border-b-0">
-                      <img src={src} alt={label} className="absolute inset-0 w-full h-full object-cover object-center" />
+                      <Image src={src} alt={label} fill sizes="(min-width: 768px) 224px, 33vw" className="object-cover object-center" />
                       <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/60 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between z-10">
                         <span className="text-[9px] font-bold text-white bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10 shadow-sm">{label}</span>
@@ -157,9 +158,11 @@ export default function Hero() {
                   backgroundPosition: "center bottom"
                 }}>
                   {/* Transparent photographic emcee welcoming players */}
-                  <img
+                  <Image
                     src="/emcee-transparent.png"
                     alt="Master Emcee"
+                    width={1024}
+                    height={1024}
                     className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[72%] w-auto object-contain z-20 pointer-events-none opacity-95"
                   />
 
@@ -207,10 +210,12 @@ export default function Hero() {
                         </div>
                         
                         {/* Host Real Zoom meeting image */}
-                        <img
+                        <Image
                           src="/michael-host-zoom.png"
                           alt="Michael - Teamtastic Host"
-                          className="w-full h-full object-cover object-center select-none"
+                          fill
+                          sizes="(min-width: 768px) 220px, 45vw"
+                          className="object-cover object-center select-none"
                         />
                       </div>
 
@@ -224,10 +229,12 @@ export default function Hero() {
                         
                         {/* Spotlight player feed */}
                         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-pink-950/15 to-transparent">
-                          <img
+                          <Image
                             src="/p4.png"
                             alt="Elena (Design) Spotlight"
-                            className="w-full h-full object-cover object-center select-none"
+                            fill
+                            sizes="(min-width: 768px) 220px, 45vw"
+                            className="object-cover object-center select-none"
                           />
                           {/* Live speaking badge */}
                           <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md text-[8px] font-bold text-emerald-400 border border-emerald-500/20 shadow-md flex items-center gap-1.5">
@@ -261,7 +268,7 @@ export default function Hero() {
                       {/* Option A */}
                       <div className="group relative flex flex-col bg-zinc-950/90 border border-emerald-500/30 rounded-xl overflow-hidden p-1 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-emerald-400 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer">
                         <div className="relative aspect-[16/10] rounded-lg overflow-hidden mb-1">
-                          <img src="/meme_a_skeleton.png" alt="Option A Meme" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <Image src="/meme_a_skeleton.png" alt="Option A Meme" fill sizes="190px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                           <div className="absolute top-1 left-1 flex items-center justify-center w-5.5 h-5.5 rounded-full bg-emerald-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(16,185,129,0.5)]">A</div>
                           <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
                           <span className="absolute bottom-1 right-1 text-[7.5px] font-black text-emerald-400 bg-black/60 px-1 py-0.5 rounded">42% votes</span>
@@ -279,7 +286,7 @@ export default function Hero() {
                       {/* Option B */}
                       <div className="group relative flex flex-col bg-zinc-950/90 border border-purple-500/30 rounded-xl overflow-hidden p-1 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer">
                         <div className="relative aspect-[16/10] rounded-lg overflow-hidden mb-1">
-                          <img src="/meme_b_dramatic_cat.png" alt="Option B Meme" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <Image src="/meme_b_dramatic_cat.png" alt="Option B Meme" fill sizes="190px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                           <div className="absolute top-1 left-1 flex items-center justify-center w-5.5 h-5.5 rounded-full bg-purple-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(168,85,247,0.5)]">B</div>
                           <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
                           <span className="absolute bottom-1 right-1 text-[7.5px] font-black text-purple-400 bg-black/60 px-1 py-0.5 rounded">28% votes</span>
@@ -297,7 +304,7 @@ export default function Hero() {
                       {/* Option C */}
                       <div className="group relative flex flex-col bg-zinc-950/90 border border-blue-500/30 rounded-xl overflow-hidden p-1 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-pointer">
                         <div className="relative aspect-[16/10] rounded-lg overflow-hidden mb-1">
-                          <img src="/meme_c_facepalm.png" alt="Option C Meme" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <Image src="/meme_c_facepalm.png" alt="Option C Meme" fill sizes="190px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                           <div className="absolute top-1 left-1 flex items-center justify-center w-5.5 h-5.5 rounded-full bg-blue-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(59,130,246,0.5)]">C</div>
                           <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
                           <span className="absolute bottom-1 right-1 text-[7.5px] font-black text-blue-400 bg-black/60 px-1 py-0.5 rounded">18% votes</span>
@@ -315,7 +322,7 @@ export default function Hero() {
                       {/* Option D */}
                       <div className="group relative flex flex-col bg-zinc-950/90 border border-pink-500/30 rounded-xl overflow-hidden p-1 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-pink-400 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer">
                         <div className="relative aspect-[16/10] rounded-lg overflow-hidden mb-1">
-                          <img src="/meme_d_melting_clock.png" alt="Option D Meme" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <Image src="/meme_d_melting_clock.png" alt="Option D Meme" fill sizes="190px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                           <div className="absolute top-1 left-1 flex items-center justify-center w-5.5 h-5.5 rounded-full bg-pink-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(236,72,153,0.5)]">D</div>
                           <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
                           <span className="absolute bottom-1 right-1 text-[7.5px] font-black text-pink-400 bg-black/60 px-1 py-0.5 rounded">12% votes</span>
@@ -378,7 +385,7 @@ export default function Hero() {
                 <div className="flex flex-col border-l border-white/5">
                   {rightTiles.map(({ src, label, muted }) => (
                     <div key={label} className="flex-1 relative overflow-hidden border-b border-white/5 last:border-b-0">
-                      <img src={src} alt={label} className="absolute inset-0 w-full h-full object-cover object-center" />
+                      <Image src={src} alt={label} fill sizes="(min-width: 768px) 224px, 33vw" className="object-cover object-center" />
                       <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/60 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between z-10">
                         <span className="text-[9px] font-bold text-white bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10 shadow-sm">{label}</span>

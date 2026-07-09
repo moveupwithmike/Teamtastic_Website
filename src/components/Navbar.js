@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, Gamepad2, Users, CreditCard, Sparkles, LogIn, Star, BookOpen, PenLine } from "lucide-react";
 
@@ -50,8 +51,10 @@ export default function Navbar() {
           {/* Logo & Wordmark */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-3 group">
-              <img 
+              <Image 
                 src="/logo-highfive-transparent.png" 
+                width={120}
+                height={120}
                 className="h-[60px] w-auto opacity-95 group-hover:opacity-100 transition-all hover:scale-105" 
                 alt="Teamtastic Logo" 
               />

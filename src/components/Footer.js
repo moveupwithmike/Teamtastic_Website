@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Gamepad2, Heart, ShieldCheck, HelpCircle, Mail } from "lucide-react";
 
@@ -16,8 +17,10 @@ export default function Footer() {
             {/* Left side: Logo & Subtitle */}
             <div className="flex flex-col items-center md:items-start gap-2">
               <Link href="/" className="flex items-center gap-2.5 group">
-                <img 
+                <Image 
                   src="/logo-highfive-transparent.png" 
+                  width={80}
+                  height={80}
                   className="h-10 w-auto opacity-95 group-hover:opacity-100 transition-all hover:scale-105" 
                   alt="Teamtastic Logo" 
                 />
@@ -34,6 +37,7 @@ export default function Footer() {
             <nav className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
               {[
                 { href: "/team-experiences", label: "Experiences" },
+                { href: "/virtual-holiday-party", label: "Holiday Parties" },
                 { href: "/resources/how-it-works", label: "How It Works" },
                 { href: "/#use-cases", label: "Solutions" },
                 { href: "/why-teamtastic", label: "About Michael" },
@@ -109,8 +113,10 @@ export default function Footer() {
           {/* Brand Info block */}
           <div className="col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <img 
+              <Image 
                 src="/logo-highfive-transparent.png" 
+                width={80}
+                height={80}
                 className="h-10 w-auto opacity-90 group-hover:opacity-100 transition-all hover:scale-105" 
                 alt="Teamtastic Logo" 
               />
@@ -187,6 +193,11 @@ export default function Footer() {
               <li>
                 <Link href="/#use-cases" className="text-sm text-zinc-400 hover:text-white transition-colors">
                   Virtual Intern Cohorts
+                </Link>
+              </li>
+              <li>
+                <Link href="/virtual-holiday-party" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                  Virtual Holiday Parties
                 </Link>
               </li>
               <li>

@@ -31,10 +31,10 @@ export const metadata = {
     siteName: "Teamtastic Events",
     images: [
       {
-        url: "/teamtastic_website_mockup.png",
-        width: 1920,
-        height: 1080,
-        alt: "Teamtastic Storefront Hero",
+        url: "/teamtastic-og.png",
+        width: 1200,
+        height: 630,
+        alt: "Teamtastic live-hosted virtual team building game show",
       },
     ],
     locale: "en_US",
@@ -44,7 +44,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Virtual Team Building Activities & Online Games | Teamtastic",
     description: "Virtual team building that teams actually love. 20+ live interactive games.",
-    images: ["/teamtastic_website_mockup.png"],
+    images: ["/teamtastic-og.png"],
   },
 };
 

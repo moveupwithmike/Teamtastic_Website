@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { Star } from "lucide-react";
 
 const testimonials = [
@@ -136,10 +137,12 @@ export default function TestimonialsCarousel() {
             <div className="space-y-4 flex-grow flex flex-col justify-between">
               {/* Image Frame */}
               <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-950/80 aspect-[16/10] w-full shrink-0">
-                <img
+                <Image
                   src={currentSlide.src}
                   alt={currentSlide.title}
-                  className="w-full h-full object-cover select-none pointer-events-none hover:scale-102 transition-transform duration-500"
+                  fill
+                  sizes="(min-width: 1024px) 480px, 90vw"
+                  className="object-cover select-none pointer-events-none hover:scale-102 transition-transform duration-500"
                 />
               </div>
               {/* Caption */}

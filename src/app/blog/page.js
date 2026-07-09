@@ -14,6 +14,36 @@ export const metadata = {
 
 const posts = [
   {
+    slug: "virtual-christmas-party-ideas-for-work",
+    title: "Virtual Christmas Party Ideas for Work: 18 Remote-Friendly Options",
+    excerpt: "Remote-friendly Christmas party games, music rounds, awards, and inclusive planning tips for distributed teams.",
+    readTime: "8 min read",
+    date: "July 9, 2026",
+    category: "Holiday Planning",
+    categoryColor: "text-rose-400 border-rose-500/30 bg-rose-500/10",
+    gradient: "from-rose-500/10 to-amber-500/5",
+  },
+  {
+    slug: "how-to-plan-a-remote-office-holiday-party",
+    title: "How to Plan a Remote Office Holiday Party: Step-by-Step Guide",
+    excerpt: "A simple timeline, agenda, checklist, and hosting framework for HR teams planning a remote company holiday party.",
+    readTime: "9 min read",
+    date: "July 9, 2026",
+    category: "Planning Guide",
+    categoryColor: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+    gradient: "from-amber-500/10 to-orange-500/5",
+  },
+  {
+    slug: "virtual-holiday-party-ideas-for-large-teams",
+    title: "Virtual Holiday Party Ideas for Large Teams",
+    excerpt: "Scalable holiday party formats for 50, 100, or 300+ employees, including team captains, chat rounds, and live-hosted game shows.",
+    readTime: "8 min read",
+    date: "July 9, 2026",
+    category: "Large Teams",
+    categoryColor: "text-purple-400 border-purple-500/30 bg-purple-500/10",
+    gradient: "from-purple-500/10 to-sky-500/5",
+  },
+  {
     slug: "best-virtual-team-building-companies",
     title: "Best Virtual Team Building Companies: How to Choose the Right Fit",
     excerpt: "A practical buyer guide to the main types of virtual team building providers, what each is best for, and how to choose the right format.",
