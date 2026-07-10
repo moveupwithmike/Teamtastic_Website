@@ -283,7 +283,7 @@ export default function Hero() {
                       {/* Option B */}
                       <div className="group relative flex flex-col bg-zinc-950/90 border border-purple-500/30 rounded-xl overflow-hidden p-1 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer">
                         <div className="relative aspect-[16/10] rounded-lg overflow-hidden mb-1">
-                          <Image src="/meme_b_dramatic_cat.png" alt="Option B Meme" fill sizes="190px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <Image src="/meme_b_dramatic_cat.png" alt="Option B Meme" fill sizes="190px" className="object-cover scale-[1.35] origin-[28%_45%] group-hover:scale-[1.42] transition-transform duration-500" />
                           <div className="absolute top-1 left-1 flex items-center justify-center w-5.5 h-5.5 rounded-full bg-purple-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(168,85,247,0.5)]">B</div>
                           <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
                           <span className="absolute bottom-1 right-1 text-[7.5px] font-black text-purple-400 bg-black/60 px-1 py-0.5 rounded">28% votes</span>
