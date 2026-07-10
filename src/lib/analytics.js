@@ -22,7 +22,9 @@ export function track(event, properties = {}) {
 
   if (consent === "granted" && AD_CONVERSION_EVENTS.has(event)) {
     window.fbq?.("track", "Lead", safe);
-    const conversionId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+    window.gtag?.("event", event, safe); // GA4 custom event
+
+    const conversionId = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_ID;
     const conversionLabel = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL;
     if (conversionId && conversionLabel) {
       window.gtag?.("event", "conversion", { send_to: `${conversionId}/${conversionLabel}` });
