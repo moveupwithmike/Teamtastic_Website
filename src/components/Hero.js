@@ -202,8 +202,8 @@ export default function Hero() {
                           alt="Michael - Teamtastic Host"
                           fill
                           sizes="(min-width: 768px) 220px, 45vw"
-                          className="object-cover select-none scale-[1.55]"
-                          style={{ objectPosition: "center 30%", transformOrigin: "80% 40%" }}
+                          className="object-cover select-none scale-[1.4]"
+                          style={{ objectPosition: "center 30%", transformOrigin: "78% 38%" }}
                         />
 
                         {/* Name badge (photo has no baked-in label) */}
