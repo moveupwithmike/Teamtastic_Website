@@ -20,7 +20,7 @@ const emojisPool = ["🔥", "👏", "😍", "🎉", "❤️", "👍", "🥳", "�
 // Individual images — no slicing, no squishing
 const leftTiles = [
   { src: "/p1.png", label: "Sarah (HR)", muted: false },
-  { src: "/p4.png", label: "Elena (Design)", muted: true },
+  { src: "/p4.png", label: "Elena (Design)", muted: true, objectPosition: "center 20%" },
   { src: "/p_white_male.png", label: "David (Eng)", muted: false }, // Bottom left is white male!
 ];
 
@@ -137,9 +137,9 @@ export default function Hero() {
 
                 {/* LEFT — Individual images, object-cover, NO squishing */}
                 <div className="flex flex-col border-r border-white/5">
-                  {leftTiles.map(({ src, label, muted }) => (
+                  {leftTiles.map(({ src, label, muted, objectPosition }) => (
                     <div key={label} className="flex-1 relative overflow-hidden border-b border-white/5 last:border-b-0">
-                      <Image src={src} alt={label} fill sizes="(min-width: 768px) 224px, 33vw" className="object-cover object-center" />
+                      <Image src={src} alt={label} fill sizes="(min-width: 768px) 224px, 33vw" className="object-cover" style={{ objectPosition: objectPosition || "center" }} />
                       <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/60 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between z-10">
                         <span className="text-[9px] font-bold text-white bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10 shadow-sm">{label}</span>
@@ -152,10 +152,8 @@ export default function Hero() {
                 </div>
 
                 {/* CENTER — Game stage with transparent emcee on top */}
-                <div className="relative overflow-hidden" style={{ 
-                  backgroundImage: "url('/gameshow-stage-feud.png')",
-                  backgroundSize: "cover",
-                  backgroundPosition: "center bottom"
+                <div className="relative overflow-hidden" style={{
+                  background: "radial-gradient(ellipse 120% 80% at 50% 100%, rgba(88,28,235,0.35) 0%, #0a0a1e 55%, #030712 100%)"
                 }}>
                   {/* Transparent photographic emcee welcoming players */}
                   <Image
@@ -168,8 +166,6 @@ export default function Hero() {
 
                   {/* Black gradient overlay to fade out top audience seats */}
                   <div className="absolute top-0 inset-x-0 h-[64%] bg-gradient-to-b from-zinc-950 via-zinc-950/95 via-zinc-950/70 to-transparent pointer-events-none z-10" />
-
-                  {/* Note: The 'Triumph Game Show' text was programmatically healed/removed from /public/gameshow-stage-feud.png directly. No cover div needed. */}
 
                   {/* Stage spotlights & Game Show stage elements */}
                   <div className="absolute inset-0 pointer-events-none">
@@ -234,7 +230,8 @@ export default function Hero() {
                             alt="Elena (Design) Spotlight"
                             fill
                             sizes="(min-width: 768px) 220px, 45vw"
-                            className="object-cover object-center select-none"
+                            className="object-cover select-none"
+                            style={{ objectPosition: "center 20%" }}
                           />
                           {/* Live speaking badge */}
                           <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md text-[8px] font-bold text-emerald-400 border border-emerald-500/20 shadow-md flex items-center gap-1.5">
