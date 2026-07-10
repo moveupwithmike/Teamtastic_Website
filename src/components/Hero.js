@@ -151,19 +151,10 @@ export default function Hero() {
                   ))}
                 </div>
 
-                {/* CENTER — Game stage with transparent emcee on top */}
+                {/* CENTER — Game stage */}
                 <div className="relative overflow-hidden" style={{
                   background: "radial-gradient(ellipse 120% 80% at 50% 100%, rgba(88,28,235,0.35) 0%, #0a0a1e 55%, #030712 100%)"
                 }}>
-                  {/* Transparent photographic emcee welcoming players */}
-                  <Image
-                    src="/emcee-transparent.png"
-                    alt="Master Emcee"
-                    width={1024}
-                    height={1024}
-                    className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[72%] w-auto object-contain z-20 pointer-events-none opacity-95"
-                  />
-
                   {/* Black gradient overlay to fade out top audience seats */}
                   <div className="absolute top-0 inset-x-0 h-[64%] bg-gradient-to-b from-zinc-950 via-zinc-950/95 via-zinc-950/70 to-transparent pointer-events-none z-10" />
 
