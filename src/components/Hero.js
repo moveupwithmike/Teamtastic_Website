@@ -190,20 +190,26 @@ export default function Hero() {
                       
                       {/* Top-Left: Host Emcee Spotlight */}
                       <div className="relative aspect-[16/10] sm:aspect-[16/9] rounded-xl overflow-hidden border border-purple-500/40 bg-zinc-950/90 shadow-[0_0_15px_rgba(139,92,246,0.25)]">
-                        {/* Spotlight Tag - Positioned at top-right to avoid overlap with Michael/Host name in image */}
+                        {/* Spotlight Tag */}
                         <div className="absolute top-1.5 right-2 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[8px] font-bold text-white border border-white/5 shadow-sm">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse shadow-[0_0_6px_#a855f7]" />
                           🎙️ Spotlight: Host Emcee
                         </div>
-                        
+
                         {/* Host Real Zoom meeting image */}
                         <Image
-                          src="/michael-host-zoom.png"
+                          src="/michael-host-emcee.png"
                           alt="Michael - Teamtastic Host"
                           fill
                           sizes="(min-width: 768px) 220px, 45vw"
-                          className="object-cover object-center select-none"
+                          className="object-cover select-none scale-[1.55]"
+                          style={{ objectPosition: "center 30%", transformOrigin: "80% 40%" }}
                         />
+
+                        {/* Name badge (photo has no baked-in label) */}
+                        <div className="absolute bottom-2 left-2 z-20 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md text-[8px] font-bold text-white border border-white/5 shadow-md">
+                          Michael <span className="text-amber-300 font-semibold">— Host</span>
+                        </div>
                       </div>
 
                       {/* Top-Right: Active Speaker Spotlight (Elena responding live) */}
