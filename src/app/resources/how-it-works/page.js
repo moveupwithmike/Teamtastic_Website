@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Laptop, Users, Award, CheckCircle, Video, Star, Smile } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/resources/how-it-works",
+  },
   title: "How It Works — Plan & Host Your Virtual Event in 10 Mins | Teamtastic",
   description:
     "A step-by-step visual guide to booking, briefing, and going live with Teamtastic. Learn how to launch virtual team lobbies, invite players, and run hosted or self-service games.",

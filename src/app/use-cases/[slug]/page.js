@@ -66,6 +66,23 @@ const useCasesData = {
   }
 };
 
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const uc = useCasesData[slug];
+  if (!uc) return {};
+  const url = `https://teamtastic.events/use-cases/${slug}`;
+  return {
+    title: `${uc.title} | Teamtastic`,
+    description: uc.hook,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${uc.title} | Teamtastic`,
+      description: uc.hook,
+      url,
+    },
+  };
+}
+
 // Generates static pages at build time
 export function generateStaticParams() {
   return [

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Clock, User, Calendar } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/blog/virtual-team-building-ideas",
+  },
   title: "50 Virtual Team Building Ideas Your Team Will Actually Love | Teamtastic",
   description:
     "Looking for virtual team building ideas that actually work? Here are 50 proven activities — from live game shows to escape rooms — that get remote teams genuinely engaged.",

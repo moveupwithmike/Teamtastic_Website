@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Pencil, Clock, User } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/blog",
+  },
   title: "Virtual Team Building Blog — Tips, Ideas & Guides | Teamtastic",
   description:
     "Expert virtual team building ideas, remote engagement tips, icebreaker guides, and corporate event inspiration from the Teamtastic team.",

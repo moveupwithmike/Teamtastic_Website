@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Clock, User, Calendar, CheckCircle } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/blog/remote-team-engagement-tips",
+  },
   title: "How to Boost Remote Employee Engagement in 2025 | Teamtastic",
   description:
     "Remote employee engagement is declining globally. Here are the proven HR strategies — including live virtual events — that leading remote-first companies use to keep teams connected and motivated.",

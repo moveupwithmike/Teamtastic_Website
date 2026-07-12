@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, HelpCircle, Map, FileText, Calendar } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/resources",
+  },
   title: "Virtual Team Building Resources & Event Planning Guides | Teamtastic",
   description:
     "Free resources for HR leaders and event planners. How Teamtastic works, event planning guides, FAQs, and platform integration details for virtual team building.",

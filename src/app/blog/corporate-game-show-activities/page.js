@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Clock, User, Calendar, Sparkles } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/blog/corporate-game-show-activities",
+  },
   title: "Corporate Game Show Ideas: Bring the Energy to Your Next Virtual Event | Teamtastic",
   description:
     "The corporate game show format is the most engaging virtual team event you can run. Here's how to do it right — and why Teamtastic's live emcee model outperforms every alternative.",

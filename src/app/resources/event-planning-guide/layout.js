@@ -1,4 +1,7 @@
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/resources/event-planning-guide",
+  },
   title: "Ultimate Virtual Event Planning Guide & Checklist | Teamtastic",
   description:
     "The ultimate corporate event planning checklist. Plan, coordinate, customize questions, and host a stress-free, high-engagement virtual team social from start to finish.",

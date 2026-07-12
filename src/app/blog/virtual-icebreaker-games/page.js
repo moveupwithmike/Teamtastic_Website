@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Clock, User, Calendar } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/blog/virtual-icebreaker-games",
+  },
   title: "21 Virtual Icebreaker Games That Don't Feel Awkward | Teamtastic",
   description:
     "Virtual icebreakers don't have to be cringe-worthy. These 21 low-pressure, genuinely fun icebreaker games work even for camera-shy remote employees.",

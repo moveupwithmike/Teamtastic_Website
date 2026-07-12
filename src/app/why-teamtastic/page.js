@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Check, X, Star, Users, Zap, Shield, Heart } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/why-teamtastic",
+  },
   title: "Why Choose Teamtastic for Virtual Team Building | Teamtastic",
   description:
     "See why HR leaders, engineering teams, and event planners choose Teamtastic over Jackbox, Kahoot, and generic team building platforms. Real results, real energy.",

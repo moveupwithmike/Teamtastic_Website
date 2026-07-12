@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle, Users, Zap, Award, Star, ChevronDown } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/virtual-team-building",
+  },
   title: "Virtual Team Building Activities & Games for Remote Teams | Teamtastic",
   description:
     "Discover the best virtual team building activities for remote and hybrid teams. Live-hosted game shows, trivia, escape rooms & more for groups of 5–500+. Free to try.",

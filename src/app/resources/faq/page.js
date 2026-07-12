@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
 
 export const metadata = {
+  alternates: {
+    canonical: "https://teamtastic.events/resources/faq",
+  },
   title: "FAQ — Virtual Team Building Questions Answered | Teamtastic",
   description:
     "Answers to the most common questions about Teamtastic virtual team building events — from platform compatibility to pricing, group sizes, and emcee details.",
