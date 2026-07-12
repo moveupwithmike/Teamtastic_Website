@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const STORAGE_KEY = "teamtastic_analytics_consent";
+import { CONSENT_KEY, requiresOptIn } from "@/lib/consent";
 
 export default function ConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const [optIn, setOptIn] = useState(true);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      setOptIn(requiresOptIn());
       try {
-        setVisible(!localStorage.getItem(STORAGE_KEY));
+        setVisible(!localStorage.getItem(CONSENT_KEY));
       } catch {
         setVisible(false);
       }
@@ -20,16 +21,17 @@ export default function ConsentBanner() {
 
   const respond = (decision) => {
     try {
-      localStorage.setItem(STORAGE_KEY, decision);
+      localStorage.setItem(CONSENT_KEY, decision);
     } catch {
       // ignore
     }
     setVisible(false);
 
-    // If the user grants consent, reload so PostHog reinitialises with
-    // localStorage+cookie persistence (instrumentation-client.js reads the
-    // consent value only once at boot time).
-    if (decision === "granted") {
+    // Reload when the decision changes what should be running: a grant in an
+    // opt-in region boots PostHog with persistent storage and loads the ad
+    // tags; a denial anywhere unloads tags that may already be active
+    // (instrumentation-client.js and AdPixels read consent only at boot).
+    if ((optIn && decision === "granted") || decision === "denied") {
       window.location.reload();
     }
   };
@@ -46,7 +48,9 @@ export default function ConsentBanner() {
       <div className="space-y-1">
         <p className="text-sm font-bold text-white">We use analytics cookies</p>
         <p className="text-xs text-zinc-400 leading-relaxed">
-          We use PostHog to understand how people use Teamtastic. If you accept, we also enable ad measurement (Meta, Google) to see which campaigns bring real leads. We never sell your data.
+          {optIn
+            ? "We use PostHog to understand how people use Teamtastic. If you accept, we also enable ad measurement (Meta, Google) to see which campaigns bring real leads. We never sell your data."
+            : "We use PostHog to understand how people use Teamtastic, and ad measurement (Meta, Google) to see which campaigns bring real leads. We never sell your data. You can opt out anytime."}
         </p>
       </div>
 
@@ -56,14 +60,14 @@ export default function ConsentBanner() {
           onClick={() => respond("granted")}
           className="flex-1 h-9 rounded-xl bg-brand-purple hover:bg-brand-purple/90 text-white text-xs font-bold transition-all"
         >
-          Accept
+          {optIn ? "Accept" : "OK"}
         </button>
         <button
           id="consent-decline"
           onClick={() => respond("denied")}
           className="flex-1 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 text-xs font-bold transition-all"
         >
-          Decline
+          {optIn ? "Decline" : "Opt out"}
         </button>
       </div>
     </div>

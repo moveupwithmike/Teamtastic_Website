@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-
-const CONSENT_KEY = "teamtastic_analytics_consent";
+import { effectiveConsent } from "@/lib/consent";
 
 function initMetaPixel(pixelId) {
   if (window.fbq) return;
@@ -38,6 +37,17 @@ function initGoogleTag(ga4Id, adsConversionId) {
     window.dataLayer.push(arguments);
   };
 
+  // Consent Mode v2 default. The tag only loads once consent resolves to
+  // "granted" (by regional default or explicit accept), so the default here
+  // is always granted — but Google requires the signal to be declared
+  // before config for Ads features to work.
+  window.gtag("consent", "default", {
+    ad_storage: "granted",
+    ad_user_data: "granted",
+    ad_personalization: "granted",
+    analytics_storage: "granted",
+  });
+
   const script = document.createElement("script");
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${ga4Id}`;
@@ -48,19 +58,14 @@ function initGoogleTag(ga4Id, adsConversionId) {
   if (adsConversionId) window.gtag("config", adsConversionId);
 }
 
-// Loads Meta Pixel / Google Ads base tags only after explicit "granted"
-// consent, and fires one PageView-equivalent per route change.
+// Loads Meta Pixel / Google tags when consent resolves to "granted"
+// (default for non-opt-in regions, explicit accept elsewhere), and fires
+// one PageView-equivalent per route change.
 export default function AdPixels() {
   const pathname = usePathname();
 
   useEffect(() => {
-    let consent;
-    try {
-      consent = window.localStorage.getItem(CONSENT_KEY);
-    } catch {
-      consent = null;
-    }
-    if (consent !== "granted") return;
+    if (effectiveConsent() !== "granted") return;
 
     const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
     if (pixelId) initMetaPixel(pixelId);
@@ -70,13 +75,7 @@ export default function AdPixels() {
   }, []);
 
   useEffect(() => {
-    let consent;
-    try {
-      consent = window.localStorage.getItem(CONSENT_KEY);
-    } catch {
-      consent = null;
-    }
-    if (consent !== "granted") return;
+    if (effectiveConsent() !== "granted") return;
 
     window.fbq?.("track", "PageView");
     if (process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID) window.gtag?.("event", "page_view");
