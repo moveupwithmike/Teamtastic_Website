@@ -10,6 +10,7 @@ const SOURCES = new Set([
   "michael_event_concierge",
   "michael_family_concierge",
   "holiday_party_money_page",
+  "virtual_team_building_money_page",
 ]);
 const buckets = new Map();
 

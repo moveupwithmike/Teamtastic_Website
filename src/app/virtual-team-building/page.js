@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle, Users, Zap, Award, Star, ChevronDown } from "lucide-react";
+import CorporateLeadForm from "@/components/CorporateLeadForm";
 
 export const metadata = {
   alternates: {
@@ -123,10 +124,10 @@ export default function VirtualTeamBuilding() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Link
-              href="/#quiz"
+              href="#get-quote"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-[0_0_25px_rgba(139,92,246,0.4)] hover:shadow-[0_0_35px_rgba(236,72,153,0.5)] transition-all duration-300 hover:-translate-y-1"
             >
-              Find Your Perfect Event
+              Get Availability &amp; Pricing
               <ArrowRight className="h-5 w-5" />
             </Link>
             <a
@@ -155,6 +156,40 @@ export default function VirtualTeamBuilding() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Inline lead capture */}
+      <section id="get-quote" className="py-16 md:py-24 bg-zinc-950/60 border-b border-white/5">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="space-y-5">
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-pink">Hosted events</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">Get availability and pricing for your team</h2>
+            <p className="text-zinc-400 leading-relaxed">
+              Tell us your team size and occasion. Michael will reply within one business day with open dates and the game show format that fits your group best.
+            </p>
+            <ul className="space-y-3">
+              {[
+                "Live Master Emcee runs the whole event",
+                "Custom trivia about your company included",
+                "Works inside Zoom, Teams, Meet, or Webex",
+                "$35 per person · $350 minimum · $200 reserves your date",
+              ].map((f) => (
+                <li key={f} className="flex items-center gap-3 text-sm text-zinc-300">
+                  <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <CorporateLeadForm
+            source="virtual_team_building_money_page"
+            entryPoint="virtual_team_building_inline"
+            eyebrow="Fast event check"
+            title="Check dates for your team event"
+            successTitle="Your event brief is saved."
+            submitLabel="Check availability"
+          />
         </div>
       </section>
 
@@ -242,7 +277,7 @@ export default function VirtualTeamBuilding() {
                 ))}
               </ul>
               <Link
-                href="/#quiz"
+                href="#get-quote"
                 className="mt-8 w-full flex h-11 items-center justify-center rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg shadow-purple-500/20"
               >
                 Request a Quote
