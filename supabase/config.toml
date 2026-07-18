@@ -1,0 +1,22 @@
+
+[functions.ingest-gmail-replies]
+enabled = true
+verify_jwt = false
+import_map = "./functions/ingest-gmail-replies/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/ingest-gmail-replies/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/ingest-gmail-replies/*.html" ]
+
+[functions.send-daily-sales-report]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-daily-sales-report/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/send-daily-sales-report/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/send-daily-sales-report/*.html" ]

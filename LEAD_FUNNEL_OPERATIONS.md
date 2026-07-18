@@ -43,6 +43,49 @@ repository. Do not run `migration repair` from this repository or treat a normal
 CLI push as safe until the Games migration files are reconciled. The CRM migrations
 were applied through the connected Supabase migration API and verified directly.
 
+## Phase 2 — Gmail reply intelligence
+
+Phase 2 uses read-only Gmail OAuth and polls the TryTeamtastic inbox every five
+minutes. It does not mark messages read, modify labels, archive, delete, or send
+through Gmail. Every Gmail message ID is deduplicated before processing.
+
+Current activation state:
+
+- `teamtastic-daily-report` is active at `12:30 UTC` each morning.
+- `gmail-reply-ingestion` exists but is inactive until OAuth is connected.
+- `system_config.gmail_ingestion_enabled` remains `false` until the OAuth test passes.
+- Nurture and prospecting remain disabled.
+
+### One-time Gmail OAuth setup
+
+1. Create or select a Google Cloud project owned by Teamtastic.
+2. Enable the Gmail API and configure the OAuth consent screen.
+3. Create a Web application OAuth client.
+4. Authorize `michael@tryteamtastic.com` using only
+   `https://www.googleapis.com/auth/gmail.readonly` and request offline access.
+5. Store the client ID, client secret, and resulting refresh token as Supabase
+   Edge Function secrets named `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and
+   `GMAIL_REFRESH_TOKEN`. Never place them in browser or Vercel public variables.
+6. Manually invoke `ingest-gmail-replies`; confirm the mailbox state becomes
+   `healthy` and known replies are inserted once.
+7. Set `system_config.gmail_ingestion_enabled = true`, then activate the
+   `gmail-reply-ingestion` cron job.
+
+Google only returns the refresh token during an offline authorization grant in
+many cases. Preserve it; repeatedly generating tokens can invalidate older ones.
+
+### Reply behavior
+
+- Every inbound reply stops pending, active, or paused sequences immediately.
+- Unsubscribe, complaint, legal, and explicit not-interested replies add the
+  sender to the suppression list.
+- Interested replies create a high-priority task.
+- Complaints and legal language create urgent tasks.
+- Unknown or low-confidence classifications always create a review task.
+- Out-of-office replies stop the current sequence but do not suppress the sender.
+- All decisions are written to `agent_log` and appear in the daily report,
+  including blocked and skipped actions.
+
 ## Deployment order
 
 1. Verify the Resend sending domain and collect the production sender address.
