@@ -1,8 +1,58 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+
+async function syncLeadToCrm(supabase: ReturnType<typeof createClient>, lead: Record<string, unknown>) {
+  const email = String(lead.email ?? "").trim().toLowerCase();
+  let { data: prospect } = await supabase
+    .from("prospects")
+    .select("id")
+    .eq("email_normalized", email)
+    .maybeSingle();
+
+  if (!prospect) {
+    const inserted = await supabase.from("prospects").insert({
+      full_name: lead.name,
+      email,
+      phone: lead.phone || null,
+      source: "inbound",
+      status: "new",
+      last_inbound_at: lead.created_at,
+      metadata: { first_lead_source: lead.lead_source },
+    }).select("id").single();
+    prospect = inserted.data;
+    if (!prospect && inserted.error?.code === "23505") {
+      const raced = await supabase.from("prospects").select("id").eq("email_normalized", email).single();
+      prospect = raced.data;
+    }
+  } else {
+    await supabase.from("prospects").update({
+      full_name: lead.name,
+      phone: lead.phone || null,
+      last_inbound_at: lead.created_at,
+    }).eq("id", prospect.id);
+  }
+
+  if (!prospect) throw new Error("Could not create or find CRM prospect");
+  await supabase.from("leads").update({ prospect_id: prospect.id }).eq("id", lead.id);
+
+  const taskSource = `inbound_lead:${lead.id}`;
+  const { data: existingTask } = await supabase
+    .from("tasks").select("id").eq("source", taskSource).maybeSingle();
+  if (!existingTask) {
+    await supabase.from("tasks").insert({
+      prospect_id: prospect.id,
+      title: `Review inbound lead: ${lead.name}`,
+      description: `Source: ${lead.lead_source}. Company: ${lead.company || "Not provided"}.`,
+      priority: "high",
+      due_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      source: taskSource,
+    });
+  }
+  return prospect.id;
+}
 
 function customerEmail(lead: Record<string, unknown>) {
   const name = escapeHtml(lead.name);
@@ -46,6 +96,20 @@ Deno.serve(async (request) => {
   const { data: lead, error } = await supabase.from("leads").select("*").eq("id", lead_id).single();
   if (error || !lead) return new Response("Lead not found", { status: 404 });
 
+  let prospectId: string;
+  try {
+    prospectId = await syncLeadToCrm(supabase, lead);
+  } catch (crmError) {
+    await supabase.from("agent_log").insert({
+      agent_name: "inbound-speed-to-lead",
+      action: "sync_lead_to_crm",
+      outcome: "failed",
+      error: String(crmError).slice(0, 1000),
+      decision: { lead_id: lead.id },
+    });
+    return new Response("CRM sync failed", { status: 500 });
+  }
+
   const summary = [
     `Source: ${lead.lead_source}`,
     `Name: ${lead.name}`,
@@ -62,12 +126,14 @@ Deno.serve(async (request) => {
   const notifications = [
     {
       type: "customer_confirmation",
+      messageType: "inbound_confirmation",
       to: lead.email,
       subject: confirmation.subject,
       html: confirmation.html,
     },
     {
       type: "internal_email",
+      messageType: "internal_notification",
       to: Deno.env.get("INTERNAL_NOTIFICATION_EMAIL"),
       subject: `New Teamtastic lead: ${lead.name}`,
       html: `<h1>New Teamtastic lead</h1><pre>${escapeHtml(summary)}</pre>`,
@@ -84,6 +150,21 @@ Deno.serve(async (request) => {
       .maybeSingle();
     if (existing?.status === "sent") continue;
 
+    const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
+      p_message_type: notification.messageType,
+      p_recipient: notification.to,
+    });
+    if (reservationError || reservation?.allowed !== true) {
+      await supabase.from("agent_log").insert({
+        agent_name: "inbound-speed-to-lead",
+        action: `send_${notification.type}`,
+        outcome: "blocked",
+        prospect_id: prospectId,
+        decision: { lead_id: lead.id, reservation, error: reservationError?.message || null },
+      });
+      continue;
+    }
+
     try {
       const mail = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -99,6 +180,10 @@ Deno.serve(async (request) => {
         }),
       });
       const result = await mail.json().catch(() => ({}));
+      await supabase.rpc("record_email_send_result", {
+        p_message_type: notification.messageType,
+        p_sent: mail.ok,
+      });
       await supabase.from("notification_deliveries").upsert({
         lead_id: lead.id,
         notification_type: notification.type,
@@ -108,7 +193,24 @@ Deno.serve(async (request) => {
         last_error: mail.ok ? null : JSON.stringify(result).slice(0, 1000),
         updated_at: new Date().toISOString(),
       }, { onConflict: "lead_id,notification_type" });
+      await supabase.from("messages").insert({
+        prospect_id: prospectId,
+        direction: "outbound",
+        message_type: notification.messageType,
+        provider: "resend",
+        provider_message_id: result.id || null,
+        from_address: Deno.env.get("RESEND_FROM_EMAIL") || "",
+        to_addresses: [notification.to],
+        subject: notification.subject,
+        body_html: notification.html,
+        status: mail.ok ? "sent" : "failed",
+        sent_at: mail.ok ? new Date().toISOString() : null,
+      });
     } catch (sendError) {
+      await supabase.rpc("record_email_send_result", {
+        p_message_type: notification.messageType,
+        p_sent: false,
+      });
       await supabase.from("notification_deliveries").upsert({
         lead_id: lead.id,
         notification_type: notification.type,

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -46,8 +46,8 @@ function buildEmail(step: string, lead: Record<string, unknown>) {
   }
   if (step === "nurture_day3") {
     return {
-      subject: "What other teams are saying about Teamtastic",
-      html: `<h1>Hey ${name},</h1><p>&ldquo;Michael kept 80 people laughing and engaged the entire time. It wasn&rsquo;t just a game &mdash; it was an experience.&rdquo; &mdash; HR Manager, Tech Startup</p><p>Still deciding? Just reply to this email &mdash; happy to answer questions before you book.</p>${cta}`,
+      subject: "What your Teamtastic event includes",
+      html: `<h1>Hey ${name},</h1><p>Your hosted Teamtastic event includes a live host, interactive game-show rounds, and a format built to keep remote teams participating together.</p><p>Still deciding? Just reply to this email &mdash; happy to answer questions before you book.</p>${cta}`,
     };
   }
   // nurture_day7
@@ -106,6 +106,20 @@ Deno.serve(async (request) => {
 
       const email = buildEmail(step.type, lead);
       const existing = byType.get(step.type);
+      const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
+        p_message_type: "nurture",
+        p_recipient: lead.email,
+      });
+      if (reservationError || reservation?.allowed !== true) {
+        await supabase.from("agent_log").insert({
+          agent_name: "inbound-nurture",
+          action: `send_${step.type}`,
+          outcome: "blocked",
+          prospect_id: lead.prospect_id || null,
+          decision: { lead_id: lead.id, reservation, error: reservationError?.message || null },
+        });
+        break;
+      }
       const mail = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -121,6 +135,10 @@ Deno.serve(async (request) => {
         }),
       });
       const result = await mail.json().catch(() => ({}));
+      await supabase.rpc("record_email_send_result", {
+        p_message_type: "nurture",
+        p_sent: mail.ok,
+      });
       await supabase.from("notification_deliveries").upsert({
         lead_id: lead.id,
         notification_type: step.type,
@@ -130,6 +148,19 @@ Deno.serve(async (request) => {
         last_error: mail.ok ? null : JSON.stringify(result).slice(0, 1000),
         updated_at: new Date().toISOString(),
       }, { onConflict: "lead_id,notification_type" });
+      await supabase.from("messages").insert({
+        prospect_id: lead.prospect_id || null,
+        direction: "outbound",
+        message_type: "nurture",
+        provider: "resend",
+        provider_message_id: result.id || null,
+        from_address: Deno.env.get("RESEND_FROM_EMAIL") || "",
+        to_addresses: [lead.email],
+        subject: email.subject,
+        body_html: email.html,
+        status: mail.ok ? "sent" : "failed",
+        sent_at: mail.ok ? new Date().toISOString() : null,
+      });
       if (mail.ok) sent++;
       break; // only advance one step per lead per run
     }

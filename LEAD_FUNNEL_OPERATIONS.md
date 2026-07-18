@@ -1,5 +1,48 @@
 # Lead Funnel Operations
 
+## Autonomous CRM safety state
+
+The CRM foundation migration is intentionally fail-closed. When first applied,
+`system_config.master_enabled` is `false`, so no autonomous email can reserve a
+send. Do not enable prospecting during the foundation rollout.
+
+Safe activation order:
+
+1. Apply `20260718145314_autonomous_crm_foundation.sql` in a non-production project.
+2. Confirm every CRM table has RLS enabled and no `anon` or `authenticated` grants.
+3. Deploy the updated `notify-new-lead` and `send-nurture-emails` functions.
+4. Set and authenticate `michael@tryteamtastic.com` as the future prospecting sender.
+5. Turn on `master_enabled` and `internal_notifications_enabled` only; leave all
+   customer-facing automation flags off.
+6. Test a form submission and confirm the prospect, lead link, task, agent log,
+   and internal notification behavior.
+7. Enable `inbound_auto_reply_enabled`, with `daily_inbound_cap` kept at 25.
+8. Enable nurture only after reply ingestion can stop sequences. Prospecting stays
+   disabled until Gmail ingestion, suppression handling, and approval mode exist.
+
+Emergency stop:
+
+```sql
+update public.system_config
+set master_enabled = false, updated_by = 'manual-emergency-stop'
+where id = true;
+```
+
+The autonomous sender must call `reserve_email_send` before every email. A blocked
+reservation is recorded in `agent_log`; it must never be bypassed by retry logic.
+
+TryTeamtastic is the prospecting boundary. Warm inbound and client communication
+remain on the existing Teamtastic sender. Prospecting must use a mailbox on
+`tryteamtastic.com`, beginning with five approved emails per business day.
+
+### Shared Supabase migration history
+
+The website currently uses the same Supabase project as Teamtastic Games. That
+project has an extensive migration history that is not present in this website
+repository. Do not run `migration repair` from this repository or treat a normal
+CLI push as safe until the Games migration files are reconciled. The CRM migrations
+were applied through the connected Supabase migration API and verified directly.
+
 ## Deployment order
 
 1. Verify the Resend sending domain and collect the production sender address.
