@@ -422,7 +422,7 @@ export default function GameQuiz() {
                   </a>
 
                   <a
-                    href={`${PAYMENT_CONFIG.calendlyUrl}?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&a1=${encodeURIComponent(`${formData.company || ""} | ${formData.teamSize} | ${formData.vibe} | ${formData.occasion} | ${recommendation.title} | ${submissionId}`)}`}
+                    href={`/book?${new URLSearchParams({ name: formData.name, email: formData.email, company: formData.company || "", submission_id: submissionId })}`}
                     onClick={() => track("booking_call_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
                     target="_blank"
                     rel="noopener noreferrer"

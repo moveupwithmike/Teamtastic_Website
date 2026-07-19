@@ -124,10 +124,11 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
     prefilled_email: answers.email,
     client_reference_id: submissionId,
   })}`;
-  const calendlyUrl = `${PAYMENT_CONFIG.calendlyUrl}${PAYMENT_CONFIG.calendlyUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
+  const bookingUrl = `/book?${new URLSearchParams({
     name: answers.name,
     email: answers.email,
-    a1: `${answers.company}; ${answers.groupSize}; ${answers.eventType}; ${answers.vibe}`,
+    company: answers.company || "",
+    submission_id: submissionId,
   })}`;
 
   return (
@@ -485,7 +486,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
                           Reserve with {depositAmount} deposit
                         </a>
                         <a
-                          href={calendlyUrl}
+                          href={bookingUrl}
                           onClick={() => track("booking_call_clicked", { source: isFamily ? "family_concierge" : "corporate_concierge" })}
                           className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-center text-sm font-bold text-white hover:bg-white/10"
                         >

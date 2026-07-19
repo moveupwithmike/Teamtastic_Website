@@ -49,10 +49,11 @@ export default function CorporateLeadForm({
     prefilled_email: form.email,
     client_reference_id: submissionId,
   })}`;
-  const calendlyUrl = `${PAYMENT_CONFIG.calendlyUrl}${PAYMENT_CONFIG.calendlyUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
+  const bookingUrl = `/book?${new URLSearchParams({
     name: form.name,
     email: form.email,
-    a1: `${form.company}; ${form.teamSize}; ${form.occasion}; ${form.vibe}`,
+    company: form.company,
+    submission_id: submissionId,
   })}`;
 
   async function submit(event) {
@@ -119,7 +120,7 @@ export default function CorporateLeadForm({
             {depositLabel} <ArrowRight className="h-4 w-4" />
           </a>
           <a
-            href={calendlyUrl}
+            href={bookingUrl}
             onClick={() => track("booking_call_clicked", { source: entryPoint })}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-center text-sm font-bold text-white hover:bg-white/10"
           >
