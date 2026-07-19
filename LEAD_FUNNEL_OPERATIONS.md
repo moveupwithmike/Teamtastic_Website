@@ -254,11 +254,19 @@ The native booking foundation is installed but not active:
 - `native_booking_enabled`, `booking_email_enabled`, and the public booking page
   remain off. Slot holds also refuse to run until Google Calendar is marked
   connected, so the database cannot offer unverified availability.
+- The server-only availability API is implemented against Google Calendar's
+  free/busy endpoint. It refreshes OAuth access without exposing credentials,
+  combines Google busy ranges with live booking holds, and applies working hours,
+  blocked dates, minimum notice, booking horizon, daily limits, meeting duration,
+  and before/after buffers.
+- Timezone conversion was tested for both Eastern daylight and standard time, and
+  adjacent range boundaries do not falsely overlap. If credentials are missing,
+  Google rejects access, or any booking switch is off, the API returns no slots.
 
 Remaining booking work:
 
-1. Connect Google Calendar free/busy and calendar-event creation.
-2. Build the availability API and on-brand `/book` slot picker.
+1. Complete Google Calendar OAuth authorization and calendar-event creation.
+2. Connect the on-brand `/book` page to the live availability API and slot hold.
 3. Connect Zoom meeting creation and secure host-link storage.
 4. Add confirmation, 24-hour, and one-hour reminder jobs.
 5. Add signed reschedule and cancellation flows.
