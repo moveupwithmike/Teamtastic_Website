@@ -37,10 +37,13 @@ function dateInZone(date, timeZone) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function upcomingDates(timeZone) {
+// Start from the earliest moment a booking could be accepted (now + minimum
+// notice) so the default view is never a day that cannot have open slots.
+function upcomingDates(timeZone, minimumNoticeMinutes = 0) {
+  const base = Date.now() + minimumNoticeMinutes * 60000;
   const dates = [];
   for (let offset = 0; offset < 21 && dates.length < 14; offset += 1) {
-    const value = dateInZone(new Date(Date.now() + offset * 86400000), timeZone);
+    const value = dateInZone(new Date(base + offset * 86400000), timeZone);
     if (!dates.includes(value)) dates.push(value);
   }
   return dates;
@@ -107,7 +110,11 @@ export default function BookingScheduler({ fallbackUrl }) {
     catch { return "America/New_York"; }
   }, []);
   const ownerTimezone = config?.ownerTimezone;
-  const dates = useMemo(() => ownerTimezone ? upcomingDates(ownerTimezone) : [], [ownerTimezone]);
+  const minimumNoticeMinutes = config?.minimumNoticeMinutes ?? 0;
+  const dates = useMemo(
+    () => ownerTimezone ? upcomingDates(ownerTimezone, minimumNoticeMinutes) : [],
+    [ownerTimezone, minimumNoticeMinutes],
+  );
   const activeDate = selectedDate || dates[0] || "";
 
   useEffect(() => {

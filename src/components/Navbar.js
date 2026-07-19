@@ -31,6 +31,9 @@ export default function Navbar() {
  
   const isExperiencesPage = pathname === "/team-experiences";
   const isFamilyPage = pathname === "/virtual-family-game-night";
+  // On the booking page itself, the nav CTA would divert visitors away from
+  // the scheduler into the quiz funnel — hide it there.
+  const isBookPage = pathname === "/book";
  
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -98,7 +101,7 @@ export default function Navbar() {
               >
                 Start Your Conversation with Michael
               </button>
-            ) : (
+            ) : isBookPage ? null : (
               <Link
                 href="/#quiz"
                 className="relative inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
@@ -167,7 +170,7 @@ export default function Navbar() {
               >
                 Start Your Conversation
               </button>
-            ) : (
+            ) : isBookPage ? null : (
               <Link
                 href="/#quiz"
                 onClick={() => setIsOpen(false)}
