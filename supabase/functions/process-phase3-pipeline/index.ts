@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
 
-const PROMPT_VERSION = "phase3-v1";
+const PROMPT_VERSION = "phase3-v3.1-teamtastic-voice";
 
 function firstName(prospect: Record<string, unknown>) {
   const explicit = String(prospect.first_name || "").trim();
@@ -11,6 +11,44 @@ function firstName(prospect: Record<string, unknown>) {
 
 function cleanEvidence(value: unknown) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
+function outreachCopy(
+  prospect: Record<string, unknown>,
+  companyName: string,
+  signalType: string,
+  evidence: string,
+) {
+  const remoteSignal = /(remote|workplace|office|expansion)/i.test(signalType);
+  const hiringSignal = /(hiring|job|growth)/i.test(signalType);
+  const hiringObservations = [
+    "A new hire can learn the org chart from a document. Learning who turns trivia into a championship sport takes a better kind of introduction.",
+    "A new role can fill a seat. The harder part is helping the person behind it feel like part of the team.",
+    "Onboarding explains how work gets done. Shared experiences help people discover who they’re doing it with.",
+  ];
+  const companyKey = Array.from(companyName).reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  const observation = remoteSignal
+    ? "Remote teams rarely need another forced happy hour. They need a reason to laugh, compete a little, and meet someone outside their usual circle."
+    : hiringSignal
+    ? hiringObservations[companyKey % hiringObservations.length]
+    : "A good team event should create more than a group photo. It should give people a reason to talk, laugh, and discover something new about each other.";
+
+  return {
+    subject: `An idea for the ${companyName} team`.slice(0, 120),
+    bodyText: [
+      `Hi ${firstName(prospect)},`,
+      "",
+      `${evidence}`,
+      "",
+      observation,
+      "",
+      "That’s what Teamtastic is built for: a polished, facilitated experience where the team gets to laugh, participate, and connect—and the organizer never has to rescue the event.",
+      "",
+      "Worth sending over two or three ideas?",
+      "",
+      "Michael",
+    ].join("\n"),
+  };
 }
 
 function scoreProspect(prospect: Record<string, any>) {
@@ -170,18 +208,12 @@ Deno.serve(async (request) => {
         continue;
       }
       const companyName = String(company.name || "your team").trim();
-      const subject = `A team idea for ${companyName}`.slice(0, 120);
-      const bodyText = [
-        `Hi ${firstName(prospect)},`,
-        "",
-        `I noticed ${evidence}`,
-        "",
-        `Teamtastic creates facilitated team experiences that help groups connect without putting more planning work on internal leaders. I thought it might be relevant for ${companyName}.`,
-        "",
-        "Would it be useful if I sent two or three options that could fit your team?",
-        "",
-        "Michael",
-      ].join("\n");
+      const { subject, bodyText } = outreachCopy(
+        prospect,
+        companyName,
+        String(signal.signal_type || ""),
+        evidence,
+      );
       const draftFingerprint = await fingerprint(`${prospect.id}|${signal.id}|${PROMPT_VERSION}`);
       const { data: draft, error: draftError } = await supabase.from("outreach_drafts").upsert({
         prospect_id: prospect.id,

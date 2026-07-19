@@ -131,6 +131,21 @@ Current activation state:
   personal email or phone), rechecks suppression, deduplicates companies and
   prospects, and promotes verified contacts into the CRM. Its weekday schedule
   exists but is inactive. A fail-closed validation consumed zero credits.
+- A one-time approved batch enriched five selected candidates. All five returned
+  verified work contacts, passed suppression checks, and were promoted into five
+  CRM company/prospect records. Enrichment was switched off immediately afterward.
+- Direct public-web research produced reliable signals for four of the five
+  companies after the GDELT provider was rate-limited. Those four prospects scored
+  82.5–85.5 and generated `phase3-v2` review-only drafts. The fifth remained at 60
+  and correctly received no draft. Copy review found and corrected an awkward
+  evidence-introduction pattern; the older drafts were retired.
+- Three supplied brand newsletters were distilled into
+  `TEAMTASTIC_OUTREACH_VOICE.md`. The Phase 3 writer now uses the
+  `phase3-v3.1-teamtastic-voice` template: one evidence-backed opener, one varied playful
+  human observation, the emotional promise of participation and connection, the
+  practical promise that Teamtastic handles facilitation, and one low-pressure
+  question. All generated messages remain review-only.
+- This validation created zero prospecting messages and sent zero emails.
 - A controlled fake prospect scored 87 and produced one review draft with zero
   outbound messages. The test prospect, company, and draft were then retired.
 
@@ -157,6 +172,62 @@ set phase3_research_enabled = false,
     phase3_drafting_enabled = false,
     prospecting_enabled = false,
     updated_by = 'manual-phase3-stop'
+where id = true;
+```
+
+## Phase 4 — client lifecycle and escalation
+
+Phase 4 has started with a server-only, fail-closed foundation:
+
+- `lifecycle_actions` stores idempotent, reviewable client follow-ups linked to
+  the existing client and event records. It does not send email.
+- Scheduled events generate one onboarding checklist and one seven-day readiness
+  task. Fingerprints prevent duplicate tasks on repeated runs.
+- Completed events prepare four lifecycle actions: a 48-hour thank-you and review
+  request, a seven-day testimonial request, a 90-day rebook touch, and an annual
+  anniversary touch.
+- Every lifecycle draft records `send_enabled: false`. Approval, queueing, and
+  sending are separate states, and the database requires reviewer details before
+  an action can enter an approved or sending state.
+- The escalation engine sends pricing negotiation, complaints, legal language,
+  opportunities at or above $5,000, and decisions below 80% confidence to Michael.
+  An ordinary operational reply correctly produces no escalation.
+- `phase4_lifecycle_enabled`, `phase4_email_enabled`, and
+  `phase4_learning_enabled` are all off. The daily Phase 4 preparation schedule
+  exists but is inactive. Escalation detection is on as a safety rail.
+- A controlled fake-client test created two tasks and four lifecycle actions.
+  A second run created zero duplicates. The test data was removed afterward, and
+  the client-lifecycle message count remained zero.
+- Paid hosted-event deposits now have an idempotent conversion path from the
+  verified Stripe webhook into the CRM. A matched payment creates or connects the
+  prospect, company, and client; records the money received once; creates an
+  urgent onboarding task; and creates a scheduled event only when the lead supplied
+  a valid preferred date. Missing dates are explicitly marked `needs_event_details`
+  for Michael instead of being guessed.
+- Stripe replay handling retries incomplete conversions but does not duplicate a
+  client, event, task, conversion, or lifetime-value amount. The webhook continues
+  to verify Stripe signatures before processing. Lifecycle conversion remains
+  gated by `phase4_lifecycle_enabled`, and it has no email-sending path.
+- The paid-conversion test ran inside a rolled-back transaction. It verified one
+  client, one event, one onboarding task, one conversion, the correct $200 value,
+  and an idempotent replay. No test notification or lifecycle email could commit.
+
+Remaining Phase 4 work:
+
+1. Review and finalize the onboarding checklist fields and lifecycle email copy.
+2. Add the approval-and-send worker behind the existing lifecycle email cap.
+3. Connect testimonials and review destinations.
+4. Build the weekly learning report and recommendation-only tuning loop.
+5. Run a supervised real-client lifecycle test before activating the schedule.
+
+Emergency Phase 4 pause:
+
+```sql
+update public.system_config
+set phase4_lifecycle_enabled = false,
+    phase4_email_enabled = false,
+    phase4_learning_enabled = false,
+    updated_by = 'manual-phase4-stop'
 where id = true;
 ```
 

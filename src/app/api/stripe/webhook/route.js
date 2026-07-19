@@ -44,6 +44,43 @@ async function notifyMichael(payment, lead) {
   return jobs.length > 0 && !failed;
 }
 
+async function prepareClientLifecycle(supabase, stripeEventId) {
+  const { data: current } = await supabase
+    .from("stripe_events")
+    .select("lifecycle_attempts")
+    .eq("id", stripeEventId)
+    .maybeSingle();
+  const nextAttempt = (current?.lifecycle_attempts || 0) + 1;
+  const { data, error } = await supabase.rpc("process_paid_conversion", {
+    p_stripe_event_id: stripeEventId,
+  });
+  if (error) {
+    console.error("Paid client conversion failed", { stripeEventId, code: error.code });
+    await supabase.from("stripe_events").update({
+      lifecycle_status: "failed",
+      lifecycle_attempts: nextAttempt,
+      lifecycle_error: error.code || "conversion_failed",
+      lifecycle_processed_at: new Date().toISOString(),
+    }).eq("id", stripeEventId);
+    return false;
+  }
+  const reason = data?.reason || data?.status;
+  const lifecycleStatus = data?.converted
+    ? (data.status === "needs_event_details" ? "needs_event_details" : "converted")
+    : reason === "phase4_lifecycle_disabled" || reason === "master_kill_switch"
+      ? "skipped"
+      : reason === "needs_lead_match"
+        ? "needs_lead_match"
+        : "skipped";
+  await supabase.from("stripe_events").update({
+    lifecycle_status: lifecycleStatus,
+    lifecycle_attempts: nextAttempt,
+    lifecycle_error: data?.converted ? null : reason || null,
+    lifecycle_processed_at: new Date().toISOString(),
+  }).eq("id", stripeEventId);
+  return data?.converted === true;
+}
+
 export async function POST(request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -72,6 +109,9 @@ export async function POST(request) {
     .eq("stripe_event_id", event.id)
     .maybeSingle();
   if (duplicate) {
+    if (duplicate.lifecycle_status !== "converted" && duplicate.lifecycle_status !== "needs_event_details") {
+      await prepareClientLifecycle(supabase, duplicate.id);
+    }
     if (duplicate.alert_status !== "sent") {
       let matchedLead = null;
       if (duplicate.lead_id) {
@@ -119,7 +159,11 @@ export async function POST(request) {
     paid_at: new Date(event.created * 1000).toISOString(),
     matched: Boolean(lead),
   };
-  const { error } = await supabase.from("stripe_events").insert(payment);
+  const { data: storedPayment, error } = await supabase
+    .from("stripe_events")
+    .insert(payment)
+    .select("id")
+    .single();
   if (error) {
     console.error("Stripe event persistence failed", { code: error.code, event: event.id });
     return new Response("Persistence failed", { status: 503 });
@@ -127,6 +171,7 @@ export async function POST(request) {
 
   const [alertResult] = await Promise.allSettled([
     notifyMichael(payment, lead),
+    storedPayment?.id ? prepareClientLifecycle(supabase, storedPayment.id) : Promise.resolve(false),
     captureServerEvent(product.analyticsEvent, lead?.submission_id || session.id, {
       matched: Boolean(lead),
       product_key: productKey,
