@@ -50,7 +50,7 @@ function dateLabel(date, timeZone) {
   return new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00Z`));
 }
 
-function LiveSlots({ date, bookingType, visitorTimezone, onSelect }) {
+function LiveSlots({ date, bookingType, visitorTimezone, selectedSlot, onSelect }) {
   const [result, setResult] = useState({ loading: true, slots: [] });
   useEffect(() => {
     const controller = new AbortController();
@@ -73,11 +73,22 @@ function LiveSlots({ date, bookingType, visitorTimezone, onSelect }) {
   if (!result.slots.length) return <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">No open times on this date. Try the next day.</p>;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {result.slots.map((slot) => (
-        <button key={slot.startsAt} type="button" onClick={() => onSelect(slot)} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-bold text-white hover:border-pink-400/50 hover:bg-pink-500/10">
-          {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, hour: "numeric", minute: "2-digit" }).format(new Date(slot.startsAt))}
-        </button>
-      ))}
+      {result.slots.map((slot) => {
+        const isSelected = selectedSlot?.startsAt === slot.startsAt;
+        return (
+          <button
+            key={slot.startsAt} type="button" onClick={() => onSelect(slot)}
+            aria-pressed={isSelected}
+            className={`min-h-11 rounded-xl border px-3 text-sm font-bold transition-colors ${
+              isSelected
+                ? "border-pink-400/70 bg-pink-500/20 text-white"
+                : "border-white/10 bg-white/5 text-white hover:border-pink-400/50 hover:bg-pink-500/10"
+            }`}
+          >
+            {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, hour: "numeric", minute: "2-digit" }).format(new Date(slot.startsAt))}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -192,7 +203,7 @@ export default function BookingScheduler({ fallbackUrl }) {
   return (
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl">
       <div className="grid lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="border-b border-white/10 p-6 lg:border-b-0 lg:border-r sm:p-8">
+        <div className="min-w-0 border-b border-white/10 p-6 lg:border-b-0 lg:border-r sm:p-8">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-400">Choose a call</p>
           <div className="mt-5 space-y-3">
             {(config.bookingTypes || []).map((type) => (
@@ -205,7 +216,7 @@ export default function BookingScheduler({ fallbackUrl }) {
           </div>
           <p className="mt-6 text-xs leading-relaxed text-zinc-500">Times are displayed in {visitorTimezone.replaceAll("_", " ")}.</p>
         </div>
-        <div className="p-6 sm:p-8">
+        <div className="min-w-0 p-6 sm:p-8">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Choose a date</p>
           <div className="mt-4 flex gap-2 overflow-x-auto pb-3">
             {dates.map((date) => (
@@ -215,7 +226,7 @@ export default function BookingScheduler({ fallbackUrl }) {
             ))}
           </div>
           <div className="mt-5">
-            {activeDate && <LiveSlots key={`${selectedType}:${activeDate}`} date={activeDate} bookingType={selectedType} visitorTimezone={visitorTimezone} onSelect={(slot) => { setSelectedSlot(slot); setConfirmState({ status: "idle" }); }} />}
+            {activeDate && <LiveSlots key={`${selectedType}:${activeDate}`} date={activeDate} bookingType={selectedType} visitorTimezone={visitorTimezone} selectedSlot={selectedSlot} onSelect={(slot) => { setSelectedSlot(slot); setConfirmState({ status: "idle" }); }} />}
           </div>
           {selectedSlot && confirmState.status === "success" && (
             <div className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-500/[0.07] p-5">
