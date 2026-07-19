@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Check, Clock3, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 
 function queryPrefill() {
   if (typeof window === "undefined") return { name: "", email: "", company: "", submissionId: "" };
@@ -14,14 +14,71 @@ function queryPrefill() {
   };
 }
 
+function dateInZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function upcomingDates(timeZone) {
+  const dates = [];
+  for (let offset = 0; offset < 21 && dates.length < 14; offset += 1) {
+    const value = dateInZone(new Date(Date.now() + offset * 86400000), timeZone);
+    if (!dates.includes(value)) dates.push(value);
+  }
+  return dates;
+}
+
+function dateLabel(date, timeZone) {
+  return new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00Z`));
+}
+
+function LiveSlots({ date, bookingType, visitorTimezone, onSelect }) {
+  const [result, setResult] = useState({ loading: true, slots: [] });
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/bookings/availability?${new URLSearchParams({ date, type: bookingType, timezone: visitorTimezone })}`, {
+      cache: "no-store", signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.available) throw new Error(data.reason || "availability_unavailable");
+        setResult({ loading: false, slots: data.slots || [] });
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setResult({ loading: false, slots: [], error: true });
+      });
+    return () => controller.abort();
+  }, [date, bookingType, visitorTimezone]);
+
+  if (result.loading) return <div className="flex min-h-36 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-pink-400" /></div>;
+  if (result.error) return <p className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-4 text-sm text-amber-200">Live availability is temporarily unavailable. Please try another date.</p>;
+  if (!result.slots.length) return <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">No open times on this date. Try the next day.</p>;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {result.slots.map((slot) => (
+        <button key={slot.startsAt} type="button" onClick={() => onSelect(slot)} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-bold text-white hover:border-pink-400/50 hover:bg-pink-500/10">
+          {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, hour: "numeric", minute: "2-digit" }).format(new Date(slot.startsAt))}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function BookingScheduler({ fallbackUrl }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [prefill, setPrefill] = useState({ name: "", email: "", company: "", submissionId: "" });
+  const [selectedType, setSelectedType] = useState("intro-call-15");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const visitorTimezone = useMemo(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York"; }
     catch { return "America/New_York"; }
   }, []);
+  const ownerTimezone = config?.ownerTimezone;
+  const dates = useMemo(() => ownerTimezone ? upcomingDates(ownerTimezone) : [], [ownerTimezone]);
+  const activeDate = selectedDate || dates[0] || "";
 
   useEffect(() => {
     fetch("/api/bookings/config", { cache: "no-store" })
@@ -79,10 +136,41 @@ export default function BookingScheduler({ fallbackUrl }) {
   }
 
   return (
-    <section className="rounded-3xl border border-emerald-400/20 bg-emerald-500/[0.04] p-8">
-      <Check className="h-7 w-7 text-emerald-300" />
-      <h2 className="mt-4 text-2xl font-black">Live availability is connected.</h2>
-      <p className="mt-2 text-zinc-300">Slot selection for {visitorTimezone} is the next component being activated.</p>
+    <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl">
+      <div className="grid lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="border-b border-white/10 p-6 lg:border-b-0 lg:border-r sm:p-8">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-400">Choose a call</p>
+          <div className="mt-5 space-y-3">
+            {(config.bookingTypes || []).map((type) => (
+              <button key={type.slug} type="button" onClick={() => { setSelectedType(type.slug); setSelectedSlot(null); }} className={`w-full rounded-2xl border p-4 text-left ${selectedType === type.slug ? "border-pink-400/60 bg-pink-500/10" : "border-white/10 bg-black/20 hover:border-white/20"}`}>
+                <span className="font-bold text-white">{type.name}</span>
+                <span className="mt-1 flex items-center gap-1 text-xs text-zinc-400"><Clock3 className="h-3.5 w-3.5" /> {type.duration_minutes} minutes</span>
+                <span className="mt-2 block text-sm leading-relaxed text-zinc-400">{type.description}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-6 text-xs leading-relaxed text-zinc-500">Times are displayed in {visitorTimezone.replaceAll("_", " ")}.</p>
+        </div>
+        <div className="p-6 sm:p-8">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Choose a date</p>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-3">
+            {dates.map((date) => (
+              <button key={date} type="button" onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} className={`min-w-24 rounded-xl border px-3 py-3 text-sm font-bold ${activeDate === date ? "border-purple-400/60 bg-purple-500/15 text-white" : "border-white/10 bg-black/20 text-zinc-400 hover:text-white"}`}>
+                {dateLabel(date, config.ownerTimezone)}
+              </button>
+            ))}
+          </div>
+          <div className="mt-5">
+            {activeDate && <LiveSlots key={`${selectedType}:${activeDate}`} date={activeDate} bookingType={selectedType} visitorTimezone={visitorTimezone} onSelect={setSelectedSlot} />}
+          </div>
+          {selectedSlot && (
+            <div className="mt-6 rounded-2xl border border-emerald-400/25 bg-emerald-500/[0.07] p-5">
+              <p className="font-bold text-white">Selected: {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, dateStyle: "full", timeStyle: "short" }).format(new Date(selectedSlot.startsAt))}</p>
+              <p className="mt-2 text-sm text-zinc-300">Your details are ready to carry over. Secure confirmation is the next step.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

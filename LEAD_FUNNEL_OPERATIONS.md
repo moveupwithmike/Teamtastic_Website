@@ -262,11 +262,14 @@ The native booking foundation is installed but not active:
 - Timezone conversion was tested for both Eastern daylight and standard time, and
   adjacent range boundaries do not falsely overlap. If credentials are missing,
   Google rejects access, or any booking switch is off, the API returns no slots.
+- The on-brand `/book` page now includes meeting-type selection, 14 upcoming date
+  choices, live availability in the visitor's timezone, and slot selection. It
+  remains hidden behind the booking switches until secure confirmation is ready.
 
 Remaining booking work:
 
 1. Complete Google Calendar OAuth authorization and calendar-event creation.
-2. Connect the on-brand `/book` page to the live availability API and slot hold.
+2. Add the secure slot-hold and booking-confirmation API behind the `/book` picker.
 3. Connect Zoom meeting creation and secure host-link storage.
 4. Add confirmation, 24-hour, and one-hour reminder jobs.
 5. Add signed reschedule and cancellation flows.
