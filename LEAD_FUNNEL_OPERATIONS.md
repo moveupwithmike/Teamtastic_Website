@@ -52,8 +52,12 @@ through Gmail. Every Gmail message ID is deduplicated before processing.
 Current activation state:
 
 - `teamtastic-daily-report` is active at `12:30 UTC` each morning.
-- `gmail-reply-ingestion` exists but is inactive until OAuth is connected.
-- `system_config.gmail_ingestion_enabled` remains `false` until the OAuth test passes.
+- `gmail-reply-ingestion` is active every five minutes.
+- Read-only OAuth is connected to `michael@tryteamtastic.com`; mailbox sync is healthy.
+- `system_config.gmail_ingestion_enabled` is `true`.
+- Live tests confirmed reply classification, immediate sequence stopping, suppression,
+  question escalation, and duplicate-message protection.
+- Automated Google/no-reply system notifications are excluded from prospect replies.
 - Nurture and prospecting remain disabled.
 
 ### One-time Gmail OAuth setup
@@ -85,6 +89,76 @@ many cases. Preserve it; repeatedly generating tokens can invalidate older ones.
 - Out-of-office replies stop the current sequence but do not suppress the sender.
 - All decisions are written to `agent_log` and appear in the daily report,
   including blocked and skipped actions.
+
+## Phase 3 — Cold outbound foundation
+
+Phase 3 is operating in research/scoring/draft-review mode only. It has no email
+sending code, and `system_config.prospecting_enabled` remains `false`.
+
+Current activation state:
+
+- `source_runs`, `enrichment_requests`, `prospect_score_history`, and
+  `outreach_drafts` are live, protected by RLS, and reserved for server-side jobs.
+- The scoring model combines company fit (35 points), role fit (25), active signal
+  strength (30), and PostHog intent (10).
+- `process-phase3-pipeline` scores eligible records and creates evidence-backed
+  drafts with status `review`; it cannot approve or send a draft.
+- Suppression and ineligible-status checks run before scoring and again before
+  drafting.
+- The weekday `phase3-score-and-draft` schedule exists but is inactive.
+- `collect-phase3-signals` is deployed against the GDELT public-news index. It
+  searches CRM company names for hiring, expansion, workplace, and award news,
+  stores the article title and URL as evidence, retries provider rate limits, and
+  has no email access or sending capability.
+- The weekday `phase3-signal-collector` schedule exists but is inactive.
+- A controlled public-source test discovered and stored 10 evidence-backed news
+  signals. The validation company and its signals were then retired.
+- Research and enrichment switches remain off. There are currently no eligible
+  real target companies in the CRM.
+- Apollo is connected through an encrypted Edge Function secret. The no-credit
+  authentication and usage tests returned `200`, confirming master-key access;
+  no contact search, enrichment, or email sending occurred during validation.
+- `discover-apollo-candidates` is deployed with US, 25–2,000 employee, and senior
+  People/HR/workplace/culture targeting. A credit-free validation returned 10
+  relevant leaders and stored them in `apollo_candidates` for review.
+- Apollo discovery is off after validation. The weekday discovery schedule exists
+  but is inactive.
+- Selected candidates can enter `enrichment_requests` through a database-enforced
+  five-per-day queue. No candidates are selected or queued yet, and
+  `phase3_enrichment_enabled` remains `false`, so no enrichment credits can be used.
+- `process-apollo-enrichment` is deployed but disabled. When explicitly enabled,
+  it processes only selected queued candidates, requests work email only (no
+  personal email or phone), rechecks suppression, deduplicates companies and
+  prospects, and promotes verified contacts into the CRM. Its weekday schedule
+  exists but is inactive. A fail-closed validation consumed zero credits.
+- A controlled fake prospect scored 87 and produced one review draft with zero
+  outbound messages. The test prospect, company, and draft were then retired.
+
+Safe activation order:
+
+1. Review and select up to five of the first Apollo candidates.
+2. Run one capped Apollo enrichment batch and verify its actual credit usage.
+3. Promote verified contacts and companies into the CRM with suppression and
+   duplicate checks.
+4. Run the public-news collector against those companies and review evidence quality.
+5. Review scored prospects and drafts manually; tune fit criteria and voice.
+6. Activate the weekday research/scoring/drafting schedules while leaving prospecting off.
+7. Approve a very small initial batch for separate sending only after the warmed
+   TryTeamtastic mailbox, suppression checks, daily caps, and reply handling are
+   reconfirmed.
+
+Emergency Phase 3 pause:
+
+```sql
+update public.system_config
+set phase3_research_enabled = false,
+    phase3_enrichment_enabled = false,
+    phase3_scoring_enabled = false,
+    phase3_drafting_enabled = false,
+    prospecting_enabled = false,
+    updated_by = 'manual-phase3-stop'
+where id = true;
+```
 
 ## Deployment order
 
