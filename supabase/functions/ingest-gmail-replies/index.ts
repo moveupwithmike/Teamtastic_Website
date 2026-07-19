@@ -70,6 +70,23 @@ function addressList(value = "") {
   return value.split(",").map(emailAddress).filter(Boolean);
 }
 
+function isAutomatedSystemMessage(sender: string, subject: string, headers: Record<string, string>) {
+  const localPart = sender.split("@")[0] || "";
+  const normalizedSubject = subject.toLowerCase();
+  const autoSubmitted = (headers["auto-submitted"] || "").toLowerCase();
+  const precedence = (headers.precedence || "").toLowerCase();
+
+  return (
+    /(?:^|[._-])(?:no-?reply|do-?not-?reply|mailer-daemon|postmaster)(?:$|[._-])/.test(localPart) ||
+    /^(?:notifications?|alerts?|security-alerts?)$/.test(localPart) ||
+    (autoSubmitted !== "" && autoSubmitted !== "no") ||
+    /^(?:bulk|junk|list)$/.test(precedence) ||
+    Boolean(headers["list-id"]) ||
+    Boolean(headers["list-unsubscribe"]) ||
+    /^(?:security alert|delivery status notification|undeliverable|mail delivery failed)\b/.test(normalizedSubject)
+  );
+}
+
 function classifyReply(subject: string, body: string) {
   const text = `${subject}\n${body}`.toLowerCase().slice(0, 30_000);
   const has = (pattern: RegExp) => pattern.test(text);
@@ -95,7 +112,7 @@ function classifyReply(subject: string, body: string) {
   if (has(/\b(interested|sounds (?:good|great)|let(?:'s| us) (?:talk|chat|meet)|book (?:a )?(?:call|demo)|available (?:to|for)|tell me more|send (?:me )?(?:details|pricing))\b/)) {
     return { classification: "interested", confidence: 0.90, reason: "positive buying language" };
   }
-  if (body.includes("?") || has(/\b(how|what|when|where|who|can you|could you|would you|pricing|cost)\b/)) {
+  if (body.includes("?") || has(/\b(question(?:s)?|wondering|how|what|when|where|who|can you|could you|would you|pricing|cost|programs?|services?|more information)\b/)) {
     return { classification: "question", confidence: 0.82, reason: "question language" };
   }
   return { classification: "unknown", confidence: 0.35, reason: "no high-confidence rule matched" };
@@ -176,6 +193,7 @@ Deno.serve(async (request) => {
     fullMessages.sort((a, b) => Number(a.internalDate || 0) - Number(b.internalDate || 0));
 
     let inserted = 0;
+    let skippedAutomated = 0;
     let newestInternalDate = 0;
     for (const message of fullMessages) {
       const headers = headerMap(message.payload?.headers);
@@ -183,6 +201,10 @@ Deno.serve(async (request) => {
       if (!sender || sender === MAILBOX) continue;
       const body = messageBody(message.payload).slice(0, 50_000);
       const subject = headers.subject || "(no subject)";
+      if (isAutomatedSystemMessage(sender, subject, headers)) {
+        skippedAutomated++;
+        continue;
+      }
       const classification = classifyReply(subject, body);
 
       let { data: prospect } = await supabase
@@ -247,15 +269,15 @@ Deno.serve(async (request) => {
       last_synced_at: new Date().toISOString(),
       last_message_internal_date: newestInternalDate || null,
       last_error: null,
-      metadata: { scanned: summaries.length, inserted },
+      metadata: { scanned: summaries.length, inserted, skipped_automated: skippedAutomated },
     }).eq("mailbox", MAILBOX);
     await supabase.from("agent_log").insert({
       agent_name: "gmail-reply-ingestion",
       action: "poll_inbox",
       outcome: "completed",
-      decision: { mailbox: MAILBOX, scanned: summaries.length, inserted },
+      decision: { mailbox: MAILBOX, scanned: summaries.length, inserted, skipped_automated: skippedAutomated },
     });
-    return Response.json({ processed: summaries.length, inserted });
+    return Response.json({ processed: summaries.length, inserted, skipped_automated: skippedAutomated });
   } catch (error) {
     await supabase.from("mailbox_sync_state").update({
       status: "error",
