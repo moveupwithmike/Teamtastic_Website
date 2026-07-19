@@ -295,37 +295,47 @@ The native booking foundation is installed but not active:
 - `zoom_start_url_ciphertext` is intentionally left unpopulated. Encrypting and
   storing the Zoom host start-link was out of scope for this pass (no KMS/secret
   store is wired up yet) — Michael starts hosted calls from the Zoom app instead.
-- Reschedule/cancel links and 24-hour/1-hour reminder emails are not built yet.
-  `bookings.manage_token_hash` is generated and stored per booking so that work
-  can be added later without a schema change, but no manage token is currently
-  surfaced to visitors.
-- The confirm endpoint has in-memory IP+email rate limiting (5 requests per 10
-  minutes) but no bot verification (Turnstile). Add Turnstile before going live
-  publicly — this endpoint creates real Zoom meetings and real Calendar invites,
-  so it is a more expensive abuse target than a simple form submission.
+- `zoom_start_url_ciphertext` is intentionally left unpopulated. Encrypting and
+  storing the Zoom host start-link was out of scope for this pass (no KMS/secret
+  store is wired up yet) — Michael starts hosted calls from the Zoom app instead.
+- Reschedule/cancel self-service is still not built. `bookings.manage_token_hash`
+  is generated and stored per booking so that work can be added later without a
+  schema change, but no manage token is currently surfaced to visitors — anyone
+  needing to change a time replies to the confirmation email.
+- The confirm endpoint has Turnstile bot verification (same `TurnstileWidget`
+  and `verifyTurnstile` used by `/api/leads`) plus in-memory IP+email rate
+  limiting (5 requests per 10 minutes).
 
-Rollout steps once Michael has Zoom and Google Calendar credentials:
+**Status: live.** All three site-wide "book a call" CTAs (event quiz,
+corporate/family lead form, concierge modal) point to `/book`. Calendly is
+cancelled; `PAYMENT_CONFIG.calendlyUrl` / `NEXT_PUBLIC_CALENDLY_URL` remain as
+an unused one-line rollback path only, nothing links to them.
 
-1. Create a Zoom Server-to-Server OAuth app; set `ZOOM_ACCOUNT_ID`,
-   `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, and `ZOOM_HOST_EMAIL` (the Zoom user
-   under which meetings are created).
-2. Confirm `GOOGLE_CALENDAR_CLIENT_ID` / `_CLIENT_SECRET` / `_REFRESH_TOKEN`
-   are set and the token has calendar write scope (not just free/busy read).
-3. Set `booking_settings.calendar_connection_status = 'connected'` and
-   `booking_settings.zoom_connection_status = 'connected'` once both are
-   verified working.
-4. Send a real test booking through `/book` in a non-production check and
-   confirm: the Zoom meeting exists, the Calendar event exists with the test
-   email as an attendee, the booking row is `confirmed`, and the CRM prospect
-   was raised to high intent with a prep task.
-5. Set `booking_settings.enabled = true` and `system_config.native_booking_enabled
-   = true`. Consider `booking_email_enabled = true` for the redundant email
-   receipt.
-6. Add Turnstile verification to the confirm endpoint before linking `/book`
-   from public traffic sources.
-7. Replace the three Calendly links only after a real booking has been
-   completed and verified; keep the Calendly environment variable as a
-   one-week fallback.
+Current safety flags: `native_booking_enabled = true`,
+`booking_settings.enabled = true`, both connection statuses `connected`,
+`booking_email_enabled = false` (confirmation still shown on-page + native
+Google Calendar invite either way, so this is a redundant email receipt, not
+required), `minimum_notice_minutes = 240` (4 hours).
+
+### Booking reminders (24h / 1h)
+
+Built and tested, disabled by default. `send-booking-reminders` runs on a
+15-minute cron (`send-booking-reminders`, currently inactive), reuses the
+`booking` message type and `daily_booking_email_cap`, and is idempotent per
+booking via `bookings.reminder_24h_sent_at` / `reminder_1h_sent_at`. Fail-closed
+behind `system_config.booking_reminders_enabled` (independent of
+`booking_email_enabled` — both must be true for a reminder to actually send).
+
+Verified via a synthetic confirmed booking in each time window: the eligibility
+query correctly matched both the 24h and 1h windows (`processed: 2`), and the
+shared `booking_email_disabled` gate correctly blocked the send when only
+`booking_reminders_enabled` was flipped on — confirming the two flags are
+independent layers, not a single point of failure.
+
+To activate:
+
+1. `update system_config set booking_reminders_enabled = true, booking_email_enabled = true where id = true;`
+2. `select cron.alter_job(job_id := (select jobid from cron.job where jobname = 'send-booking-reminders'), active := true);`
 
 ## Deployment order
 
