@@ -273,20 +273,59 @@ The native booking foundation is installed but not active:
 - Timezone conversion was tested for both Eastern daylight and standard time, and
   adjacent range boundaries do not falsely overlap. If credentials are missing,
   Google rejects access, or any booking switch is off, the API returns no slots.
-- The on-brand `/book` page now includes meeting-type selection, 14 upcoming date
-  choices, live availability in the visitor's timezone, and slot selection. It
-  remains hidden behind the booking switches until secure confirmation is ready.
+- The on-brand `/book` page includes meeting-type selection, 14 upcoming date
+  choices, live availability in the visitor's timezone, slot selection, contact
+  fields, and a confirm step that completes the booking end to end.
+- `POST /api/bookings/confirm` holds the slot via `hold_booking_slot`, creates
+  the Zoom meeting (if the booking type requires it), creates the Google
+  Calendar event with the visitor as an attendee (`sendUpdates=all`, so Google
+  sends the native calendar invite email), then marks the booking `confirmed`.
+  If Zoom or Calendar creation fails after the hold, the booking is marked
+  `failed` via `fail_booking_hold` (freeing the slot immediately instead of
+  waiting out the 10-minute hold), the Zoom meeting is rolled back if one was
+  created, and an urgent task is created so Michael can follow up by hand.
+- `hold_booking_slot` now also refuses to hold a slot for a Zoom-enabled
+  booking type until `booking_settings.zoom_connection_status = 'connected'`,
+  the same fail-closed pattern used for the calendar connection.
+- A best-effort confirmation email sends through the existing `reserve_email_send`
+  guardrail under a new `booking` message type, capped by
+  `daily_booking_email_cap`, and only when `booking_email_enabled` is true. The
+  on-page success state and the native Google Calendar invite do not depend on
+  this email, so a visitor is always confirmed even if the email send fails.
+- `zoom_start_url_ciphertext` is intentionally left unpopulated. Encrypting and
+  storing the Zoom host start-link was out of scope for this pass (no KMS/secret
+  store is wired up yet) — Michael starts hosted calls from the Zoom app instead.
+- Reschedule/cancel links and 24-hour/1-hour reminder emails are not built yet.
+  `bookings.manage_token_hash` is generated and stored per booking so that work
+  can be added later without a schema change, but no manage token is currently
+  surfaced to visitors.
+- The confirm endpoint has in-memory IP+email rate limiting (5 requests per 10
+  minutes) but no bot verification (Turnstile). Add Turnstile before going live
+  publicly — this endpoint creates real Zoom meetings and real Calendar invites,
+  so it is a more expensive abuse target than a simple form submission.
 
-Remaining booking work:
+Rollout steps once Michael has Zoom and Google Calendar credentials:
 
-1. Complete Google Calendar OAuth authorization and calendar-event creation.
-2. Add the secure slot-hold and booking-confirmation API behind the `/book` picker.
-3. Connect Zoom meeting creation and secure host-link storage.
-4. Add confirmation, 24-hour, and one-hour reminder jobs.
-5. Add signed reschedule and cancellation flows.
-6. Run controlled booking, replay, timezone, and cancellation tests.
-7. Replace the three Calendly links only after all tests pass; keep the Calendly
-   environment variable as a one-week fallback.
+1. Create a Zoom Server-to-Server OAuth app; set `ZOOM_ACCOUNT_ID`,
+   `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, and `ZOOM_HOST_EMAIL` (the Zoom user
+   under which meetings are created).
+2. Confirm `GOOGLE_CALENDAR_CLIENT_ID` / `_CLIENT_SECRET` / `_REFRESH_TOKEN`
+   are set and the token has calendar write scope (not just free/busy read).
+3. Set `booking_settings.calendar_connection_status = 'connected'` and
+   `booking_settings.zoom_connection_status = 'connected'` once both are
+   verified working.
+4. Send a real test booking through `/book` in a non-production check and
+   confirm: the Zoom meeting exists, the Calendar event exists with the test
+   email as an attendee, the booking row is `confirmed`, and the CRM prospect
+   was raised to high intent with a prep task.
+5. Set `booking_settings.enabled = true` and `system_config.native_booking_enabled
+   = true`. Consider `booking_email_enabled = true` for the redundant email
+   receipt.
+6. Add Turnstile verification to the confirm endpoint before linking `/book`
+   from public traffic sources.
+7. Replace the three Calendly links only after a real booking has been
+   completed and verified; keep the Calendly environment variable as a
+   one-week fallback.
 
 ## Deployment order
 

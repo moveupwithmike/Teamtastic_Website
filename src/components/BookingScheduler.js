@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Clock3, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+
+const CONFIRM_ERROR_MESSAGES = {
+  invalid_request: "Please check your name and email and try again.",
+  rate_limited: "Too many attempts. Please wait a few minutes and try again.",
+  slot_unavailable: "That time was just taken. Please pick another slot.",
+  minimum_notice: "That time is too soon. Please pick a later slot.",
+  outside_booking_horizon: "That date isn't open yet. Please pick a closer date.",
+  daily_limit: "That day is fully booked. Please pick another date.",
+  request_already_used: "This request was already submitted.",
+  booking_type_unavailable: "That call type is no longer available.",
+  zoom_meeting_failed: "We couldn't finish setting up the call. Please try again or email hello@teamtastic.events.",
+  calendar_event_failed: "We couldn't finish setting up the call. Please try again or email hello@teamtastic.events.",
+};
+
+function confirmErrorMessage(reason) {
+  return CONFIRM_ERROR_MESSAGES[reason] || "Something went wrong. Please try again or email hello@teamtastic.events.";
+}
 
 function queryPrefill() {
   if (typeof window === "undefined") return { name: "", email: "", company: "", submissionId: "" };
@@ -72,6 +89,8 @@ export default function BookingScheduler({ fallbackUrl }) {
   const [selectedType, setSelectedType] = useState("intro-call-15");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [contact, setContact] = useState({ name: "", email: "", company: "" });
+  const [confirmState, setConfirmState] = useState({ status: "idle" });
   const visitorTimezone = useMemo(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York"; }
     catch { return "America/New_York"; }
@@ -87,12 +106,47 @@ export default function BookingScheduler({ fallbackUrl }) {
         return response.json();
       })
       .then((nextConfig) => {
-        setPrefill(queryPrefill());
+        const nextPrefill = queryPrefill();
+        setPrefill(nextPrefill);
+        setContact({ name: nextPrefill.name, email: nextPrefill.email, company: nextPrefill.company });
         setConfig(nextConfig);
       })
       .catch(() => setConfig({ ready: false, bookingTypes: [] }))
       .finally(() => setLoading(false));
   }, []);
+
+  async function confirmBooking() {
+    if (!selectedSlot || confirmState.status === "loading") return;
+    if (!contact.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+      setConfirmState({ status: "error", reason: "invalid_request" });
+      return;
+    }
+    setConfirmState({ status: "loading" });
+    try {
+      const response = await fetch("/api/bookings/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingTypeSlug: selectedType,
+          name: contact.name.trim(),
+          email: contact.email.trim(),
+          company: contact.company.trim(),
+          visitorTimezone,
+          startsAt: selectedSlot.startsAt,
+          submissionId: prefill.submissionId || undefined,
+          source: "book_page",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setConfirmState({ status: "error", reason: data.reason });
+        return;
+      }
+      setConfirmState({ status: "success", booking: data });
+    } catch {
+      setConfirmState({ status: "error", reason: "network_error" });
+    }
+  }
 
   if (loading) {
     return <div className="flex min-h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03]"><Loader2 className="h-7 w-7 animate-spin text-pink-400" /></div>;
@@ -142,7 +196,7 @@ export default function BookingScheduler({ fallbackUrl }) {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-400">Choose a call</p>
           <div className="mt-5 space-y-3">
             {(config.bookingTypes || []).map((type) => (
-              <button key={type.slug} type="button" onClick={() => { setSelectedType(type.slug); setSelectedSlot(null); }} className={`w-full rounded-2xl border p-4 text-left ${selectedType === type.slug ? "border-pink-400/60 bg-pink-500/10" : "border-white/10 bg-black/20 hover:border-white/20"}`}>
+              <button key={type.slug} type="button" onClick={() => { setSelectedType(type.slug); setSelectedSlot(null); setConfirmState({ status: "idle" }); }} className={`w-full rounded-2xl border p-4 text-left ${selectedType === type.slug ? "border-pink-400/60 bg-pink-500/10" : "border-white/10 bg-black/20 hover:border-white/20"}`}>
                 <span className="font-bold text-white">{type.name}</span>
                 <span className="mt-1 flex items-center gap-1 text-xs text-zinc-400"><Clock3 className="h-3.5 w-3.5" /> {type.duration_minutes} minutes</span>
                 <span className="mt-2 block text-sm leading-relaxed text-zinc-400">{type.description}</span>
@@ -155,18 +209,63 @@ export default function BookingScheduler({ fallbackUrl }) {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Choose a date</p>
           <div className="mt-4 flex gap-2 overflow-x-auto pb-3">
             {dates.map((date) => (
-              <button key={date} type="button" onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} className={`min-w-24 rounded-xl border px-3 py-3 text-sm font-bold ${activeDate === date ? "border-purple-400/60 bg-purple-500/15 text-white" : "border-white/10 bg-black/20 text-zinc-400 hover:text-white"}`}>
+              <button key={date} type="button" onClick={() => { setSelectedDate(date); setSelectedSlot(null); setConfirmState({ status: "idle" }); }} className={`min-w-24 rounded-xl border px-3 py-3 text-sm font-bold ${activeDate === date ? "border-purple-400/60 bg-purple-500/15 text-white" : "border-white/10 bg-black/20 text-zinc-400 hover:text-white"}`}>
                 {dateLabel(date, config.ownerTimezone)}
               </button>
             ))}
           </div>
           <div className="mt-5">
-            {activeDate && <LiveSlots key={`${selectedType}:${activeDate}`} date={activeDate} bookingType={selectedType} visitorTimezone={visitorTimezone} onSelect={setSelectedSlot} />}
+            {activeDate && <LiveSlots key={`${selectedType}:${activeDate}`} date={activeDate} bookingType={selectedType} visitorTimezone={visitorTimezone} onSelect={(slot) => { setSelectedSlot(slot); setConfirmState({ status: "idle" }); }} />}
           </div>
-          {selectedSlot && (
-            <div className="mt-6 rounded-2xl border border-emerald-400/25 bg-emerald-500/[0.07] p-5">
-              <p className="font-bold text-white">Selected: {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, dateStyle: "full", timeStyle: "short" }).format(new Date(selectedSlot.startsAt))}</p>
-              <p className="mt-2 text-sm text-zinc-300">Your details are ready to carry over. Secure confirmation is the next step.</p>
+          {selectedSlot && confirmState.status === "success" && (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-500/[0.07] p-5">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+              <div>
+                <p className="font-bold text-white">You&rsquo;re booked!</p>
+                <p className="mt-1 text-sm text-zinc-300">
+                  {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, dateStyle: "full", timeStyle: "short" }).format(new Date(confirmState.booking.startsAt))}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">A calendar invite is on its way to {contact.email}.</p>
+                {confirmState.booking.joinUrl && (
+                  <a href={confirmState.booking.joinUrl} className="mt-3 inline-flex text-sm font-bold text-pink-300 hover:text-pink-200">
+                    Zoom join link <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+          {selectedSlot && confirmState.status !== "success" && (
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+              <p className="font-bold text-white">
+                Selected: {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, dateStyle: "full", timeStyle: "short" }).format(new Date(selectedSlot.startsAt))}
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input
+                  type="text" placeholder="Your name" value={contact.name}
+                  onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))}
+                  maxLength={120} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-pink-400/60 focus:outline-none"
+                />
+                <input
+                  type="email" placeholder="Your email" value={contact.email}
+                  onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))}
+                  maxLength={254} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-pink-400/60 focus:outline-none"
+                />
+                <input
+                  type="text" placeholder="Company (optional)" value={contact.company}
+                  onChange={(event) => setContact((current) => ({ ...current, company: event.target.value }))}
+                  maxLength={160} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-pink-400/60 focus:outline-none sm:col-span-2"
+                />
+              </div>
+              {confirmState.status === "error" && (
+                <p className="mt-3 text-sm text-amber-300">{confirmErrorMessage(confirmState.reason)}</p>
+              )}
+              <button
+                type="button" onClick={confirmBooking} disabled={confirmState.status === "loading"}
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-pink-600 px-5 text-sm font-bold text-white hover:bg-pink-500 disabled:opacity-60 sm:w-auto"
+              >
+                {confirmState.status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                Confirm booking
+              </button>
             </div>
           )}
         </div>

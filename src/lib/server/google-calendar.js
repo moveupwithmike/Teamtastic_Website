@@ -44,3 +44,38 @@ export async function getCalendarBusyRanges({ calendarId, timeMin, timeMax, time
     end: new Date(range.end),
   }));
 }
+
+export async function createCalendarEvent({ calendarId, summary, description, startsAt, endsAt, timeZone, attendeeEmail, attendeeName }) {
+  const accessToken = await getGoogleCalendarAccessToken();
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        summary: summary.slice(0, 200),
+        description,
+        start: { dateTime: startsAt, timeZone },
+        end: { dateTime: endsAt, timeZone },
+        attendees: [{ email: attendeeEmail, displayName: attendeeName }],
+        guestsCanModify: false,
+        guestsCanInviteOthers: false,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+  if (!response.ok) throw new Error(`calendar_event_${response.status}`);
+  const data = await response.json();
+  if (!data.id) throw new Error("calendar_event_missing_id");
+  return { eventId: data.id };
+}
+
+export async function deleteCalendarEvent(calendarId, eventId) {
+  const accessToken = await getGoogleCalendarAccessToken();
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}?sendUpdates=all`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(8000) },
+  );
+  if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`calendar_delete_${response.status}`);
+}
