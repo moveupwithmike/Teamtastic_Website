@@ -9,6 +9,12 @@ play, company culture, and company values.
 High-energy Master Emcee meets trusted event professional: warm, upbeat,
 inclusive, polished, and entertaining, with the confidence to keep things moving.
 
+## The mix
+
+Roughly 70% conversational credibility, 20% energy and personality, 10% playful
+game-show flavor. The email should feel like it came from a charismatic Master
+Emcee — not a carnival barker, and not a corporate marketing department.
+
 ## The two promises
 
 - Emotional: the team will laugh, participate, connect, and leave talking about
@@ -49,6 +55,15 @@ inclusive, polished, and entertaining, with the confidence to keep things moving
 - Excessive exclamation points, exaggerated claims, forced jokes, fake urgency,
   or language that feels mass-produced.
 - Claiming that Teamtastic can fix a company's culture.
+
+## Signature language to use naturally (never forced)
+
+- "Play. Connect. Celebrate."
+- "More than another virtual trivia event."
+- "Turn the screen into a game show."
+- "Hosted by a Master Emcee."
+- "Built to get everyone involved."
+- "Your team brings the people. We bring the experience."
 
 ## Default first-touch structure
 

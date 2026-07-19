@@ -65,6 +65,8 @@ async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTime
     "",
     "A calendar invite is on its way from Google Calendar with these same details.",
     "",
+    "Come with your team in mind — we'll map out the rest together. Your team brings the people. We bring the experience.",
+    "",
     "Need to change anything? Just reply to this email.",
     "",
     "Michael",

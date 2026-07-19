@@ -41,19 +41,19 @@ function buildEmail(step: string, lead: Record<string, unknown>) {
     const rec = RECS[String(lead.recommendation_key)] || RECS.competitive;
     return {
       subject: `Your Teamtastic package: ${rec.title}`,
-      html: `<h1>Hey ${name},</h1><p>Quick recap of the package we put together for your team: <strong>${escapeHtml(rec.title)}</strong> (${rec.games.map(escapeHtml).join(", ")}).</p><p>Ready to lock in a date with Michael?</p>${cta}`,
+      html: `<h1>Hey ${name},</h1><p>Here's the package we put together for your team: <strong>${escapeHtml(rec.title)}</strong> (${rec.games.map(escapeHtml).join(", ")}). Built to get everyone involved &mdash; not just the loud ones.</p><p>Want to lock in a date? Michael handles the rest.</p>${cta}`,
     };
   }
   if (step === "nurture_day3") {
     return {
-      subject: "What your Teamtastic event includes",
-      html: `<h1>Hey ${name},</h1><p>Your hosted Teamtastic event includes a live host, interactive game-show rounds, and a format built to keep remote teams participating together.</p><p>Still deciding? Just reply to this email &mdash; happy to answer questions before you book.</p>${cta}`,
+      subject: "More than another virtual trivia event",
+      html: `<h1>Hey ${name},</h1><p>Most virtual team events feel like another meeting with trivia added. Yours won't: a Master Emcee turns the screen into a live game show, and the format is built so everyone plays &mdash; you never have to rescue the event.</p><p>Still deciding? Just reply &mdash; happy to answer questions before you book.</p>${cta}`,
     };
   }
   // nurture_day7
   return {
-    subject: "Last call — reserve your Teamtastic event",
-    html: `<h1>Hey ${name},</h1><p>Just checking in &mdash; your recommended package is still available. A $200 deposit locks in your date with Michael.</p>${cta}`,
+    subject: "Should I hold your game show idea?",
+    html: `<h1>Hey ${name},</h1><p>I know event planning has a way of sliding down the to-do list. If your team gathering is still taking shape, the package we mapped out is a $200 deposit away from a locked-in date &mdash; and if the timing isn't right, just reply and tell me. No hard feelings, no follow-up avalanche.</p>${cta}`,
   };
 }
 
