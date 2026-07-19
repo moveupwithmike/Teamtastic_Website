@@ -189,9 +189,11 @@ Phase 4 has started with a server-only, fail-closed foundation:
 - Every lifecycle draft records `send_enabled: false`. Approval, queueing, and
   sending are separate states, and the database requires reviewer details before
   an action can enter an approved or sending state.
-- The escalation engine sends pricing negotiation, complaints, legal language,
-  opportunities at or above $5,000, and decisions below 80% confidence to Michael.
-  An ordinary operational reply correctly produces no escalation.
+- The escalation engine is wired into both inbound Gmail reply processing and the
+  Phase 3 outreach-draft pipeline. Pricing negotiation, complaints, legal language,
+  opportunities at or above $5,000, and decisions below 80% confidence create an
+  idempotent review task and agent-log record. An ordinary operational reply
+  correctly produces no escalation.
 - `phase4_lifecycle_enabled`, `phase4_email_enabled`, and
   `phase4_learning_enabled` are all off. The daily Phase 4 preparation schedule
   exists but is inactive. Escalation detection is on as a safety rail.
@@ -211,14 +213,23 @@ Phase 4 has started with a server-only, fail-closed foundation:
 - The paid-conversion test ran inside a rolled-back transaction. It verified one
   client, one event, one onboarding task, one conversion, the correct $200 value,
   and an idempotent replay. No test notification or lifecycle email could commit.
+- `learning_recommendations` now stores weekly, review-only performance findings by
+  outreach version. The learning job never changes scoring weights, templates, or
+  sending behavior; `phase4_learning_enabled` and its weekly schedule remain off.
+- `backfill_phase4_paid_conversions()` provides a bounded, idempotent retry path for
+  paid hosted-event deposits left pending, skipped, failed, or unmatched. It sends
+  no email. The current live database has no paid hosted-event deposits requiring
+  backfill.
+- Live validation confirmed both escalation triggers, correct flagged/ordinary
+  decisions, and rolled-back learning/backfill safety assertions.
 
 Remaining Phase 4 work:
 
 1. Review and finalize the onboarding checklist fields and lifecycle email copy.
 2. Add the approval-and-send worker behind the existing lifecycle email cap.
 3. Connect testimonials and review destinations.
-4. Build the weekly learning report and recommendation-only tuning loop.
-5. Run a supervised real-client lifecycle test before activating the schedule.
+4. Review the first weekly learning report after enough approved outreach exists.
+5. Run a supervised real-client lifecycle test before activating either schedule.
 
 Emergency Phase 4 pause:
 
