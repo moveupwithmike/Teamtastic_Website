@@ -25,6 +25,22 @@ function rateLimited(key) {
   return entries.length > 5;
 }
 
+async function verifyTurnstile(token, ip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return process.env.NODE_ENV !== "production" && token === "development-bypass";
+  const form = new FormData();
+  form.set("secret", secret);
+  form.set("response", token);
+  if (ip) form.set("remoteip", ip);
+  const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(5000),
+  });
+  const data = await result.json();
+  return data.success === true;
+}
+
 function fail(status, reason) {
   return NextResponse.json({ success: false, reason }, { status });
 }
@@ -140,6 +156,14 @@ export async function POST(request) {
 
   const rateKey = createHash("sha256").update(`${ip}:${email}`).digest("hex");
   if (rateLimited(rateKey)) return fail(429, "rate_limited");
+
+  try {
+    if (!(await verifyTurnstile(clean(body.turnstileToken, 2048), ip))) {
+      return fail(400, "bot_verification_failed");
+    }
+  } catch {
+    return fail(503, "verification_unavailable");
+  }
 
   const supabase = getSupabaseAdmin();
   const manageToken = randomBytes(32).toString("base64url");

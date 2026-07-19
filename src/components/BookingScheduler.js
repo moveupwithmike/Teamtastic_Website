@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 const CONFIRM_ERROR_MESSAGES = {
   invalid_request: "Please check your name and email and try again.",
@@ -14,6 +15,8 @@ const CONFIRM_ERROR_MESSAGES = {
   booking_type_unavailable: "That call type is no longer available.",
   zoom_meeting_failed: "We couldn't finish setting up the call. Please try again or email hello@teamtastic.events.",
   calendar_event_failed: "We couldn't finish setting up the call. Please try again or email hello@teamtastic.events.",
+  bot_verification_failed: "Secure verification failed. Please retry.",
+  verification_unavailable: "Secure verification is temporarily unavailable. Please try again shortly.",
 };
 
 function confirmErrorMessage(reason) {
@@ -105,6 +108,9 @@ export default function BookingScheduler({ fallbackUrl }) {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", company: "" });
   const [confirmState, setConfirmState] = useState({ status: "idle" });
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const handleTurnstileToken = useCallback((token) => setTurnstileToken(token), []);
   const visitorTimezone = useMemo(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York"; }
     catch { return "America/New_York"; }
@@ -139,6 +145,10 @@ export default function BookingScheduler({ fallbackUrl }) {
       setConfirmState({ status: "error", reason: "invalid_request" });
       return;
     }
+    if (!turnstileToken) {
+      setConfirmState({ status: "error", reason: "bot_verification_failed" });
+      return;
+    }
     setConfirmState({ status: "loading" });
     try {
       const response = await fetch("/api/bookings/confirm", {
@@ -153,11 +163,14 @@ export default function BookingScheduler({ fallbackUrl }) {
           startsAt: selectedSlot.startsAt,
           submissionId: prefill.submissionId || undefined,
           source: "book_page",
+          turnstileToken,
         }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
         setConfirmState({ status: "error", reason: data.reason });
+        setTurnstileToken("");
+        setTurnstileReset((value) => value + 1);
         return;
       }
       setConfirmState({ status: "success", booking: data });
@@ -274,11 +287,14 @@ export default function BookingScheduler({ fallbackUrl }) {
                   maxLength={160} className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-pink-400/60 focus:outline-none sm:col-span-2"
                 />
               </div>
+              <div className="mt-4">
+                <TurnstileWidget onToken={handleTurnstileToken} resetKey={turnstileReset} />
+              </div>
               {confirmState.status === "error" && (
                 <p className="mt-3 text-sm text-amber-300">{confirmErrorMessage(confirmState.reason)}</p>
               )}
               <button
-                type="button" onClick={confirmBooking} disabled={confirmState.status === "loading"}
+                type="button" onClick={confirmBooking} disabled={confirmState.status === "loading" || !turnstileToken}
                 className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-pink-600 px-5 text-sm font-bold text-white hover:bg-pink-500 disabled:opacity-60 sm:w-auto"
               >
                 {confirmState.status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
