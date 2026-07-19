@@ -231,6 +231,41 @@ set phase4_lifecycle_enabled = false,
 where id = true;
 ```
 
+## Native booking workstream — Calendly replacement
+
+The native booking foundation is installed but not active:
+
+- `booking_types` defines meeting duration, buffers, Zoom behavior, and display
+  order. The initial type is a 15-minute planning call with five minutes before
+  and ten minutes after.
+- `booking_settings` stores Teamtastic's timezone, working hours, blocked dates,
+  minimum notice, booking horizon, daily maximum, slot interval, hold duration,
+  and Google Calendar/Zoom connection state.
+- `bookings` links every hold and confirmed call directly to a CRM prospect and,
+  when available, the originating website lead.
+- Active holds and confirmed bookings use a PostgreSQL timestamp-range exclusion
+  constraint. Overlapping buffered slots are rejected atomically by the database,
+  even when two visitors click at the same time.
+- Confirming a booking raises the prospect to high intent with a minimum score of
+  95, pauses active sequences, and creates one idempotent call-preparation task.
+- A rolled-back concurrency test proved that the first hold succeeds, the second
+  overlapping hold returns `slot_unavailable`, and confirmation updates the CRM
+  and creates exactly one prep task.
+- `native_booking_enabled`, `booking_email_enabled`, and the public booking page
+  remain off. Slot holds also refuse to run until Google Calendar is marked
+  connected, so the database cannot offer unverified availability.
+
+Remaining booking work:
+
+1. Connect Google Calendar free/busy and calendar-event creation.
+2. Build the availability API and on-brand `/book` slot picker.
+3. Connect Zoom meeting creation and secure host-link storage.
+4. Add confirmation, 24-hour, and one-hour reminder jobs.
+5. Add signed reschedule and cancellation flows.
+6. Run controlled booking, replay, timezone, and cancellation tests.
+7. Replace the three Calendly links only after all tests pass; keep the Calendly
+   environment variable as a one-week fallback.
+
 ## Deployment order
 
 1. Verify the Resend sending domain and collect the production sender address.
