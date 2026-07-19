@@ -242,6 +242,33 @@ set phase4_lifecycle_enabled = false,
 where id = true;
 ```
 
+## Revenue milestone 1 — deal pipeline
+
+The data-only deal pipeline is live:
+
+- `deals` tracks stage, outcome, expected value, currency, next action and due
+  time, decision date, won/lost details, and links to the prospect, company,
+  primary booking, client, and event.
+- `deal_payments` links any number of verified Stripe payment events to one deal,
+  allowing a later deposit-plus-balance workflow without changing the schema.
+- `deal_stage_history` opens and closes timestamped stage intervals so later
+  reporting can calculate time in stage and total sales-cycle length.
+- A confirmed native booking creates or advances exactly one open deal to
+  `call_booked`. Replaying the booking event returns the same deal without adding
+  another stage-history entry.
+- A verified paid hosted-event deposit creates a deal when none exists, records
+  the payment once, marks the deal won, and advances it to `deposit_paid`.
+- A completed paid-client conversion attaches the client and event and advances
+  the deal to `event_scheduled` when an actual event record exists.
+- Alan's confirmed Sankofa Plex booking was backfilled into one `call_booked`
+  deal. Its stage start matches the original booking-confirmation timestamp.
+- The daily sales report now includes every open deal, its stage and known value,
+  next action, due time, overdue marker, decision date, deal count, and known
+  pipeline value.
+- A rolled-back deposit/conversion test proved deal creation, multiple-payment
+  support, stage advancement, closed stage timing, and replay protection. No test
+  client, payment, event, deal, task, or email was committed.
+
 ## Native booking workstream — Calendly replacement
 
 The native booking foundation is installed but not active:

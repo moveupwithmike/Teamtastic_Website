@@ -51,23 +51,28 @@ Deno.serve(async (request) => {
   if (existing?.status === "sent") return Response.json({ sent: false, skipped: true, reason: "already_sent" });
 
   const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const [leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult] = await Promise.all([
+  const [leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult] = await Promise.all([
     supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
     supabase.from("messages").select("message_type,status").eq("direction", "outbound").gte("created_at", since),
     supabase.from("tasks").select("title,priority,due_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(20),
     supabase.from("agent_log").select("agent_name,action,outcome,decision,created_at")
       .in("outcome", ["blocked", "skipped", "failed", "escalated"]).gte("created_at", since).order("created_at", { ascending: false }).limit(30),
+    supabase.from("deals").select("id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date")
+      .eq("outcome", "open").order("next_action_due_at", { ascending: true, nullsFirst: false }),
   ]);
-  const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error || decisionsResult.error;
+  const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error || decisionsResult.error || dealsResult.error;
   if (queryError) return new Response(`Report query failed: ${queryError.message}`, { status: 500 });
 
   const replies = repliesResult.data || [];
   const outbound = outboundResult.data || [];
   const tasks = tasksResult.data || [];
   const decisions = decisionsResult.data || [];
+  const deals = dealsResult.data || [];
   const replyCounts = countBy(replies, (row) => row.classification || "unknown");
   const sentCounts = countBy(outbound.filter((row) => row.status === "sent"), (row) => row.message_type);
+  const now = Date.now();
+  const pipelineValue = deals.reduce((sum, deal) => sum + Number(deal.expected_value || 0), 0);
   const subject = `Teamtastic sales report — ${date}`;
 
   const list = (items: string[], empty: string) => items.length
@@ -86,6 +91,18 @@ Deno.serve(async (request) => {
     ${list(Object.entries(replyCounts).map(([key, value]) => `${escapeHtml(key)}: ${value}`), "No replies received.")}
     <h2>Messages sent</h2>
     ${list(Object.entries(sentCounts).map(([key, value]) => `${escapeHtml(key)}: ${value}`), "No messages sent.")}
+    <h2>Pipeline</h2>
+    <p><strong>Open deals:</strong> ${deals.length}<br><strong>Known pipeline value:</strong> $${pipelineValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+    ${list(deals.map((deal) => {
+      const overdue = deal.next_action_due_at && new Date(deal.next_action_due_at).getTime() < now;
+      const value = deal.expected_value == null
+        ? "value not set"
+        : `${String(deal.currency || "usd").toUpperCase()} ${Number(deal.expected_value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `<strong>${escapeHtml(deal.title)}</strong> — ${escapeHtml(deal.stage.replaceAll("_", " "))} — ${escapeHtml(value)}` +
+        `${deal.next_action ? `<br>Next: ${escapeHtml(deal.next_action)}` : "<br>Next action not set"}` +
+        `${deal.next_action_due_at ? ` — ${overdue ? "<strong>OVERDUE</strong> " : ""}due ${escapeHtml(deal.next_action_due_at)}` : ""}` +
+        `${deal.decision_date ? `<br>Decision date: ${escapeHtml(deal.decision_date)}` : ""}`;
+    }), "No open deals.")}
     <h2>What needs Michael</h2>
     ${list(tasks.map((task) => `<strong>${escapeHtml(task.priority)}</strong>: ${escapeHtml(task.title)}${task.due_at ? ` — due ${escapeHtml(task.due_at)}` : ""}`), "No open tasks.")}
     <h2>What the system chose not to do</h2>
@@ -97,6 +114,8 @@ Deno.serve(async (request) => {
     sent: sentCounts,
     open_tasks: tasks.length,
     exceptions: decisions.length,
+    open_deals: deals.length,
+    pipeline_value: pipelineValue,
   };
 
   await supabase.from("daily_reports").upsert({
