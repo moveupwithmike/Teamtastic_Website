@@ -1,0 +1,24 @@
+import Link from "next/link";
+import { requireOfficeUser } from "@/lib/server/office-auth";
+import { signOutOffice } from "../actions";
+
+export default async function PrivateOfficeLayout({ children }) {
+  const user = await requireOfficeUser();
+  return (
+    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-300">Sales command center</p>
+          <h1 className="text-2xl font-bold">Teamtastic Office</h1>
+        </div>
+        <nav className="flex flex-wrap items-center gap-3 text-sm">
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office">Needs Michael</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/prospects">Prospects</Link>
+          <span className="hidden text-slate-400 md:inline">{user.email}</span>
+          <form action={signOutOffice}><button className="rounded-lg border border-white/10 px-4 py-2 hover:bg-white/5">Sign out</button></form>
+        </nav>
+      </header>
+      {children}
+    </main>
+  );
+}

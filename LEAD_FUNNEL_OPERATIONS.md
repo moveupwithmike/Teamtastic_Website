@@ -269,6 +269,47 @@ The data-only deal pipeline is live:
   support, stage advancement, closed stage timing, and replay protection. No test
   client, payment, event, deal, task, or email was committed.
 
+## Revenue milestone 2 — private Teamtastic Office
+
+The private command center is implemented at `/office`:
+
+- Supabase passwordless email-link sign-in protects every Office page. Access is
+  restricted server-side to `OFFICE_ALLOWED_EMAIL` (falling back to the existing
+  `INTERNAL_NOTIFICATION_EMAIL`), and the service-role key never reaches the
+  browser.
+- “Needs Michael now” shows recent interested replies, overdue deal actions,
+  today's calls with Zoom links, and recent automation failures or escalations.
+- Calls that have ended create one idempotent post-call task. The outcome form
+  records qualified, follow-up, unqualified, or no-show; captures package,
+  budget, next step, and notes; and advances the linked deal.
+- The outreach review queue shows all draft/review emails. Michael can edit the
+  exact subject and body, then approve or reject. Approval does not send cold
+  outreach; Milestone 3 owns that worker and its deliverability controls.
+- Proposal v1 creates a plain-email proposal in the Teamtastic voice with
+  package, price, expiry, and the existing Stripe deposit link. The exact email
+  remains editable before the single approve-and-send action.
+- Proposal sends pass through the master kill switch, a separate proposal switch,
+  daily proposal cap, and suppression list before Resend is called. The switch is
+  intentionally still off until production sign-in is validated.
+- `/office/prospects` provides search and status filtering. Each prospect page
+  combines form/quiz submissions, incoming and outgoing emails, bookings,
+  tasks, deals, Stripe payments, drafts, proposals, and automation decisions
+  into one newest-first timeline.
+- The private routes are marked no-index. Direct unauthenticated requests to
+  `/office` redirect to `/office/login`; this was verified against the production
+  build without using desktop automation.
+
+Final activation checklist:
+
+1. Confirm Vercel has `NEXT_PUBLIC_SUPABASE_URL`, an active
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or legacy anon key),
+   `OFFICE_ALLOWED_EMAIL`, and `NEXT_PUBLIC_SITE_URL=https://www.teamtastic.events`.
+2. Confirm `https://www.teamtastic.events/auth/callback` is allowed in Supabase
+   Auth redirect URLs.
+3. Sign in once at `https://www.teamtastic.events/office`, verify the queues, and
+   create a proposal draft without sending it.
+4. Only after that check, set `system_config.proposal_email_enabled = true`.
+
 ## Native booking workstream — Calendly replacement
 
 The native booking foundation is installed but not active:
