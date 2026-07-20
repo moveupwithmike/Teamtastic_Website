@@ -9,7 +9,7 @@ export default async function OfficeLogin({ searchParams }) {
         <h1 className="mt-2 text-3xl font-bold">Teamtastic Office</h1>
         <p className="mt-3 text-slate-300">Enter your approved email. We’ll send a secure, one-time sign-in link.</p>
         {params?.sent && <p className="mt-5 rounded-xl bg-emerald-500/10 p-3 text-emerald-300">Check your inbox for the sign-in link.</p>}
-        {params?.error && <p className="mt-5 rounded-xl bg-red-500/10 p-3 text-red-300">The sign-in link could not be completed. Please try again.</p>}
+        {params?.error && <p className="mt-5 rounded-xl bg-red-500/10 p-3 text-red-300">The sign-in link could not be completed. Request a fresh link and try again.</p>}
         <form action={requestMagicLink} className="mt-6 space-y-4">
           <label className="block text-sm text-slate-300">
             Email

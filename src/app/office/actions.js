@@ -32,14 +32,67 @@ export async function requestMagicLink(formData) {
   const allowedEmail = (process.env.OFFICE_ALLOWED_EMAIL || process.env.INTERNAL_NOTIFICATION_EMAIL || "").trim().toLowerCase();
   if (!allowedEmail || requestedEmail !== allowedEmail) redirect("/office/login?sent=1");
 
-  const supabase = await createSupabaseServerClient();
   const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL
     || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://www.teamtastic.events");
-  const { error } = await supabase.auth.signInWithOtp({
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) redirect("/office/login?error=send_failed");
+
+  const admin = getSupabaseAdmin();
+  const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+  const { count } = await admin
+    .from("agent_log")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_name", "office")
+    .eq("action", "office_magic_link_sent")
+    .eq("outcome", "completed")
+    .gte("created_at", oneMinuteAgo);
+  if ((count || 0) > 0) redirect("/office/login?sent=1");
+
+  const { data, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
     email: allowedEmail,
-    options: { emailRedirectTo: `${configuredOrigin}/auth/callback?next=/office`, shouldCreateUser: true },
   });
-  if (error) redirect("/office/login?error=send_failed");
+  const tokenHash = data?.properties?.hashed_token;
+  if (linkError || !tokenHash) {
+    await admin.from("agent_log").insert({
+      agent_name: "office",
+      action: "office_magic_link_sent",
+      outcome: "failed",
+      error: linkError?.message || "Supabase did not return a token hash",
+    });
+    redirect("/office/login?error=send_failed");
+  }
+
+  const signInUrl = new URL("/auth/callback", configuredOrigin);
+  signInUrl.searchParams.set("token_hash", tokenHash);
+  signInUrl.searchParams.set("type", "email");
+  signInUrl.searchParams.set("next", "/office");
+  const safeUrl = signInUrl.toString().replaceAll("&", "&amp;");
+  const mailResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `office-magic-link/${tokenHash}`,
+    },
+    body: JSON.stringify({
+      from,
+      to: [allowedEmail],
+      subject: "Your Teamtastic Office sign-in link",
+      html: `<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6"><h2>Sign in to Teamtastic Office</h2><p>Use the secure button below to open your private sales command center.</p><p><a href="${safeUrl}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">Open Teamtastic Office</a></p><p style="color:#64748b;font-size:13px">This one-time link expires shortly. If you did not request it, you can ignore this email.</p></div>`,
+      text: `Sign in to Teamtastic Office:\n\n${signInUrl.toString()}\n\nThis one-time link expires shortly. If you did not request it, you can ignore this email.`,
+    }),
+  });
+  const mailResult = await mailResponse.json().catch(() => ({}));
+  await admin.from("agent_log").insert({
+    agent_name: "office",
+    action: "office_magic_link_sent",
+    outcome: mailResponse.ok ? "completed" : "failed",
+    decision: mailResponse.ok ? { provider_message_id: mailResult.id } : {},
+    error: mailResponse.ok ? null : (mailResult.message || `Resend returned ${mailResponse.status}`),
+  });
+  if (!mailResponse.ok) redirect("/office/login?error=send_failed");
   redirect("/office/login?sent=1");
 }
 
