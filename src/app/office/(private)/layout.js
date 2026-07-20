@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireOfficeUser } from "@/lib/server/office-auth";
 import { signOutOffice } from "../actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function PrivateOfficeLayout({ children }) {
   const user = await requireOfficeUser();
   return (

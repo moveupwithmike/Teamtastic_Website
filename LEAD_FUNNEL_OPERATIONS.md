@@ -276,7 +276,8 @@ The private command center is implemented at `/office`:
 - Supabase passwordless email-link sign-in protects every Office page. Access is
   restricted server-side to `OFFICE_ALLOWED_EMAIL` (falling back to the existing
   `INTERNAL_NOTIFICATION_EMAIL`), and the service-role key never reaches the
-  browser.
+  browser. A request-level Supabase session proxy refreshes cookies and marks all
+  `/office` responses private/no-store so authenticated pages cannot be cached.
 - “Needs Michael now” shows recent interested replies, overdue deal actions,
   today's calls with Zoom links, and recent automation failures or escalations.
 - Calls that have ended create one idempotent post-call task. The outcome form
@@ -290,7 +291,9 @@ The private command center is implemented at `/office`:
   remains editable before the single approve-and-send action.
 - Proposal sends pass through the master kill switch, a separate proposal switch,
   daily proposal cap, and suppression list before Resend is called. The switch is
-  intentionally still off until production sign-in is validated.
+  intentionally still off until production sign-in is validated. The approval
+  state is claimed atomically, and the proposal ID is also sent to Resend as an
+  idempotency key so double-clicks and safe retries cannot send a duplicate email.
 - `/office/prospects` provides search and status filtering. Each prospect page
   combines form/quiz submissions, incoming and outgoing emails, bookings,
   tasks, deals, Stripe payments, drafts, proposals, and automation decisions
@@ -309,6 +312,13 @@ Final activation checklist:
 3. Sign in once at `https://www.teamtastic.events/office`, verify the queues, and
    create a proposal draft without sending it.
 4. Only after that check, set `system_config.proposal_email_enabled = true`.
+
+Audit note (July 19, 2026): the Milestone 1 pipeline, Milestone 2 Office
+foundation, and proposal-index migrations are all recorded in Supabase's live
+migration ledger with versions matching the committed files. The Office task
+cron is active and its latest run succeeded. Proposal email remains off pending
+the one manual production magic-link sign-in and draft-only review described
+above.
 
 ## Native booking workstream — Calendly replacement
 

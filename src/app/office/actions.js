@@ -146,22 +146,23 @@ export async function approveAndSendProposal(formData) {
   const id = clean(formData.get("id"), 50);
   const db = getSupabaseAdmin();
   const { data: proposal, error: readError } = await db.from("proposals").select("*").eq("id", id).single();
-  if (readError || !proposal || !["draft", "approved", "failed"].includes(proposal.status)) redirect("/office?error=proposal_not_available");
+  if (readError || !proposal || !["draft", "failed"].includes(proposal.status)) redirect("/office?error=proposal_not_available");
 
   const subject = clean(formData.get("subject"), 300);
   const bodyText = clean(formData.get("body_text"), 10000);
   if (!subject || !bodyText) redirect("/office?error=proposal_content_required");
 
   const approvedAt = new Date().toISOString();
-  const { error: approvalError } = await db.from("proposals").update({
+  const { data: claimedProposal, error: approvalError } = await db.from("proposals").update({
     subject,
     body_text: bodyText,
     status: "approved",
     approved_at: approvedAt,
     approved_by: user.email,
     last_error: null,
-  }).eq("id", id);
+  }).eq("id", id).in("status", ["draft", "failed"]).select("id").maybeSingle();
   if (approvalError) redirect(`/office?error=${encodeURIComponent(approvalError.message)}`);
+  if (!claimedProposal) redirect("/office?error=proposal_already_being_sent");
 
   const { data: reservation, error: reservationError } = await db.rpc("reserve_email_send", {
     p_message_type: "proposal",
@@ -185,14 +186,18 @@ export async function approveAndSendProposal(formData) {
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `proposal/${id}`,
+      },
       body: JSON.stringify({ from, to: [proposal.recipient_email], subject, text: bodyText }),
       signal: AbortSignal.timeout(10000),
     });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error(result.message || `Email provider returned ${response.status}`);
     const sentAt = new Date().toISOString();
-    await db.from("messages").insert({
+    const { error: messageError } = await db.from("messages").insert({
       prospect_id: proposal.prospect_id,
       direction: "outbound",
       message_type: "proposal",
@@ -205,7 +210,9 @@ export async function approveAndSendProposal(formData) {
       status: "sent",
       sent_at: sentAt,
     });
-    await db.from("proposals").update({ status: "sent", sent_at: sentAt, provider_message_id: result.id, last_error: null }).eq("id", id);
+    if (messageError && messageError.code !== "23505") throw messageError;
+    const { error: proposalUpdateError } = await db.from("proposals").update({ status: "sent", sent_at: sentAt, provider_message_id: result.id, last_error: null }).eq("id", id);
+    if (proposalUpdateError) throw proposalUpdateError;
     await db.from("deals").update({
       stage: "proposal_sent",
       next_action: "Follow up on the proposal",
