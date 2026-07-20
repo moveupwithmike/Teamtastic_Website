@@ -17,6 +17,21 @@ type GmailMessage = {
 
 const MAILBOX = (Deno.env.get("GMAIL_MAILBOX") || "michael@tryteamtastic.com").toLowerCase();
 
+// Supabase/Postgrest errors are plain objects, not Error instances — String()
+// on them silently produces "[object Object]" and destroys the real reason.
+function errorText(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const withCode = "code" in error ? ` (code: ${(error as { code: unknown }).code})` : "";
+    return `${String((error as { message: unknown }).message)}${withCode}`;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 function decodeBase64Url(value = "") {
   if (!value) return "";
   const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
@@ -279,15 +294,16 @@ Deno.serve(async (request) => {
     });
     return Response.json({ processed: summaries.length, inserted, skipped_automated: skippedAutomated });
   } catch (error) {
+    const message = errorText(error).slice(0, 1000);
     await supabase.from("mailbox_sync_state").update({
       status: "error",
-      last_error: String(error).slice(0, 1000),
+      last_error: message,
     }).eq("mailbox", MAILBOX);
     await supabase.from("agent_log").insert({
       agent_name: "gmail-reply-ingestion",
       action: "poll_inbox",
       outcome: "failed",
-      error: String(error).slice(0, 1000),
+      error: message,
       decision: { mailbox: MAILBOX },
     });
     return new Response("Gmail ingestion failed", { status: 500 });
