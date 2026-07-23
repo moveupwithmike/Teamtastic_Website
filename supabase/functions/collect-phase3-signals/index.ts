@@ -53,18 +53,24 @@ async function fingerprint(value: string) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+// GDELT's free tier throttles bursts hard: once it starts returning 429s, further
+// requests in the same window just time out. Treat a 429 that survives one retry as
+// "stop this run entirely" rather than a per-company failure.
+class RateLimited extends Error {}
+
 async function fetchPublicNews(url: URL) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const response = await fetch(url, {
       headers: { "Accept": "application/json", "User-Agent": "TeamtasticSignalResearch/1.0" },
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(25_000),
     });
     if (response.ok) return response;
-    if (response.status !== 429 || attempt === 2) throw new Error(`GDELT ${response.status}`);
-    const retryAfterSeconds = Math.min(Number(response.headers.get("retry-after") || 5), 10);
+    if (response.status !== 429) throw new Error(`GDELT ${response.status}`);
+    if (attempt === 1) throw new RateLimited("GDELT 429 after retry");
+    const retryAfterSeconds = Math.min(Number(response.headers.get("retry-after") || 8), 15);
     await new Promise((resolve) => setTimeout(resolve, retryAfterSeconds * 1000));
   }
-  throw new Error("GDELT retry limit reached");
+  throw new RateLimited("GDELT retry limit reached");
 }
 
 Deno.serve(async (request) => {
@@ -104,13 +110,16 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const companyLimit = Math.min(Number(config.phase3_signal_company_limit || 5), 25);
+    // Small batches, rotating through the least-recently-checked companies. GDELT's
+    // free tier can't absorb one query per company per day at scale, and news signals
+    // stay fresh for weeks — every company gets re-checked within days regardless.
+    const companyLimit = Math.min(Number(config.phase3_signal_company_limit || 5), 3);
     const lookbackDays = Math.min(Number(config.phase3_signal_lookback_days || 7), 30);
     const { data: companies, error: companyError } = await supabase.from("companies")
       .select("id,name,domain,lifecycle_stage,source,metadata")
       .in("lifecycle_stage", ["prospect", "qualified", "opportunity"])
       .or("source.is.null,source.neq.phase3_validation")
-      .order("updated_at", { ascending: false })
+      .order("metadata->>signal_checked_at", { ascending: true, nullsFirst: true })
       .limit(companyLimit);
     if (companyError) throw companyError;
 
@@ -122,9 +131,12 @@ Deno.serve(async (request) => {
     const failures: Array<{ company_id: string; error: string }> = [];
     const endpoint = String(source.config?.endpoint || "https://api.gdeltproject.org/api/v2/doc/doc");
 
+    let rateLimited = false;
     for (const company of companies || []) {
       const companyName = clean(company.name, 100);
       if (companyName.length < 3) continue;
+      // Space the requests out — burst-querying is what triggered GDELT's throttling.
+      if (companiesChecked > 0) await new Promise((resolve) => setTimeout(resolve, 4000));
       companiesChecked++;
       const query = `\"${companyName.replace(/[\"\\]/g, " ")}\" (hiring OR expansion OR \"new office\" OR workplace OR award) sourcelang:english`;
       const url = new URL(endpoint);
@@ -177,8 +189,20 @@ Deno.serve(async (request) => {
           if (inserted) created++;
           else duplicates++;
         }
+        await supabase.from("companies").update({
+          metadata: { ...(company.metadata || {}), signal_checked_at: new Date().toISOString() },
+        }).eq("id", company.id);
       } catch (error) {
         failures.push({ company_id: company.id, error: errorText(error).slice(0, 240) });
+        if (error instanceof RateLimited) {
+          // Leave signal_checked_at unstamped so this company goes first next run,
+          // and stop the run — more requests now would only extend the throttle.
+          rateLimited = true;
+          break;
+        }
+        await supabase.from("companies").update({
+          metadata: { ...(company.metadata || {}), signal_checked_at: new Date().toISOString() },
+        }).eq("id", company.id);
       }
     }
 
@@ -194,15 +218,15 @@ Deno.serve(async (request) => {
       records_created: created,
       completed_at: completedAt,
       error: failures.length ? JSON.stringify(failures).slice(0, 1000) : null,
-      decision: { companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, send_enabled: false },
+      decision: { companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false },
     }).eq("id", run.id);
     await supabase.from("agent_log").insert({
       agent_name: "phase3-signal-collector",
       action: "collect_public_news_signals",
       outcome: failures.length === companiesChecked && companiesChecked > 0 ? "failed" : "completed",
-      decision: { companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, send_enabled: false },
+      decision: { companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false },
     });
-    return Response.json({ companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, send_enabled: false });
+    return Response.json({ companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false });
   } catch (error) {
     const failure = errorText(error).slice(0, 1000);
     await supabase.from("source_runs").update({ status: "failed", error: failure, completed_at: new Date().toISOString() }).eq("id", run.id);

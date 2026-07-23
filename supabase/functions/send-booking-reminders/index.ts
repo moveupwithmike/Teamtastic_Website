@@ -168,5 +168,101 @@ Deno.serve(async (request) => {
     }
   }
 
+  // No-show follow-up: no time window needed, just "hasn't been sent yet".
+  const { data: noShows, error: noShowError } = await supabase
+    .from("bookings")
+    .select("id,booking_type_id,prospect_id,name,email,visitor_timezone,starts_at")
+    .eq("status", "no_show")
+    .is("no_show_followup_sent_at", null);
+  if (noShowError) {
+    await supabase.from("agent_log").insert({
+      agent_name: "booking-reminders", action: "query_no_show", outcome: "failed",
+      error: noShowError.message,
+    });
+  }
+
+  for (const booking of noShows || []) {
+    processed++;
+    const { data: bookingType } = await supabase
+      .from("booking_types").select("name").eq("id", booking.booking_type_id).single();
+    const bookingTypeName = bookingType?.name || "planning call";
+
+    const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
+      p_message_type: "booking",
+      p_recipient: booking.email,
+    });
+    if (reservationError || reservation?.allowed !== true) {
+      await supabase.from("agent_log").insert({
+        agent_name: "booking-reminders", action: "send_no_show", outcome: "blocked",
+        prospect_id: booking.prospect_id,
+        decision: { booking_id: booking.id, reservation, error: reservationError?.message || null },
+      });
+      continue;
+    }
+
+    const subject = "Sorry we missed each other";
+    const bodyText = [
+      `Hi ${booking.name},`,
+      "",
+      `Looks like we missed each other for our ${bookingTypeName} — no worries at all, these things happen.`,
+      "",
+      "Whenever you're ready to find a new time, we're here: https://www.teamtastic.events/book",
+      "",
+      "Michael",
+    ].join("\n");
+
+    let sendResult = "failed";
+    let providerMessageId: string | null = null;
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: Deno.env.get("RESEND_FROM_EMAIL"),
+          to: booking.email,
+          subject,
+          text: bodyText,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.id) {
+        sendResult = "sent";
+        providerMessageId = data.id;
+      }
+    } catch {
+      sendResult = "failed";
+    }
+
+    await supabase.rpc("record_email_send_result", { p_message_type: "booking", p_sent: sendResult === "sent" });
+    await supabase.from("messages").insert({
+      prospect_id: booking.prospect_id,
+      direction: "outbound",
+      message_type: "booking",
+      provider: "resend",
+      provider_message_id: providerMessageId,
+      from_address: Deno.env.get("RESEND_FROM_EMAIL") || "",
+      to_addresses: [booking.email],
+      subject,
+      body_text: bodyText,
+      status: sendResult,
+      sent_at: sendResult === "sent" ? new Date().toISOString() : null,
+    });
+
+    if (sendResult === "sent") {
+      await supabase.from("bookings").update({ no_show_followup_sent_at: new Date().toISOString() }).eq("id", booking.id);
+      sent++;
+    }
+
+    await supabase.from("agent_log").insert({
+      agent_name: "booking-reminders", action: "send_no_show", outcome: sendResult,
+      prospect_id: booking.prospect_id,
+      decision: { booking_id: booking.id, provider_message_id: providerMessageId },
+    });
+  }
+
   return Response.json({ processed, sent });
 });

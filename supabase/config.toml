@@ -50,3 +50,15 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/process-apollo-enrichment/deno.json"
 entrypoint = "./functions/process-apollo-enrichment/index.ts"
+
+[functions.send-approved-outreach]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-approved-outreach/deno.json"
+entrypoint = "./functions/send-approved-outreach/index.ts"
+
+[functions.draft-sequence-followups]
+enabled = true
+verify_jwt = false
+import_map = "./functions/draft-sequence-followups/deno.json"
+entrypoint = "./functions/draft-sequence-followups/index.ts"

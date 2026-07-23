@@ -51,6 +51,39 @@ function outreachCopy(
   };
 }
 
+// Used only when no active company signal exists. Never invents a specific fact about the
+// company or prospect — stays honest per TEAMTASTIC_OUTREACH_VOICE.md's "personalize only
+// from stored evidence" rule, using real data we actually have (company name, industry).
+function genericOutreachCopy(prospect: Record<string, unknown>, companyName: string, industry: string | null) {
+  const observations = [
+    "Remote and hybrid teams rarely need another forced happy hour. They need a reason to laugh, compete a little, and meet someone outside their usual circle.",
+    "A new hire can learn the org chart from a document. Learning who turns trivia into a championship sport takes a better kind of introduction.",
+    "A good team event should create more than a group photo. It should give people a reason to talk, laugh, and discover something new about each other.",
+  ];
+  const reasons = [
+    `I've been reaching out to teams at companies like ${companyName}${industry ? ` in ${industry}` : ""} that are growing fast enough to need a reason to actually get together.`,
+    `${companyName} came up while I was looking at teams that could use a break from the usual happy hour rotation.`,
+    `I came across ${companyName} and figured it's worth a note, even without a specific reason beyond "your team probably deserves a good event."`,
+  ];
+  const key = Array.from(companyName).reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return {
+    subject: `An idea for the ${companyName} team`.slice(0, 120),
+    bodyText: [
+      `Hi ${firstName(prospect)},`,
+      "",
+      reasons[key % reasons.length],
+      "",
+      observations[key % observations.length],
+      "",
+      "That’s what Teamtastic is built for: a polished, facilitated experience where the team gets to laugh, participate, and connect—and the organizer never has to rescue the event.",
+      "",
+      "Worth sending over two or three ideas?",
+      "",
+      "Michael",
+    ].join("\n"),
+  };
+}
+
 function scoreProspect(prospect: Record<string, any>) {
   const company = Array.isArray(prospect.companies) ? prospect.companies[0] : prospect.companies;
   let companyFit = 0;
@@ -193,39 +226,32 @@ Deno.serve(async (request) => {
       }
 
       const company = Array.isArray(prospect.companies) ? prospect.companies[0] : prospect.companies;
+      if (!company) {
+        missingSignal++;
+        continue;
+      }
       const signals = (company?.signals || [])
         .filter((signal: Record<string, unknown>) => !signal.expires_at || new Date(String(signal.expires_at)) > new Date())
         .sort((a: Record<string, unknown>, b: Record<string, unknown>) => Number(b.strength) - Number(a.strength));
       const signal = signals[0];
-      if (!company || !signal) {
-        missingSignal++;
-        continue;
-      }
-
-      const evidence = cleanEvidence(signal.evidence);
-      if (!evidence) {
-        missingSignal++;
-        continue;
-      }
+      const evidence = signal ? cleanEvidence(signal.evidence) : null;
       const companyName = String(company.name || "your team").trim();
-      const { subject, bodyText } = outreachCopy(
-        prospect,
-        companyName,
-        String(signal.signal_type || ""),
-        evidence,
-      );
-      const draftFingerprint = await fingerprint(`${prospect.id}|${signal.id}|${PROMPT_VERSION}`);
+
+      const { subject, bodyText } = signal && evidence
+        ? outreachCopy(prospect, companyName, String(signal.signal_type || ""), evidence)
+        : genericOutreachCopy(prospect, companyName, company.industry || null);
+      const draftFingerprint = signal && evidence
+        ? await fingerprint(`${prospect.id}|${signal.id}|${PROMPT_VERSION}`)
+        : await fingerprint(`${prospect.id}|generic|${PROMPT_VERSION}`);
       const { data: draft, error: draftError } = await supabase.from("outreach_drafts").upsert({
         prospect_id: prospect.id,
-        signal_id: signal.id,
+        signal_id: signal && evidence ? signal.id : null,
         source_run_id: run.id,
         subject,
         body_text: bodyText,
-        personalization_evidence: [{
-          signal_type: signal.signal_type,
-          evidence,
-          observed_at: signal.observed_at,
-        }],
+        personalization_evidence: signal && evidence
+          ? [{ signal_type: signal.signal_type, evidence, observed_at: signal.observed_at }]
+          : [{ signal_type: "generic", evidence: "No active company signal — used a generic, honest opener." }],
         status: "review",
         model: "deterministic-template",
         prompt_version: PROMPT_VERSION,

@@ -1,0 +1,281 @@
+import { randomBytes, createHash } from "node:crypto";
+import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { createCalendarEvent, deleteCalendarEvent } from "@/lib/server/google-calendar";
+import { createZoomMeeting, cancelZoomMeeting } from "@/lib/server/zoom";
+import { validTimeZone } from "@/lib/server/booking-time";
+import { verifyTurnstile } from "@/lib/server/turnstile";
+import { rateLimited } from "@/lib/server/rate-limit";
+
+export const runtime = "nodejs";
+
+function clean(value, max = 300) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function fail(status, reason) {
+  return NextResponse.json({ success: false, reason }, { status });
+}
+
+function siteOrigin() {
+  return process.env.NEXT_PUBLIC_SITE_URL
+    || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://www.teamtastic.events");
+}
+
+const REASON_STATUS = {
+  master_kill_switch: 503,
+  native_booking_disabled: 503,
+  calendar_not_connected: 503,
+  zoom_not_connected: 503,
+  invalid_email: 400,
+  invalid_name: 400,
+  booking_type_unavailable: 404,
+  minimum_notice: 409,
+  outside_booking_horizon: 409,
+  daily_limit: 409,
+  slot_unavailable: 409,
+  request_already_used: 409,
+};
+
+async function sendRescheduleEmail(supabase, { booking, bookingTypeName, joinUrl, manageToken }) {
+  const { data: reservation } = await supabase.rpc("reserve_email_send", {
+    p_message_type: "booking",
+    p_recipient: booking.email,
+  });
+  if (!reservation?.allowed) return;
+
+  const whenText = new Intl.DateTimeFormat("en-US", {
+    timeZone: booking.visitor_timezone, dateStyle: "full", timeStyle: "short",
+  }).format(new Date(booking.starts_at));
+  const manageUrl = new URL(`/book/manage/${manageToken}`, siteOrigin()).toString();
+
+  const bodyText = [
+    `Hi ${booking.name},`,
+    "",
+    `You're rescheduled — your ${bookingTypeName} with Teamtastic is now:`,
+    "",
+    `When: ${whenText} (${booking.visitor_timezone.replaceAll("_", " ")})`,
+    joinUrl ? `Join link: ${joinUrl}` : null,
+    "",
+    "A calendar invite is on its way from Google Calendar with these same details.",
+    "",
+    `Need to change anything else? ${manageUrl}`,
+    "",
+    "Michael",
+  ].filter((line) => line !== null).join("\n");
+
+  let sendResult = "failed";
+  let providerMessageId = null;
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM_EMAIL,
+        to: booking.email,
+        subject: `Rescheduled: ${bookingTypeName} with Teamtastic`,
+        text: bodyText,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data.id) {
+      sendResult = "sent";
+      providerMessageId = data.id;
+    }
+  } catch {
+    sendResult = "failed";
+  }
+
+  await supabase.rpc("record_email_send_result", { p_message_type: "booking", p_sent: sendResult === "sent" });
+  await supabase.from("messages").insert({
+    prospect_id: booking.prospect_id,
+    direction: "outbound",
+    message_type: "booking",
+    provider: "resend",
+    provider_message_id: providerMessageId,
+    from_address: process.env.RESEND_FROM_EMAIL || "",
+    to_addresses: [booking.email],
+    subject: `Rescheduled: ${bookingTypeName} with Teamtastic`,
+    body_text: bodyText,
+    status: sendResult,
+    sent_at: sendResult === "sent" ? new Date().toISOString() : null,
+  });
+}
+
+export async function POST(request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return fail(400, "invalid_json");
+  }
+
+  const token = clean(body.token, 200);
+  const visitorTimezone = clean(body.visitorTimezone, 100);
+  const startsAt = clean(body.startsAt, 40);
+  if (!token || !validTimeZone(visitorTimezone) || Number.isNaN(Date.parse(startsAt))) {
+    return fail(400, "invalid_request");
+  }
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
+  if (rateLimited(createHash("sha256").update(`reschedule:${ip}:${token}`).digest("hex"))) return fail(429, "rate_limited");
+  try {
+    if (!(await verifyTurnstile(clean(body.turnstileToken, 2048), ip))) return fail(400, "bot_verification_failed");
+  } catch {
+    return fail(503, "verification_unavailable");
+  }
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  const supabase = getSupabaseAdmin();
+  const { data: oldBooking, error: lookupError } = await supabase
+    .from("bookings")
+    .select("id,name,email,company,visitor_timezone,starts_at,prospect_id,zoom_meeting_id,google_event_id,booking_types(id,slug,name,zoom_enabled,duration_minutes)")
+    .eq("manage_token_hash", tokenHash)
+    .eq("status", "confirmed")
+    .gt("starts_at", new Date().toISOString())
+    .maybeSingle();
+  if (lookupError) {
+    console.error("Reschedule lookup failed", { code: lookupError.code });
+    return fail(503, "booking_service_unavailable");
+  }
+  if (!oldBooking) return fail(409, "booking_not_found_or_not_reschedulable");
+  const bookingType = Array.isArray(oldBooking.booking_types) ? oldBooking.booking_types[0] : oldBooking.booking_types;
+  if (!bookingType) return fail(503, "booking_service_unavailable");
+
+  // Step 1: hold the new slot. If this fails, the old booking is never touched.
+  const manageToken = randomBytes(32).toString("base64url");
+  const manageTokenHash = createHash("sha256").update(manageToken).digest("hex");
+  const { data: holdResult, error: holdError } = await supabase.rpc("hold_booking_slot", {
+    p_booking_type_slug: bookingType.slug,
+    p_name: oldBooking.name,
+    p_email: oldBooking.email,
+    p_company: oldBooking.company || null,
+    p_visitor_timezone: visitorTimezone,
+    p_starts_at: new Date(startsAt).toISOString(),
+    p_submission_id: null,
+    p_source: "reschedule",
+    p_context: { rescheduled_from_id: oldBooking.id },
+    p_manage_token_hash: manageTokenHash,
+  });
+  if (holdError) {
+    console.error("Reschedule hold failed", { code: holdError.code });
+    return fail(503, "booking_service_unavailable");
+  }
+  if (!holdResult?.held) {
+    return fail(REASON_STATUS[holdResult?.reason] || 409, holdResult?.reason || "slot_unavailable");
+  }
+
+  const newBookingId = holdResult.booking_id;
+  const { data: newBooking } = await supabase
+    .from("bookings")
+    .select("id,starts_at,ends_at")
+    .eq("id", newBookingId)
+    .single();
+
+  const { data: settings } = await supabase.from("booking_settings").select("owner_timezone,google_calendar_id").eq("id", true).single();
+  const ownerTimezone = settings?.owner_timezone;
+  const calendarId = settings?.google_calendar_id || "primary";
+  let zoomMeetingId = null;
+  let zoomJoinUrl = null;
+  let googleEventId = null;
+
+  // Step 2: provision Zoom + Calendar for the new slot. Any failure here releases
+  // the new hold and stops — the old booking stays exactly as it was.
+  try {
+    if (bookingType.zoom_enabled) {
+      const zoomHostEmail = process.env.ZOOM_HOST_EMAIL || process.env.INTERNAL_NOTIFICATION_EMAIL;
+      const meeting = await createZoomMeeting({
+        topic: `${bookingType.name} — ${oldBooking.name}`,
+        startsAt: new Date(newBooking.starts_at).toISOString(),
+        durationMinutes: bookingType.duration_minutes,
+        timezone: ownerTimezone,
+        hostEmail: zoomHostEmail,
+      });
+      zoomMeetingId = meeting.meetingId;
+      zoomJoinUrl = meeting.joinUrl;
+    }
+  } catch (error) {
+    await supabase.rpc("fail_booking_hold", { p_booking_id: newBookingId, p_error: String(error?.message || error) });
+    return fail(502, "zoom_meeting_failed");
+  }
+
+  try {
+    const event = await createCalendarEvent({
+      calendarId,
+      summary: `${bookingType.name}: Teamtastic + ${oldBooking.name}`,
+      description: [
+        oldBooking.company ? `Company: ${oldBooking.company}` : null,
+        zoomJoinUrl ? `Zoom: ${zoomJoinUrl}` : null,
+      ].filter(Boolean).join("\n"),
+      startsAt: new Date(newBooking.starts_at).toISOString(),
+      endsAt: new Date(newBooking.ends_at).toISOString(),
+      timeZone: ownerTimezone,
+      attendeeEmail: oldBooking.email,
+      attendeeName: oldBooking.name,
+    });
+    googleEventId = event.eventId;
+  } catch (error) {
+    if (zoomMeetingId) await cancelZoomMeeting(zoomMeetingId).catch(() => {});
+    await supabase.rpc("fail_booking_hold", { p_booking_id: newBookingId, p_error: String(error?.message || error) });
+    return fail(502, "calendar_event_failed");
+  }
+
+  // Step 3: the new slot is fully live — now finalize the new row and retire the old one.
+  const { error: confirmError } = await supabase
+    .from("bookings")
+    .update({
+      status: "confirmed",
+      confirmed_at: new Date().toISOString(),
+      google_event_id: googleEventId,
+      zoom_meeting_id: zoomMeetingId,
+      zoom_join_url: zoomJoinUrl,
+      rescheduled_from_id: oldBooking.id,
+    })
+    .eq("id", newBookingId)
+    .eq("status", "held");
+  if (confirmError) {
+    if (zoomMeetingId) await cancelZoomMeeting(zoomMeetingId).catch(() => {});
+    await deleteCalendarEvent(calendarId, googleEventId).catch(() => {});
+    await supabase.rpc("fail_booking_hold", { p_booking_id: newBookingId, p_error: "confirm_write_failed" });
+    return fail(503, "booking_service_unavailable");
+  }
+
+  const { data: retiredOld } = await supabase
+    .from("bookings")
+    .update({ status: "rescheduled", rescheduled_at: new Date().toISOString(), rescheduled_to_id: newBookingId })
+    .eq("id", oldBooking.id)
+    .eq("status", "confirmed")
+    .select("id")
+    .maybeSingle();
+  if (!retiredOld) {
+    // Old booking was no longer 'confirmed' by the time we got here — most likely a
+    // duplicate/double-submitted reschedule request beat this one to it. The new
+    // booking we just created is still real and confirmed, so don't discard it, but
+    // flag the anomaly instead of silently proceeding as if nothing unusual happened.
+    await supabase.from("agent_log").insert({
+      agent_name: "booking-reschedule", action: "retire_old_booking", outcome: "escalated",
+      prospect_id: oldBooking.prospect_id,
+      decision: { old_booking_id: oldBooking.id, new_booking_id: newBookingId, reason: "old_booking_not_confirmed_at_retire" },
+    });
+  }
+
+  if (oldBooking.zoom_meeting_id) await cancelZoomMeeting(oldBooking.zoom_meeting_id).catch(() => {});
+  if (oldBooking.google_event_id) await deleteCalendarEvent(calendarId, oldBooking.google_event_id).catch(() => {});
+
+  await sendRescheduleEmail(supabase, {
+    booking: { ...oldBooking, starts_at: newBooking.starts_at, visitor_timezone: visitorTimezone },
+    bookingTypeName: bookingType.name,
+    joinUrl: zoomJoinUrl,
+    manageToken,
+  }).catch((error) => console.error("Reschedule email failed", { message: error?.message }));
+
+  return NextResponse.json({
+    success: true,
+    bookingId: newBookingId,
+    startsAt: newBooking.starts_at,
+    endsAt: newBooking.ends_at,
+    visitorTimezone,
+    joinUrl: zoomJoinUrl,
+    manageToken,
+  });
+}

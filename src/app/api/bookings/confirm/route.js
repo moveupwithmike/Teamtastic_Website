@@ -4,10 +4,10 @@ import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { createCalendarEvent, deleteCalendarEvent } from "@/lib/server/google-calendar";
 import { createZoomMeeting, cancelZoomMeeting } from "@/lib/server/zoom";
 import { validTimeZone } from "@/lib/server/booking-time";
+import { verifyTurnstile } from "@/lib/server/turnstile";
+import { rateLimited } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
-
-const buckets = new Map();
 
 function clean(value, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -15,30 +15,6 @@ function clean(value, max = 300) {
 
 function validEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
-}
-
-function rateLimited(key) {
-  const now = Date.now();
-  const entries = (buckets.get(key) || []).filter((time) => now - time < 10 * 60 * 1000);
-  entries.push(now);
-  buckets.set(key, entries);
-  return entries.length > 5;
-}
-
-async function verifyTurnstile(token, ip) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return process.env.NODE_ENV !== "production" && token === "development-bypass";
-  const form = new FormData();
-  form.set("secret", secret);
-  form.set("response", token);
-  if (ip) form.set("remoteip", ip);
-  const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: form,
-    signal: AbortSignal.timeout(5000),
-  });
-  const data = await result.json();
-  return data.success === true;
 }
 
 function fail(status, reason) {
@@ -60,7 +36,12 @@ const REASON_STATUS = {
   request_already_used: 409,
 };
 
-async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTimezone, joinUrl }) {
+function siteOrigin() {
+  return process.env.NEXT_PUBLIC_SITE_URL
+    || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://www.teamtastic.events");
+}
+
+async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTimezone, joinUrl, manageToken }) {
   const { data: reservation } = await supabase.rpc("reserve_email_send", {
     p_message_type: "booking",
     p_recipient: booking.email,
@@ -70,6 +51,7 @@ async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTime
   const whenText = new Intl.DateTimeFormat("en-US", {
     timeZone: booking.visitor_timezone, dateStyle: "full", timeStyle: "short",
   }).format(new Date(booking.starts_at));
+  const manageUrl = manageToken ? new URL(`/book/manage/${manageToken}`, siteOrigin()).toString() : null;
 
   const bodyLines = [
     `Hi ${booking.name},`,
@@ -83,7 +65,7 @@ async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTime
     "",
     "Come with your team in mind — we'll map out the rest together. Your team brings the people. We bring the experience.",
     "",
-    "Need to change anything? Just reply to this email.",
+    manageUrl ? `Need to reschedule or cancel? ${manageUrl}` : "Need to change anything? Just reply to this email.",
     "",
     "Michael",
   ].filter((line) => line !== null).join("\n");
@@ -284,7 +266,7 @@ export async function POST(request) {
   }
 
   await sendConfirmationEmail(supabase, {
-    booking: { ...booking, name, email }, bookingType, ownerTimezone, joinUrl: zoomJoinUrl,
+    booking: { ...booking, name, email }, bookingType, ownerTimezone, joinUrl: zoomJoinUrl, manageToken,
   }).catch((error) => console.error("Booking confirmation email failed", { message: error?.message }));
 
   return NextResponse.json({

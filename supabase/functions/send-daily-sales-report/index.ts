@@ -16,6 +16,10 @@ function reportDate() {
   }).format(new Date());
 }
 
+function isMondayEastern() {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date()) === "Mon";
+}
+
 function countBy<T>(rows: T[], key: (row: T) => string) {
   return rows.reduce<Record<string, number>>((counts, row) => {
     const value = key(row) || "unknown";
@@ -36,7 +40,7 @@ Deno.serve(async (request) => {
   );
   const { data: config, error: configError } = await supabase
     .from("system_config")
-    .select("master_enabled,daily_report_enabled,daily_report_recipient")
+    .select("master_enabled,daily_report_enabled,daily_report_recipient,daily_prospecting_cap,outbound_auto_paused")
     .eq("id", true)
     .single();
   if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
@@ -78,6 +82,34 @@ Deno.serve(async (request) => {
   const list = (items: string[], empty: string) => items.length
     ? `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`
     : `<p>${empty}</p>`;
+
+  // Weekly, not daily, to match the existing Monday-only learning-recommendations cadence
+  // and avoid noise at the low volume this milestone caps sending to.
+  let deliverabilityHtml = "";
+  if (isMondayEastern()) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
+    const { data: deliverability } = await supabase.rpc("check_outbound_deliverability");
+    const { data: contactedProspects } = await supabase.from("messages").select("prospect_id")
+      .eq("direction", "outbound").eq("message_type", "prospecting").gte("created_at", sevenDaysAgo);
+    const contactedIds = [...new Set((contactedProspects || []).map((row) => row.prospect_id).filter(Boolean))];
+    let replyCount = 0;
+    if (contactedIds.length) {
+      const { count } = await supabase.from("messages").select("id", { count: "exact", head: true })
+        .eq("direction", "inbound").in("prospect_id", contactedIds).gte("received_at", sevenDaysAgo);
+      replyCount = count || 0;
+    }
+    deliverabilityHtml = `
+      <h2>Outbound deliverability (7 days)</h2>
+      <ul>
+        <li>Sent: ${deliverability?.sent_count ?? 0}</li>
+        <li>Bounced: ${deliverability?.bounce_count ?? 0} (${(((deliverability?.bounce_rate ?? 0) as number) * 100).toFixed(1)}%)</li>
+        <li>Complained: ${deliverability?.complaint_count ?? 0} (${(((deliverability?.complaint_rate ?? 0) as number) * 100).toFixed(1)}%)</li>
+        <li>Replies: ${replyCount}</li>
+        <li>Daily cap: ${config.daily_prospecting_cap ?? "unknown"}</li>
+        <li><strong>${config.outbound_auto_paused ? "PAUSED — auto-paused after a bounce/complaint threshold breach. Review before resuming in /office/settings." : "Not paused."}</strong></li>
+      </ul>
+    `;
+  }
   const html = `
     <h1>Teamtastic daily sales report</h1>
     <p><strong>Reporting window:</strong> previous 24 hours</p>
@@ -107,6 +139,7 @@ Deno.serve(async (request) => {
     ${list(tasks.map((task) => `<strong>${escapeHtml(task.priority)}</strong>: ${escapeHtml(task.title)}${task.due_at ? ` — due ${escapeHtml(task.due_at)}` : ""}`), "No open tasks.")}
     <h2>What the system chose not to do</h2>
     ${list(decisions.map((decision) => `<strong>${escapeHtml(decision.outcome)}</strong>: ${escapeHtml(decision.agent_name)} / ${escapeHtml(decision.action)} — ${escapeHtml(JSON.stringify(decision.decision || {}))}`), "No blocked, skipped, failed, or escalated actions.")}
+    ${deliverabilityHtml}
   `;
   const summary = {
     new_leads: leadsResult.count || 0,

@@ -45,6 +45,10 @@ next-env.d.ts
 supabase/.temp/
 supabase/.branches/
 
+# generated scratch output (rendered PDFs/PNGs, not source)
+/output/
+/tmp/
+
 # local agent tooling (contains live API keys)
 .agents/
 

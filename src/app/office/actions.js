@@ -129,6 +129,27 @@ export async function reviewOutreachDraft(formData) {
   revalidatePath("/office");
 }
 
+export async function updateSystemConfig(formData) {
+  const user = await requireOfficeUser();
+  const db = getSupabaseAdmin();
+
+  const dailyCapRaw = Number(formData.get("daily_prospecting_cap"));
+  const update = {
+    prospecting_from_email: clean(formData.get("prospecting_from_email"), 320) || null,
+    prospecting_enabled: formData.get("prospecting_enabled") === "on",
+    daily_prospecting_cap: Number.isFinite(dailyCapRaw) ? Math.min(500, Math.max(0, Math.round(dailyCapRaw))) : 5,
+    sequence_followups_enabled: formData.get("sequence_followups_enabled") === "on",
+    updated_by: user.email,
+  };
+  if (formData.get("resume_sending") === "on") update.outbound_auto_paused = false;
+
+  const { error } = await db.from("system_config").update(update).eq("id", true);
+  await audit("update_system_config", user, update, null, error ? "failed" : "completed", error?.message);
+  if (error) redirect(`/office/settings?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/office/settings");
+  redirect("/office/settings?success=1");
+}
+
 export async function recordCallOutcome(formData) {
   const user = await requireOfficeUser();
   const bookingId = clean(formData.get("booking_id"), 50);
@@ -229,7 +250,9 @@ export async function approveAndSendProposal(formData) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.PROSPECTING_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
+  // Deliberately not prospecting_from_email — proposals go to warm leads who already had
+  // a call, so they use the trusted transactional identity, not the cold-outreach one.
+  const from = process.env.INTERNAL_NOTIFICATION_EMAIL ? `Teamtastic <${process.env.INTERNAL_NOTIFICATION_EMAIL}>` : process.env.RESEND_FROM_EMAIL;
   if (!apiKey || !from) {
     await db.from("proposals").update({ status: "failed", last_error: "Proposal email provider is not configured" }).eq("id", id);
     await audit("send_proposal", user, { proposal_id: id }, proposal.prospect_id, "failed", "Email provider not configured");
