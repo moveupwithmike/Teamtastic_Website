@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 type GmailHeader = { name?: string; value?: string };
 type GmailPart = {
@@ -16,21 +16,6 @@ type GmailMessage = {
 };
 
 const MAILBOX = (Deno.env.get("GMAIL_MAILBOX") || "michael@tryteamtastic.com").toLowerCase();
-
-// Supabase/Postgrest errors are plain objects, not Error instances — String()
-// on them silently produces "[object Object]" and destroys the real reason.
-function errorText(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) {
-    const withCode = "code" in error ? ` (code: ${(error as { code: unknown }).code})` : "";
-    return `${String((error as { message: unknown }).message)}${withCode}`;
-  }
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
 
 function decodeBase64Url(value = "") {
   if (!value) return "";
@@ -143,21 +128,15 @@ async function gmailFetch(path: string, accessToken: string) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("GMAIL_INGESTION_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const unauthorized = authorizeWebhook(request, "GMAIL_INGESTION_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
   const { data: config, error: configError } = await supabase
     .from("system_config")
     .select("master_enabled,gmail_ingestion_enabled")
     .eq("id", true)
     .single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
   if (!config.master_enabled || !config.gmail_ingestion_enabled) {
     return Response.json({ processed: 0, inserted: 0, skipped: true, reason: "gmail_ingestion_disabled" });
   }

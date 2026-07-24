@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Users, Compass, PartyPopper, CheckCircle, ArrowRight, ArrowLeft, Loader2, Gamepad2, ArrowUpRight } from "lucide-react";
-import { PAYMENT_CONFIG } from "@/lib/stripe";
 import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import CheckoutButton from "@/components/CheckoutButton";
+import { buildGameHandoffUrl } from "@/lib/game-handoff";
 import Link from "next/link";
 
 const stepTitles = [
@@ -410,16 +411,17 @@ export default function GameQuiz() {
                 {/* Dynamic High-Conversion CTAs */}
                 <div className="w-full max-w-md space-y-4 pt-4">
                   {/* Primary CTA: Hosted MC Event Booking (Highly recommended for groups/occasions) */}
-                  <a
-                    href={`${PAYMENT_CONFIG.depositUrl}?prefilled_email=${encodeURIComponent(formData.email)}&client_reference_id=${encodeURIComponent(submissionId)}`}
+                  <CheckoutButton
+                    submissionId={submissionId}
+                    paymentKind={estimatorContext ? "estimated_event" : "corporate_deposit"}
                     onClick={() => track("deposit_cta_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="w-full flex h-14 items-center justify-center gap-2 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-xl shadow-purple-500/25 hover:shadow-purple-500/35 transition-all duration-300 hover:-translate-y-0.5"
                   >
-                    Reserve Your Event — $200 Deposit
+                    {estimatorContext
+                      ? `Pay Estimated Total — $${Number(estimatorContext.estimatedTotal).toLocaleString()}`
+                      : "Reserve Your Event — $200 Deposit"}
                     <ArrowUpRight className="h-4 w-4" />
-                  </a>
+                  </CheckoutButton>
 
                   <a
                     href={`/book?${new URLSearchParams({ name: formData.name, email: formData.email, company: formData.company || "", submission_id: submissionId })}`}
@@ -435,7 +437,7 @@ export default function GameQuiz() {
                   {/* Free Sandbox Trial */}
                   <div className="flex items-center justify-between gap-4 pt-2">
                     <a
-                    href={`https://teamtastic.games?${new URLSearchParams({ vibe: formData.vibe, size: formData.teamSize, occasion: formData.occasion, recommendation: recommendation.key, submission_id: submissionId }).toString()}`}
+                    href={buildGameHandoffUrl({ vibe: formData.vibe, size: formData.teamSize, occasion: formData.occasion, recommendation: recommendation.key, submissionId })}
                     onClick={() => track("free_game_clicked", { source: "event_quiz", teamSize: formData.teamSize, vibe: formData.vibe, occasion: formData.occasion, recommendation: recommendation.key })}
                       target="_blank"
                       rel="noopener noreferrer"

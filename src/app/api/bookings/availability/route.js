@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { getCalendarBusyRanges } from "@/lib/server/google-calendar";
 import { addWallMinutes, overlaps, validTimeZone, wallMinutes, weekdayForDate, zonedWallTimeToUtc } from "@/lib/server/booking-time";
+import { createHash } from "node:crypto";
+import { rateLimited } from "@/lib/server/rate-limit";
+import { AVAILABILITY_COOKIE, validAvailabilityAccess } from "@/lib/server/availability-access";
 
 export const runtime = "nodejs";
 
@@ -15,6 +18,10 @@ export async function GET(request) {
   const bookingTypeSlug = searchParams.get("type") || "intro-call-15";
   const visitorTimezone = searchParams.get("timezone") || "America/New_York";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !validTimeZone(visitorTimezone)) return unavailable("invalid_request", 400);
+  if (!validAvailabilityAccess(request.cookies.get(AVAILABILITY_COOKIE)?.value)) return unavailable("bot_verification_required", 403);
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
+  const rateKey = createHash("sha256").update(`availability:${ip}:${bookingTypeSlug}`).digest("hex");
+  if (rateLimited(rateKey, { windowMs: 10 * 60 * 1000, max: 30 })) return unavailable("rate_limited", 429);
 
   try {
     const supabase = getSupabaseAdmin();

@@ -6,6 +6,8 @@ import { createZoomMeeting, cancelZoomMeeting } from "@/lib/server/zoom";
 import { validTimeZone } from "@/lib/server/booking-time";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 import { rateLimited } from "@/lib/server/rate-limit";
+import { attemptBookingCleanup } from "@/lib/server/booking-cleanup";
+import { resolveManagedBooking } from "@/lib/server/booking-manage";
 
 export const runtime = "nodejs";
 
@@ -127,18 +129,16 @@ export async function POST(request) {
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   const supabase = getSupabaseAdmin();
-  const { data: oldBooking, error: lookupError } = await supabase
-    .from("bookings")
-    .select("id,name,email,company,visitor_timezone,starts_at,prospect_id,zoom_meeting_id,google_event_id,booking_types(id,slug,name,zoom_enabled,duration_minutes)")
-    .eq("manage_token_hash", tokenHash)
-    .eq("status", "confirmed")
-    .gt("starts_at", new Date().toISOString())
-    .maybeSingle();
+  const { booking: oldBooking, error: lookupError } = await resolveManagedBooking(
+    supabase,
+    tokenHash,
+    "id,name,email,company,visitor_timezone,starts_at,status,prospect_id,zoom_meeting_id,google_event_id,booking_types(id,slug,name,zoom_enabled,duration_minutes)",
+  );
   if (lookupError) {
     console.error("Reschedule lookup failed", { code: lookupError.code });
     return fail(503, "booking_service_unavailable");
   }
-  if (!oldBooking) return fail(409, "booking_not_found_or_not_reschedulable");
+  if (!oldBooking || oldBooking.status !== "confirmed" || new Date(oldBooking.starts_at) <= new Date()) return fail(409, "booking_not_found_or_not_reschedulable");
   const bookingType = Array.isArray(oldBooking.booking_types) ? oldBooking.booking_types[0] : oldBooking.booking_types;
   if (!bookingType) return fail(503, "booking_service_unavailable");
 
@@ -215,7 +215,10 @@ export async function POST(request) {
     });
     googleEventId = event.eventId;
   } catch (error) {
-    if (zoomMeetingId) await cancelZoomMeeting(zoomMeetingId).catch(() => {});
+    if (zoomMeetingId) await attemptBookingCleanup(supabase, {
+      bookingId: newBookingId, prospectId: oldBooking.prospect_id, operation: "rollback_new_zoom",
+      provider: "zoom", resourceId: zoomMeetingId,
+    }, () => cancelZoomMeeting(zoomMeetingId));
     await supabase.rpc("fail_booking_hold", { p_booking_id: newBookingId, p_error: String(error?.message || error) });
     return fail(502, "calendar_event_failed");
   }
@@ -234,8 +237,14 @@ export async function POST(request) {
     .eq("id", newBookingId)
     .eq("status", "held");
   if (confirmError) {
-    if (zoomMeetingId) await cancelZoomMeeting(zoomMeetingId).catch(() => {});
-    await deleteCalendarEvent(calendarId, googleEventId).catch(() => {});
+    if (zoomMeetingId) await attemptBookingCleanup(supabase, {
+      bookingId: newBookingId, prospectId: oldBooking.prospect_id, operation: "rollback_new_zoom",
+      provider: "zoom", resourceId: zoomMeetingId,
+    }, () => cancelZoomMeeting(zoomMeetingId));
+    if (googleEventId) await attemptBookingCleanup(supabase, {
+      bookingId: newBookingId, prospectId: oldBooking.prospect_id, operation: "rollback_new_calendar",
+      provider: "google_calendar", resourceId: googleEventId,
+    }, () => deleteCalendarEvent(calendarId, googleEventId));
     await supabase.rpc("fail_booking_hold", { p_booking_id: newBookingId, p_error: "confirm_write_failed" });
     return fail(503, "booking_service_unavailable");
   }
@@ -259,8 +268,14 @@ export async function POST(request) {
     });
   }
 
-  if (oldBooking.zoom_meeting_id) await cancelZoomMeeting(oldBooking.zoom_meeting_id).catch(() => {});
-  if (oldBooking.google_event_id) await deleteCalendarEvent(calendarId, oldBooking.google_event_id).catch(() => {});
+  if (oldBooking.zoom_meeting_id) await attemptBookingCleanup(supabase, {
+    bookingId: oldBooking.id, prospectId: oldBooking.prospect_id, operation: "retire_old_zoom",
+    provider: "zoom", resourceId: oldBooking.zoom_meeting_id,
+  }, () => cancelZoomMeeting(oldBooking.zoom_meeting_id));
+  if (oldBooking.google_event_id) await attemptBookingCleanup(supabase, {
+    bookingId: oldBooking.id, prospectId: oldBooking.prospect_id, operation: "retire_old_calendar",
+    provider: "google_calendar", resourceId: oldBooking.google_event_id,
+  }, () => deleteCalendarEvent(calendarId, oldBooking.google_event_id));
 
   await sendRescheduleEmail(supabase, {
     booking: { ...oldBooking, starts_at: newBooking.starts_at, visitor_timezone: visitorTimezone },

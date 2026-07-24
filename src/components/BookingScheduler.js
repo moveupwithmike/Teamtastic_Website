@@ -58,7 +58,22 @@ function dateLabel(date, timeZone) {
 
 function LiveSlots({ date, bookingType, visitorTimezone, selectedSlot, onSelect }) {
   const [result, setResult] = useState({ loading: true, slots: [] });
+  const [accessGranted, setAccessGranted] = useState(false);
+  const [accessReset, setAccessReset] = useState(0);
+  const [accessError, setAccessError] = useState("");
+  const grantAccess = useCallback(async (token) => {
+    const response = await fetch("/api/bookings/availability-access", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turnstileToken: token }),
+    });
+    if (response.ok) setAccessGranted(true);
+    else {
+      setAccessError("Could not verify access to live availability.");
+      setAccessReset((value) => value + 1);
+    }
+  }, []);
   useEffect(() => {
+    if (!accessGranted) return undefined;
     const controller = new AbortController();
     fetch(`/api/bookings/availability?${new URLSearchParams({ date, type: bookingType, timezone: visitorTimezone })}`, {
       cache: "no-store", signal: controller.signal,
@@ -72,8 +87,9 @@ function LiveSlots({ date, bookingType, visitorTimezone, selectedSlot, onSelect 
         if (error.name !== "AbortError") setResult({ loading: false, slots: [], error: true });
       });
     return () => controller.abort();
-  }, [date, bookingType, visitorTimezone]);
+  }, [accessGranted, date, bookingType, visitorTimezone]);
 
+  if (!accessGranted) return <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><p className="text-sm text-zinc-300">Complete a quick check to view live calendar availability.</p><TurnstileWidget onToken={grantAccess} resetKey={accessReset} />{accessError && <p className="text-xs text-amber-300">{accessError}</p>}</div>;
   if (result.loading) return <div className="flex min-h-36 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-pink-400" /></div>;
   if (result.error) return <p className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-4 text-sm text-amber-200">Live availability is temporarily unavailable. Please try another date.</p>;
   if (!result.slots.length) return <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">No open times on this date. Try the next day.</p>;

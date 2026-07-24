@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getRecommendation } from "@/lib/recommendations";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { captureServerEvent } from "@/lib/server/posthog";
+import { rateLimited } from "@/lib/server/rate-limit";
+import { verifyTurnstile } from "@/lib/server/turnstile";
 
 const SOURCES = new Set([
   "event_quiz",
@@ -12,8 +14,6 @@ const SOURCES = new Set([
   "holiday_party_money_page",
   "virtual_team_building_money_page",
 ]);
-const buckets = new Map();
-
 function response(status, code, message, retryable = false) {
   return NextResponse.json({ success: false, code, message, retryable }, { status });
 }
@@ -24,30 +24,6 @@ function clean(value, max = 500) {
 
 function validEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
-}
-
-function rateLimited(key) {
-  const now = Date.now();
-  const entries = (buckets.get(key) || []).filter((time) => now - time < 10 * 60 * 1000);
-  entries.push(now);
-  buckets.set(key, entries);
-  return entries.length > 5;
-}
-
-async function verifyTurnstile(token, ip) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return process.env.NODE_ENV !== "production" && token === "development-bypass";
-  const form = new FormData();
-  form.set("secret", secret);
-  form.set("response", token);
-  if (ip) form.set("remoteip", ip);
-  const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: form,
-    signal: AbortSignal.timeout(5000),
-  });
-  const data = await result.json();
-  return data.success === true;
 }
 
 export async function POST(request) {
@@ -125,13 +101,21 @@ export async function POST(request) {
       return NextResponse.json({ success: true, submissionId, recommendation, duplicate: true });
     }
     if (error) throw error;
-    captureServerEvent("lead_captured", submissionId, {
-      source,
-      team_size: row.team_size,
-      vibe: row.vibe,
-      occasion: row.occasion,
-      recommendation_key: row.recommendation_key,
-    });
+    try {
+      await captureServerEvent("lead_persisted", submissionId, {
+        submission_id: submissionId,
+        source,
+        team_size: row.team_size,
+        vibe: row.vibe,
+        occasion: row.occasion,
+        recommendation_key: row.recommendation_key,
+      });
+    } catch (analyticsError) {
+      console.error("Lead persistence analytics failed", {
+        code: analyticsError?.code || analyticsError?.name || "unknown",
+        source,
+      });
+    }
     return NextResponse.json({ success: true, submissionId, recommendation });
   } catch (error) {
     console.error("Lead capture failed", { code: error?.code || "unknown", source });

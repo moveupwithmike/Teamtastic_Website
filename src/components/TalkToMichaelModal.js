@@ -9,7 +9,7 @@ import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { getCorporateConciergeRecs, getFamilyConciergeRecs } from "@/lib/recommendations";
-import { PAYMENT_CONFIG } from "@/lib/stripe";
+import CheckoutButton from "@/components/CheckoutButton";
 
 export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }) {
   const [step, setStep] = useState(1);
@@ -118,12 +118,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
       ? getFamilyConciergeRecs(answers.preferences, answers.vibe)
       : getCorporateConciergeRecs(answers.preferences, answers.vibe);
 
-  const depositBaseUrl = isFamily ? PAYMENT_CONFIG.familyDepositUrl : PAYMENT_CONFIG.depositUrl;
   const depositAmount = isFamily ? "$100" : "$200";
-  const depositUrl = `${depositBaseUrl}${depositBaseUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
-    prefilled_email: answers.email,
-    client_reference_id: submissionId,
-  })}`;
   const bookingUrl = `/book?${new URLSearchParams({
     name: answers.name,
     email: answers.email,
@@ -478,13 +473,14 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <a
-                          href={depositUrl}
+                        <CheckoutButton
+                          submissionId={submissionId}
+                          paymentKind={isFamily ? "family_deposit" : "corporate_deposit"}
                           onClick={() => track("deposit_cta_clicked", { source: isFamily ? "family_concierge" : "corporate_concierge" })}
                           className="flex min-h-11 items-center justify-center rounded-xl bg-[#D81B60] px-4 text-center text-sm font-bold text-white hover:bg-pink-600"
                         >
                           Reserve with {depositAmount} deposit
-                        </a>
+                        </CheckoutButton>
                         <a
                           href={bookingUrl}
                           onClick={() => track("booking_call_clicked", { source: isFamily ? "family_concierge" : "corporate_concierge" })}

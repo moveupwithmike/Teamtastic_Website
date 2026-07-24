@@ -5,7 +5,7 @@ import { ArrowRight, Calendar, Check, Loader2 } from "lucide-react";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
-import { PAYMENT_CONFIG } from "@/lib/stripe";
+import CheckoutButton from "@/components/CheckoutButton";
 
 const initialForm = {
   name: "",
@@ -44,11 +44,6 @@ export default function CorporateLeadForm({
     [event.target.name]: event.target.value,
   }));
 
-  const baseDepositUrl = isFamily ? PAYMENT_CONFIG.familyDepositUrl : PAYMENT_CONFIG.depositUrl;
-  const depositUrl = `${baseDepositUrl}${baseDepositUrl.includes("?") ? "&" : "?"}${new URLSearchParams({
-    prefilled_email: form.email,
-    client_reference_id: submissionId,
-  })}`;
   const bookingUrl = `/book?${new URLSearchParams({
     name: form.name,
     email: form.email,
@@ -112,13 +107,14 @@ export default function CorporateLeadForm({
           </div>
         </div>
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
-          <a
-            href={depositUrl}
+          <CheckoutButton
+            submissionId={submissionId}
+            paymentKind={isFamily ? "family_deposit" : "corporate_deposit"}
             onClick={() => track("deposit_cta_clicked", { source: entryPoint })}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#D81B60] px-5 text-center text-sm font-bold text-white hover:bg-pink-600"
           >
             {depositLabel} <ArrowRight className="h-4 w-4" />
-          </a>
+          </CheckoutButton>
           <a
             href={bookingUrl}
             onClick={() => track("booking_call_clicked", { source: entryPoint })}

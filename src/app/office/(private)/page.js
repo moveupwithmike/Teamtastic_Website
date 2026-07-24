@@ -1,24 +1,9 @@
 import Link from "next/link";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { officeErrorMessage } from "@/lib/server/office-errors";
+import { dateInTimeZone, zonedDayRangeUtc } from "@/lib/server/booking-time";
 import { Card, Empty, ProspectLink, formatDate, formatMoney, inputClass, buttonClass } from "../office-ui";
-import { approveAndSendProposal, createProposal, recordCallOutcome, reviewOutreachDraft } from "../actions";
-
-function easternDayRange() {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date()).filter((p) => p.type !== "literal").map((p) => [p.type, p.value]));
-  const noonUtc = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), 12));
-  const next = new Date(noonUtc.getTime() + 86400000);
-  const date = `${parts.year}-${parts.month}-${parts.day}`;
-  const nextDate = next.toISOString().slice(0, 10);
-  const offset = (day) => {
-    const sample = new Date(`${day}T12:00:00Z`);
-    const zone = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", timeZoneName: "shortOffset", hour: "2-digit" }).formatToParts(sample).filter((p) => p.type !== "literal").map((p) => [p.type, p.value]));
-    const match = zone.timeZoneName?.match(/GMT([+-]\d+)/);
-    return match ? `${Number(match[1]) < 0 ? "-" : "+"}${String(Math.abs(Number(match[1]))).padStart(2, "0")}:00` : "-04:00";
-  };
-  return [`${date}T00:00:00${offset(date)}`, `${nextDate}T00:00:00${offset(nextDate)}`];
-}
+import { approveAndSendProposal, createProposal, reconcileProposalSend, recordCallOutcome, reviewOutreachDraft } from "../actions";
 
 export default async function OfficeDashboard({ searchParams }) {
   const params = await searchParams;
@@ -27,9 +12,10 @@ export default async function OfficeDashboard({ searchParams }) {
   const now = nowDate.toISOString();
   const sevenDaysAgo = new Date(nowDate.getTime() - 7 * 86400000).toISOString();
   const proposalExpiry = new Date(nowDate.getTime() + 14 * 86400000).toISOString().slice(0, 10);
-  const [todayStart, todayEnd] = easternDayRange();
+  const easternDate = dateInTimeZone(nowDate, "America/New_York");
+  const [todayStart, todayEnd] = zonedDayRangeUtc(easternDate, "America/New_York").map((date) => date.toISOString());
 
-  const [repliesResult, overdueResult, callsResult, failuresResult, postCallsResult, draftsResult, proposalDealsResult, proposalsResult] = await Promise.all([
+  const [repliesResult, overdueResult, callsResult, failuresResult, postCallsResult, draftsResult, proposalDealsResult, proposalsResult, proposalConfigResult, proposalCounterResult] = await Promise.all([
     db.from("messages").select("id,prospect_id,subject,body_text,received_at,from_address").eq("direction", "inbound").eq("classification", "interested").gte("received_at", sevenDaysAgo).order("received_at", { ascending: false }).limit(20),
     db.from("deals").select("id,prospect_id,title,stage,expected_value,currency,next_action,next_action_due_at").eq("outcome", "open").lt("next_action_due_at", now).order("next_action_due_at").limit(30),
     db.from("bookings").select("id,prospect_id,name,email,company,starts_at,ends_at,zoom_join_url,status").eq("status", "confirmed").gte("starts_at", todayStart).lt("starts_at", todayEnd).order("starts_at"),
@@ -37,7 +23,9 @@ export default async function OfficeDashboard({ searchParams }) {
     db.from("bookings").select("id,prospect_id,name,email,company,starts_at,ends_at,status").eq("status", "confirmed").lte("ends_at", now).order("ends_at", { ascending: false }).limit(20),
     db.from("outreach_drafts").select("id,prospect_id,subject,body_text,status,personalization_evidence,sequence_step,created_at").in("status", ["draft", "review"]).order("created_at").limit(50),
     db.from("deals").select("id,prospect_id,title,stage,expected_value,currency,package_name,budget_amount").eq("outcome", "open").in("stage", ["proposal_needed", "call_completed"]).order("updated_at", { ascending: false }).limit(30),
-    db.from("proposals").select("id,deal_id,prospect_id,recipient_email,package_name,price,currency,expires_on,subject,body_text,status,last_error,created_at").in("status", ["draft", "approved", "failed"]).order("created_at", { ascending: false }).limit(30),
+    db.from("proposals").select("id,deal_id,prospect_id,recipient_email,package_name,price,currency,expires_on,subject,body_text,status,last_error,created_at").in("status", ["draft", "approved", "failed", "send_failed", "reconcile_required"]).order("created_at", { ascending: false }).limit(30),
+    db.from("system_config").select("proposal_email_enabled,daily_proposal_cap").eq("id", true).single(),
+    db.from("email_send_counters").select("reserved_count,sent_count,failed_count").eq("send_date", now.slice(0, 10)).eq("message_type", "proposal").maybeSingle(),
   ]);
 
   const prospectIds = [...new Set([
@@ -56,10 +44,14 @@ export default async function OfficeDashboard({ searchParams }) {
   const drafts = draftsResult.data || [];
   const proposalDeals = proposalDealsResult.data || [];
   const proposals = proposalsResult.data || [];
+  const proposalConfig = proposalConfigResult.data;
+  const proposalUsage = proposalCounterResult.data || { reserved_count: 0, sent_count: 0, failed_count: 0 };
+  const proposalRemaining = Math.max(0, (proposalConfig?.daily_proposal_cap || 0) - proposalUsage.reserved_count);
+  const proposalSendingAvailable = Boolean(proposalConfig?.proposal_email_enabled && proposalRemaining > 0);
 
   return (
     <div className="space-y-8">
-      {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>{params.error ? `Could not complete that action: ${params.error}` : "Saved."}</p>}
+      {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>{params.error ? officeErrorMessage(params.error) : "Saved."}</p>}
       <div>
         <h2 className="text-3xl font-bold">Needs Michael now</h2>
         <p className="mt-2 text-slate-400">The decisions and follow-ups that should not wait.</p>
@@ -108,7 +100,10 @@ export default async function OfficeDashboard({ searchParams }) {
       </Card>
 
       <Card title="Proposal approval queue" count={proposals.length}>
-        {!proposals.length ? <Empty>No proposal drafts are waiting.</Empty> : <div className="space-y-3">{proposals.map((proposal) => <form action={approveAndSendProposal} key={proposal.id} className="rounded-xl bg-white/[0.03] p-4"><input type="hidden" name="id" value={proposal.id} /><div className="flex flex-wrap justify-between gap-3"><div><p className="font-semibold">{proposal.package_name} · {formatMoney(proposal.price, proposal.currency)}</p><p className="text-sm text-slate-400">To {proposal.recipient_email} · expires {proposal.expires_on}</p></div><span className="text-sm uppercase text-amber-300">{proposal.status}</span></div><label className="mt-3 block text-sm">Subject<input name="subject" defaultValue={proposal.subject} required className={inputClass} /></label><label className="mt-3 block text-sm">Email<textarea name="body_text" defaultValue={proposal.body_text} required rows="10" className={inputClass} /></label>{proposal.last_error && <p className="mt-2 text-sm text-red-300">{proposal.last_error}</p>}<button className={`${buttonClass} mt-4`}>Approve and send proposal</button><p className="mt-2 text-xs text-slate-500">One click both records your approval and sends this exact version. The global kill switch, proposal switch, suppression list, and daily cap are checked first.</p></form>)}</div>}
+        <p className="mb-4 text-sm text-slate-400">Today: {proposalUsage.sent_count} sent · {proposalUsage.reserved_count} reserved · {proposalRemaining} remaining of {proposalConfig?.daily_proposal_cap ?? 0}.</p>
+        {!proposalConfig?.proposal_email_enabled && <p className="mb-4 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-300">Proposal sending is disabled in Office settings.</p>}
+        {proposalConfig?.proposal_email_enabled && proposalRemaining === 0 && <p className="mb-4 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-300">Today&rsquo;s proposal email cap has been reached.</p>}
+        {!proposals.length ? <Empty>No proposal drafts are waiting.</Empty> : <div className="space-y-3">{proposals.map((proposal) => <form action={proposal.status === "reconcile_required" ? reconcileProposalSend : approveAndSendProposal} key={proposal.id} className="rounded-xl bg-white/[0.03] p-4"><input type="hidden" name="id" value={proposal.id} /><div className="flex flex-wrap justify-between gap-3"><div><p className="font-semibold">{proposal.package_name} · {formatMoney(proposal.price, proposal.currency)}</p><p className="text-sm text-slate-400">To {proposal.recipient_email} · expires {proposal.expires_on}</p></div><span className="text-sm uppercase text-amber-300">{proposal.status}</span></div><label className="mt-3 block text-sm">Subject<input name="subject" defaultValue={proposal.subject} required readOnly={proposal.status === "reconcile_required"} className={inputClass} /></label><label className="mt-3 block text-sm">Email<textarea name="body_text" defaultValue={proposal.body_text} required readOnly={proposal.status === "reconcile_required"} rows="10" className={inputClass} /></label>{proposal.last_error && <p className="mt-2 text-sm text-red-300">{proposal.last_error}</p>}<button disabled={proposal.status !== "reconcile_required" && !proposalSendingAvailable} className={`${buttonClass} mt-4 disabled:cursor-not-allowed disabled:opacity-50`}>{proposal.status === "reconcile_required" ? "Reconcile recorded send" : "Approve and send proposal"}</button><p className="mt-2 text-xs text-slate-500">{proposal.status === "reconcile_required" ? "Finalizes the provider-accepted send in the CRM without sending another email or consuming more quota." : "One click both records your approval and sends this exact version. The global kill switch, proposal switch, suppression list, and daily cap are checked first."}</p></form>)}</div>}
       </Card>
 
       <p className="text-center text-sm text-slate-500">Looking for someone? <Link href="/office/prospects" className="text-purple-300">Search all prospects and their complete timeline.</Link></p>

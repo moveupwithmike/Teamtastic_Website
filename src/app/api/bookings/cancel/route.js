@@ -5,6 +5,8 @@ import { deleteCalendarEvent } from "@/lib/server/google-calendar";
 import { cancelZoomMeeting } from "@/lib/server/zoom";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 import { rateLimited } from "@/lib/server/rate-limit";
+import { attemptBookingCleanup } from "@/lib/server/booking-cleanup";
+import { resolveManagedBooking } from "@/lib/server/booking-manage";
 
 export const runtime = "nodejs";
 
@@ -96,10 +98,19 @@ export async function POST(request) {
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   const supabase = getSupabaseAdmin();
+  const { booking: currentBooking, error: lookupError } = await resolveManagedBooking(
+    supabase,
+    tokenHash,
+    "id,status,starts_at",
+  );
+  if (lookupError) return fail(503, "booking_service_unavailable");
+  if (!currentBooking || currentBooking.status !== "confirmed" || new Date(currentBooking.starts_at) <= new Date()) {
+    return fail(409, "booking_not_found_or_not_cancellable");
+  }
   const { data: booking, error: updateError } = await supabase
     .from("bookings")
     .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: reason })
-    .eq("manage_token_hash", tokenHash)
+    .eq("id", currentBooking.id)
     .eq("status", "confirmed")
     .gt("starts_at", new Date().toISOString())
     .select("id,name,email,visitor_timezone,starts_at,prospect_id,booking_type_id,zoom_meeting_id,google_event_id")
@@ -112,8 +123,14 @@ export async function POST(request) {
 
   const { data: settings } = await supabase.from("booking_settings").select("google_calendar_id").eq("id", true).single();
   const calendarId = settings?.google_calendar_id || "primary";
-  if (booking.zoom_meeting_id) await cancelZoomMeeting(booking.zoom_meeting_id).catch(() => {});
-  if (booking.google_event_id) await deleteCalendarEvent(calendarId, booking.google_event_id).catch(() => {});
+  if (booking.zoom_meeting_id) await attemptBookingCleanup(supabase, {
+    bookingId: booking.id, prospectId: booking.prospect_id, operation: "cancel_zoom",
+    provider: "zoom", resourceId: booking.zoom_meeting_id,
+  }, () => cancelZoomMeeting(booking.zoom_meeting_id));
+  if (booking.google_event_id) await attemptBookingCleanup(supabase, {
+    bookingId: booking.id, prospectId: booking.prospect_id, operation: "delete_calendar_event",
+    provider: "google_calendar", resourceId: booking.google_event_id,
+  }, () => deleteCalendarEvent(calendarId, booking.google_event_id));
 
   const { data: bookingType } = await supabase.from("booking_types").select("name").eq("id", booking.booking_type_id).single();
   await sendCancelEmail(supabase, booking, bookingType?.name || "call")

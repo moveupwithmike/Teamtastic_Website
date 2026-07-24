@@ -45,11 +45,23 @@ function SlotPicker({ bookingTypeSlug, visitorTimezone, selectedSlot, onSelect }
   const dates = useMemo(() => upcomingDates(visitorTimezone), [visitorTimezone]);
   const [activeDate, setActiveDate] = useState(dates[0] || "");
   const [result, setResult] = useState({ loading: true, slots: [] });
+  const [accessGranted, setAccessGranted] = useState(false);
+  const [accessReset, setAccessReset] = useState(0);
+  const grantAccess = useCallback(async (token) => {
+    const response = await fetch("/api/bookings/availability-access", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turnstileToken: token }),
+    });
+    if (response.ok) {
+      setResult({ loading: true, slots: [] });
+      setAccessGranted(true);
+    }
+    else setAccessReset((value) => value + 1);
+  }, []);
 
   useEffect(() => {
-    if (!activeDate) return undefined;
+    if (!activeDate || !accessGranted) return undefined;
     const controller = new AbortController();
-    setResult({ loading: true, slots: [] });
     fetch(`/api/bookings/availability?${new URLSearchParams({ date: activeDate, type: bookingTypeSlug, timezone: visitorTimezone })}`, {
       cache: "no-store", signal: controller.signal,
     })
@@ -62,19 +74,22 @@ function SlotPicker({ bookingTypeSlug, visitorTimezone, selectedSlot, onSelect }
         if (error.name !== "AbortError") setResult({ loading: false, slots: [], error: true });
       });
     return () => controller.abort();
-  }, [activeDate, bookingTypeSlug, visitorTimezone]);
+  }, [accessGranted, activeDate, bookingTypeSlug, visitorTimezone]);
 
   return (
     <div>
+      {!accessGranted && <div className="mb-4 space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-4"><p className="text-sm text-zinc-300">Complete a quick check to view live availability.</p><TurnstileWidget onToken={grantAccess} resetKey={accessReset} /></div>}
+      {accessGranted && <>
       <div className="flex gap-2 overflow-x-auto pb-3">
         {dates.map((date) => (
-          <button key={date} type="button" onClick={() => setActiveDate(date)}
+          <button key={date} type="button" onClick={() => { setResult({ loading: true, slots: [] }); setActiveDate(date); }}
             className={`min-w-24 rounded-xl border px-3 py-3 text-sm font-bold ${activeDate === date ? "border-purple-400/60 bg-purple-500/15 text-white" : "border-white/10 bg-black/20 text-zinc-400 hover:text-white"}`}>
             {dateLabel(date, visitorTimezone)}
           </button>
         ))}
       </div>
-      <div className="mt-4">
+      </>}
+      {accessGranted && <div className="mt-4">
         {result.loading && <div className="flex min-h-24 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-pink-400" /></div>}
         {!result.loading && result.error && <p className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-4 text-sm text-amber-200">Live availability is temporarily unavailable. Please try another date.</p>}
         {!result.loading && !result.error && !result.slots.length && <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">No open times on this date. Try the next day.</p>}
@@ -88,7 +103,7 @@ function SlotPicker({ bookingTypeSlug, visitorTimezone, selectedSlot, onSelect }
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -99,6 +114,8 @@ export default function BookingManage({ token, bookingTypeSlug, visitorTimezone 
   const [state, setState] = useState({ status: "idle" });
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationDetail, setCancellationDetail] = useState("");
   const handleTurnstileToken = useCallback((value) => setTurnstileToken(value), []);
 
   function resetTurnstile() {
@@ -112,7 +129,13 @@ export default function BookingManage({ token, bookingTypeSlug, visitorTimezone 
     try {
       const response = await fetch("/api/bookings/cancel", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, turnstileToken }),
+        body: JSON.stringify({
+          token,
+          turnstileToken,
+          reason: cancellationReason === "other"
+            ? `other: ${cancellationDetail}`.slice(0, 500)
+            : cancellationReason,
+        }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) { setState({ status: "error", reason: data.reason }); resetTurnstile(); return; }
@@ -160,6 +183,7 @@ export default function BookingManage({ token, bookingTypeSlug, visitorTimezone 
             {new Intl.DateTimeFormat("en-US", { timeZone: visitorTimezone, dateStyle: "full", timeStyle: "short" }).format(new Date(state.booking.startsAt))}
           </p>
           {state.booking.joinUrl && <a href={state.booking.joinUrl} className="mt-3 inline-flex text-sm font-bold text-pink-300 hover:text-pink-200">Zoom join link <ArrowRight className="ml-1 h-3.5 w-3.5" /></a>}
+          {state.booking.manageToken && <a href={`/book/manage/${state.booking.manageToken}`} className="mt-3 ml-4 inline-flex text-sm font-bold text-purple-300 hover:text-purple-200">Manage this booking <ArrowRight className="ml-1 h-3.5 w-3.5" /></a>}
         </div>
       </div>
     );
@@ -181,6 +205,18 @@ export default function BookingManage({ token, bookingTypeSlug, visitorTimezone 
       {mode === "cancel" && (
         <div className="mt-2 rounded-2xl border border-white/10 bg-black/20 p-5">
           <p className="font-bold text-white">Cancel this call?</p>
+          <label className="mt-4 block text-sm text-zinc-300">
+            Reason (optional)
+            <select value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 text-white">
+              <option value="">Prefer not to say</option>
+              <option value="schedule_conflict">Schedule conflict</option>
+              <option value="no_longer_needed">No longer needed</option>
+              <option value="chose_another_option">Chose another time or option</option>
+              <option value="technical_issue">Technical issue</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          {cancellationReason === "other" && <textarea value={cancellationDetail} onChange={(event) => setCancellationDetail(event.target.value.slice(0, 450))} maxLength="450" placeholder="Optional details" className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white" />}
           <div className="mt-4">
             <TurnstileWidget onToken={handleTurnstileToken} resetKey={turnstileReset} />
           </div>

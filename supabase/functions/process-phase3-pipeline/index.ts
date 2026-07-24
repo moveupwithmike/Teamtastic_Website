@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 const PROMPT_VERSION = "phase3-v3.1-teamtastic-voice";
 
@@ -84,67 +84,19 @@ function genericOutreachCopy(prospect: Record<string, unknown>, companyName: str
   };
 }
 
-function scoreProspect(prospect: Record<string, any>) {
-  const company = Array.isArray(prospect.companies) ? prospect.companies[0] : prospect.companies;
-  let companyFit = 0;
-  if (company) {
-    if (Number(company.employee_count) >= 25 && Number(company.employee_count) <= 2000) companyFit += 20;
-    if (company.domain) companyFit += 5;
-    if (company.industry) companyFit += 5;
-    if (["prospect", "qualified", "opportunity"].includes(company.lifecycle_stage)) companyFit += 5;
-  }
-
-  const title = String(prospect.job_title || "");
-  let roleFit = 0;
-  if (/(chief people|people operations|human resources|employee experience|culture|events?|office manager|workplace|executive assistant|chief of staff)/i.test(title)) roleFit = 25;
-  else if (/(director|head|vice president|vp|manager|founder|owner|president|coordinator)/i.test(title)) roleFit = 15;
-  else if (title) roleFit = 5;
-
-  const activeSignals = (company?.signals || []).filter((signal: Record<string, unknown>) =>
-    !signal.expires_at || new Date(String(signal.expires_at)) > new Date()
-  );
-  const strongestSignal = activeSignals.reduce(
-    (strongest: number, signal: Record<string, unknown>) => Math.max(strongest, Number(signal.strength || 0)),
-    0,
-  );
-  const signalFit = Math.round(strongestSignal * 30 * 1000) / 1000;
-  const rawIntent = Number(prospect.metadata?.posthog_intent_score || 0);
-  const intentFit = Number.isFinite(rawIntent) ? Math.min(10, Math.max(0, rawIntent)) : 0;
-  const score = Math.min(100, companyFit + roleFit + signalFit + intentFit);
-  const reasons = [
-    { component: "company_fit", points: companyFit },
-    { component: "role_fit", points: roleFit },
-    { component: "signal_fit", points: signalFit, strongest_signal: strongestSignal },
-    { component: "intent_fit", points: intentFit },
-  ];
-  return { score, companyFit, roleFit, signalFit, intentFit, reasons };
-}
-
-function errorText(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) return String((error as { message: unknown }).message);
-  try { return JSON.stringify(error); } catch { return String(error); }
-}
-
 async function fingerprint(value: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("PHASE3_PIPELINE_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const unauthorized = authorizeWebhook(request, "PHASE3_PIPELINE_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
   const { data: config, error: configError } = await supabase.from("system_config").select(
-    "master_enabled,prospecting_enabled,phase3_scoring_enabled,phase3_drafting_enabled,phase3_minimum_score,phase3_max_drafts_per_run",
+    "master_enabled,prospecting_enabled,outbound_mode,phase3_scoring_enabled,phase3_drafting_enabled,phase3_minimum_score,phase3_max_drafts_per_run",
   ).eq("id", true).single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
 
   const { data: run, error: runError } = await supabase.from("source_runs").insert({
     run_type: "outreach_drafting",
@@ -152,7 +104,7 @@ Deno.serve(async (request) => {
     status: "started",
     decision: { prompt_version: PROMPT_VERSION, send_enabled: false },
   }).select("id").single();
-  if (runError || !run) return new Response(`Run creation failed: ${runError?.message}`, { status: 500 });
+  if (runError || !run) return functionError("source_run_creation_failed");
 
   if (!config.master_enabled || !config.phase3_scoring_enabled || !config.phase3_drafting_enabled) {
     await supabase.from("source_runs").update({
@@ -165,7 +117,7 @@ Deno.serve(async (request) => {
 
   try {
     const { data: scoringCandidates, error: scoringError } = await supabase.from("prospects")
-      .select("id,email_normalized,job_title,status,metadata,companies(id,domain,industry,employee_count,lifecycle_stage,signals(strength,expires_at))")
+      .select("id")
       .not("email_normalized", "is", null)
       .not("company_id", "is", null)
       .not("status", "in", "(suppressed,not_interested,converted,disqualified)")
@@ -174,30 +126,11 @@ Deno.serve(async (request) => {
 
     let scored = 0;
     for (const candidate of scoringCandidates || []) {
-      const { data: suppression } = await supabase.from("suppression_list").select("id")
-        .eq("email_normalized", candidate.email_normalized).maybeSingle();
-      if (suppression) continue;
-      const result = scoreProspect(candidate);
-      const nextStatus = result.score >= 65 && ["new", "researching"].includes(candidate.status)
-        ? "qualified"
-        : candidate.status;
-      const { error: updateError } = await supabase.from("prospects").update({
-        score: result.score,
-        score_reasons: result.reasons,
-        status: nextStatus,
-      }).eq("id", candidate.id);
-      if (updateError) throw updateError;
-      const { error: historyError } = await supabase.from("prospect_score_history").insert({
-        prospect_id: candidate.id,
-        score: result.score,
-        company_fit: result.companyFit,
-        role_fit: result.roleFit,
-        signal_fit: result.signalFit,
-        intent_fit: result.intentFit,
-        reasons: result.reasons,
+      const { data: result, error: scoreError } = await supabase.rpc("score_prospect", {
+        p_prospect_id: candidate.id,
       });
-      if (historyError) throw historyError;
-      scored++;
+      if (scoreError) throw scoreError;
+      if (result?.scored) scored++;
     }
 
     const minimumScore = Number(config.phase3_minimum_score || 65);
@@ -243,6 +176,7 @@ Deno.serve(async (request) => {
       const draftFingerprint = signal && evidence
         ? await fingerprint(`${prospect.id}|${signal.id}|${PROMPT_VERSION}`)
         : await fingerprint(`${prospect.id}|generic|${PROMPT_VERSION}`);
+      const autonomous = config.outbound_mode === "autonomous" && config.prospecting_enabled;
       const { data: draft, error: draftError } = await supabase.from("outreach_drafts").upsert({
         prospect_id: prospect.id,
         signal_id: signal && evidence ? signal.id : null,
@@ -252,7 +186,9 @@ Deno.serve(async (request) => {
         personalization_evidence: signal && evidence
           ? [{ signal_type: signal.signal_type, evidence, observed_at: signal.observed_at }]
           : [{ signal_type: "generic", evidence: "No active company signal — used a generic, honest opener." }],
-        status: "review",
+        status: autonomous ? "approved" : "review",
+        approved_at: autonomous ? new Date().toISOString() : null,
+        approved_by: autonomous ? "automation:phase3-draft-pipeline" : null,
         model: "deterministic-template",
         prompt_version: PROMPT_VERSION,
         fingerprint: draftFingerprint,
@@ -274,16 +210,31 @@ Deno.serve(async (request) => {
         minimum_score: minimumScore,
         prompt_version: PROMPT_VERSION,
         prospecting_enabled: config.prospecting_enabled,
-        send_enabled: false,
+        send_enabled: config.outbound_mode === "autonomous",
+        outbound_mode: config.outbound_mode,
       },
     }).eq("id", run.id);
     await supabase.from("agent_log").insert({
       agent_name: "phase3-draft-pipeline",
       action: "score_and_draft",
       outcome: "completed",
-      decision: { scored, drafted, suppressed, missing_signal: missingSignal, send_enabled: false },
+      decision: {
+        scored,
+        drafted,
+        suppressed,
+        missing_signal: missingSignal,
+        send_enabled: config.outbound_mode === "autonomous",
+        outbound_mode: config.outbound_mode,
+      },
     });
-    return Response.json({ scored, drafted, suppressed, missing_signal: missingSignal, send_enabled: false });
+    return Response.json({
+      scored,
+      drafted,
+      suppressed,
+      missing_signal: missingSignal,
+      send_enabled: config.outbound_mode === "autonomous",
+      outbound_mode: config.outbound_mode,
+    });
   } catch (error) {
     const failure = errorText(error).slice(0, 1000);
     await supabase.from("source_runs").update({

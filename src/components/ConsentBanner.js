@@ -28,8 +28,8 @@ export default function ConsentBanner() {
     setVisible(false);
 
     // Reload when the decision changes what should be running: a grant in an
-    // opt-in region boots PostHog with persistent storage and loads the ad
-    // tags; a denial anywhere unloads tags that may already be active
+    // opt-in region boots PostHog for the first time and loads the ad tags; a
+    // denial anywhere unloads tags that may already be active
     // (instrumentation-client.js and AdPixels read consent only at boot).
     if ((optIn && decision === "granted") || decision === "denied") {
       window.location.reload();

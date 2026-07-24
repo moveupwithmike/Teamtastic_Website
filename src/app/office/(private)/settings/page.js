@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { officeErrorMessage } from "@/lib/server/office-errors";
 import { Card, inputClass, buttonClass } from "../../office-ui";
 import { updateSystemConfig } from "../../actions";
 
@@ -7,13 +8,13 @@ export default async function OfficeSettings({ searchParams }) {
   const db = getSupabaseAdmin();
   const { data: config } = await db
     .from("system_config")
-    .select("prospecting_from_email,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled")
+    .select("prospecting_from_email,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,daily_proposal_cap")
     .eq("id", true)
     .single();
 
   return (
     <div className="space-y-8">
-      {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>{params.error ? `Could not save: ${params.error}` : "Saved."}</p>}
+      {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>{params.error ? officeErrorMessage(params.error) : "Saved."}</p>}
       <div>
         <h2 className="text-3xl font-bold">Outbound settings</h2>
         <p className="mt-2 text-slate-400">Controls for cold outreach sending. Nothing here affects proposals, nurture, or booking emails.</p>
@@ -27,6 +28,7 @@ export default async function OfficeSettings({ searchParams }) {
 
       <Card title="Prospecting">
         <form action={updateSystemConfig} className="space-y-4">
+          <input type="hidden" name="settings_scope" value="prospecting" />
           <label className="block text-sm">
             From address
             <input name="prospecting_from_email" defaultValue={config?.prospecting_from_email || ""} placeholder="Michael at Teamtastic <hello@outreach.tryteamtastic.com>" className={inputClass} />
@@ -56,6 +58,23 @@ export default async function OfficeSettings({ searchParams }) {
           )}
 
           <button className={buttonClass}>Save settings</button>
+        </form>
+      </Card>
+
+      <Card title="Proposal email">
+        <form action={updateSystemConfig} className="space-y-4">
+          <input type="hidden" name="settings_scope" value="proposal" />
+          <label className="flex items-center gap-3 text-sm">
+            <input type="checkbox" name="proposal_email_enabled" defaultChecked={config?.proposal_email_enabled} className="h-4 w-4" />
+            Proposal sending enabled
+          </label>
+          <label className="block text-sm">
+            Daily proposal cap
+            <input name="daily_proposal_cap" type="number" min="0" max="50" defaultValue={config?.daily_proposal_cap ?? 10} className={inputClass} />
+          </label>
+          <p className="text-xs text-slate-500">Proposal emails are human-approved, suppression-checked, and counted separately from cold outreach.</p>
+          {!config?.proposal_email_enabled && <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-300">Proposal drafts can be edited, but sending is currently disabled.</p>}
+          <button className={buttonClass}>Save proposal settings</button>
         </form>
       </Card>
     </div>

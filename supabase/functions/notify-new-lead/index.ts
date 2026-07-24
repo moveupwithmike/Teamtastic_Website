@@ -1,10 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, serviceClient, type ServiceClient } from "../_shared/runtime.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
-async function syncLeadToCrm(supabase: ReturnType<typeof createClient>, lead: Record<string, unknown>) {
+async function syncLeadToCrm(supabase: ServiceClient, lead: Record<string, unknown>) {
   const email = String(lead.email ?? "").trim().toLowerCase();
   let { data: prospect } = await supabase
     .from("prospects")
@@ -61,7 +61,7 @@ function customerEmail(lead: Record<string, unknown>) {
   if (source === "playable_demo") {
     return {
       subject: "Your Teamtastic free-game link",
-      html: `<h1>Nice game, ${name}!</h1><p>Your Teamtastic confirmation is complete.</p><p><a href="https://teamtastic.games">Launch a free game lobby</a> whenever your team is ready.</p>`,
+      html: `<h1>Nice game, ${name}!</h1><p>Thanks for trying Teamtastic. Here is the same free-game link shown on the website.</p><p><a href="https://teamtastic.games">Launch a free game lobby</a> whenever your team is ready.</p>`,
     };
   }
   if (source === "michael_family_concierge") {
@@ -83,16 +83,11 @@ function customerEmail(lead: Record<string, unknown>) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("LEAD_NOTIFICATION_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const unauthorized = authorizeWebhook(request, "LEAD_NOTIFICATION_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
 
   const { lead_id } = await request.json();
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  const supabase = serviceClient();
   const { data: lead, error } = await supabase.from("leads").select("*").eq("id", lead_id).single();
   if (error || !lead) return new Response("Lead not found", { status: 404 });
 

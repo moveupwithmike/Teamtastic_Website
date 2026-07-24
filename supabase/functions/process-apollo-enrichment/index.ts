@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "@supabase/supabase-js";
+import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 function clean(value: unknown, limit = 300) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, limit) || null;
@@ -12,29 +12,21 @@ function domainFrom(value: unknown) {
   catch { return null; }
 }
 
-function errorText(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) return String((error as { message: unknown }).message);
-  return String(error);
-}
-
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("APOLLO_ENRICHMENT_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const unauthorized = authorizeWebhook(request, "APOLLO_ENRICHMENT_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
   const apiKey = Deno.env.get("APOLLO_API_KEY");
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const supabase = serviceClient();
   const { data: config, error: configError } = await supabase.from("system_config")
     .select("master_enabled,phase3_enrichment_enabled,phase3_apollo_enrichment_daily_cap,prospecting_enabled")
     .eq("id", true).single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
 
   const { data: run, error: runError } = await supabase.from("source_runs").insert({
     run_type: "apollo_enrichment", provider: "apollo", status: "started",
     decision: { enrichment_worker: true, send_enabled: false },
   }).select("id").single();
-  if (runError || !run) return new Response(`Run creation failed: ${runError?.message}`, { status: 500 });
+  if (runError || !run) return functionError("source_run_creation_failed");
 
   if (!config.master_enabled || !config.phase3_enrichment_enabled || !apiKey) {
     await supabase.from("source_runs").update({

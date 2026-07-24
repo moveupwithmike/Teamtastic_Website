@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -58,15 +58,9 @@ function buildEmail(step: string, lead: Record<string, unknown>) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("NURTURE_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  const unauthorized = authorizeWebhook(request, "NURTURE_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
 
   const { data: leads, error } = await supabase
     .from("leads")
@@ -75,20 +69,24 @@ Deno.serve(async (request) => {
     .lte("created_at", new Date(Date.now() - STEPS[0].minAgeHours * 3600_000).toISOString())
     .gte("created_at", new Date(Date.now() - MAX_AGE_HOURS * 3600_000).toISOString());
 
-  if (error) return new Response(`Query failed: ${error.message}`, { status: 500 });
+  if (error) return functionError("nurture_lead_query_failed");
   if (!leads?.length) return Response.json({ processed: 0, sent: 0 });
 
   let sent = 0;
   for (const lead of leads) {
     const ageHours = (Date.now() - new Date(lead.created_at as string).getTime()) / 3600_000;
 
-    const { data: paid } = await supabase
-      .from("stripe_events")
-      .select("id")
-      .eq("lead_id", lead.id)
-      .limit(1)
-      .maybeSingle();
-    if (paid) continue; // already converted — stop the sequence
+    const { data: paid, error: paidError } = await supabase
+      .rpc("lead_has_paid_hosted_event", { p_lead_id: lead.id });
+    if (paidError) {
+      await supabase.from("agent_log").insert({
+        agent_name: "inbound-nurture", action: "check_paid_conversion", outcome: "failed",
+        prospect_id: lead.prospect_id || null, error: paidError.message,
+        decision: { lead_id: lead.id },
+      });
+      continue;
+    }
+    if (paid) continue;
 
     const { data: deliveries } = await supabase
       .from("notification_deliveries")

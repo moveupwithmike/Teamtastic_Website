@@ -95,6 +95,7 @@ Both systems share the same Postgres project, the same `system_config` singleton
 | 17 | [17-Analytics-and-Consent.md](17-Analytics-and-Consent.md) | PostHog/Meta/GA4, consent gating (real vs. cosmetic), event taxonomy |
 | 18 | [18-Security-Auth-and-Rate-Limiting.md](18-Security-Auth-and-Rate-Limiting.md) | Office auth, capability-token booking auth, Turnstile/rate-limit usage and gaps |
 | 19 | [19-Gaps-Unfinished-Wiring-and-Coding-Standards.md](19-Gaps-Unfinished-Wiring-and-Coding-Standards.md) | Consolidated, ranked gap list across every subsystem above |
+| 20 | [20-Remaining-Work-Implementation-Plan.md](20-Remaining-Work-Implementation-Plan.md) | Most of doc 19 was subsequently fixed (verified against code, not self-reported) — this doc scopes only what's still actually open, with concrete fix plans |
 
 ## Core data flows (updated)
 

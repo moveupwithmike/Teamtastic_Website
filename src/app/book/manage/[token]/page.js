@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import BookingManage from "@/components/BookingManage";
+import { resolveManagedBooking } from "@/lib/server/booking-manage";
 
 export const metadata = {
   title: "Manage your booking | Teamtastic",
@@ -20,11 +21,11 @@ export default async function ManageBookingPage({ params }) {
   const tokenHash = createHash("sha256").update(String(token || "")).digest("hex");
   const supabase = getSupabaseAdmin();
 
-  const { data: booking } = await supabase
-    .from("bookings")
-    .select("id,name,email,visitor_timezone,starts_at,ends_at,status,zoom_join_url,rescheduled_to_id,booking_types(name,slug,duration_minutes)")
-    .eq("manage_token_hash", tokenHash)
-    .maybeSingle();
+  const { booking } = await resolveManagedBooking(
+    supabase,
+    tokenHash,
+    "id,name,email,visitor_timezone,starts_at,ends_at,status,zoom_join_url,rescheduled_to_id,booking_types(name,slug,duration_minutes)",
+  );
 
   if (!booking) {
     return (

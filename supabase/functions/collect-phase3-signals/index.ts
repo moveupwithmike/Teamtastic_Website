@@ -1,7 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "@supabase/supabase-js";
+import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 const PROVIDER = "gdelt";
+const RUN_BUDGET_MS = 90_000;
 
 type Article = {
   url?: string;
@@ -11,12 +12,6 @@ type Article = {
   language?: string;
   sourcecountry?: string;
 };
-
-function errorText(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) return String((error as { message: unknown }).message);
-  try { return JSON.stringify(error); } catch { return String(error); }
-}
 
 function clean(value: unknown, limit = 300) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, limit);
@@ -57,40 +52,39 @@ async function fingerprint(value: string) {
 // requests in the same window just time out. Treat a 429 that survives one retry as
 // "stop this run entirely" rather than a per-company failure.
 class RateLimited extends Error {}
+class RunBudgetReached extends Error {}
 
-async function fetchPublicNews(url: URL) {
+async function fetchPublicNews(url: URL, deadline: number) {
   for (let attempt = 0; attempt < 2; attempt++) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) throw new RunBudgetReached("Signal collection wall-time budget reached");
     const response = await fetch(url, {
       headers: { "Accept": "application/json", "User-Agent": "TeamtasticSignalResearch/1.0" },
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(Math.max(1, Math.min(25_000, remainingMs))),
     });
     if (response.ok) return response;
     if (response.status !== 429) throw new Error(`GDELT ${response.status}`);
     if (attempt === 1) throw new RateLimited("GDELT 429 after retry");
     const retryAfterSeconds = Math.min(Number(response.headers.get("retry-after") || 8), 15);
-    await new Promise((resolve) => setTimeout(resolve, retryAfterSeconds * 1000));
+    const retryDelayMs = retryAfterSeconds * 1000;
+    if (Date.now() + retryDelayMs >= deadline) throw new RunBudgetReached("Signal collection wall-time budget reached");
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
   }
   throw new RateLimited("GDELT retry limit reached");
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("PHASE3_SIGNAL_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const unauthorized = authorizeWebhook(request, "PHASE3_SIGNAL_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
   const { data: config, error: configError } = await supabase.from("system_config").select(
     "master_enabled,phase3_research_enabled,phase3_signal_company_limit,phase3_signal_lookback_days",
   ).eq("id", true).single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
 
   const { data: source, error: sourceError } = await supabase.from("signal_sources").select("*")
     .eq("provider", PROVIDER).single();
-  if (sourceError) return new Response(`Source failed: ${sourceError.message}`, { status: 500 });
+  if (sourceError) return functionError("signal_source_query_failed");
 
   const { data: run, error: runError } = await supabase.from("source_runs").insert({
     run_type: "signal_research",
@@ -98,7 +92,7 @@ Deno.serve(async (request) => {
     status: "started",
     decision: { send_enabled: false, provider: PROVIDER },
   }).select("id").single();
-  if (runError || !run) return new Response(`Run creation failed: ${runError?.message}`, { status: 500 });
+  if (runError || !run) return functionError("source_run_creation_failed");
 
   if (!config.master_enabled || !config.phase3_research_enabled || !source.enabled) {
     await supabase.from("source_runs").update({
@@ -113,7 +107,8 @@ Deno.serve(async (request) => {
     // Small batches, rotating through the least-recently-checked companies. GDELT's
     // free tier can't absorb one query per company per day at scale, and news signals
     // stay fresh for weeks — every company gets re-checked within days regardless.
-    const companyLimit = Math.min(Number(config.phase3_signal_company_limit || 5), 3);
+    const companyLimit = Math.min(25, Math.max(1, Number(config.phase3_signal_company_limit || 5)));
+    const runDeadline = Date.now() + RUN_BUDGET_MS;
     const lookbackDays = Math.min(Number(config.phase3_signal_lookback_days || 7), 30);
     const { data: companies, error: companyError } = await supabase.from("companies")
       .select("id,name,domain,lifecycle_stage,source,metadata")
@@ -128,11 +123,17 @@ Deno.serve(async (request) => {
     let duplicates = 0;
     let irrelevant = 0;
     let companiesChecked = 0;
+    let companiesCompleted = 0;
     const failures: Array<{ company_id: string; error: string }> = [];
     const endpoint = String(source.config?.endpoint || "https://api.gdeltproject.org/api/v2/doc/doc");
 
     let rateLimited = false;
+    let stopReason = "company_limit_completed";
     for (const company of companies || []) {
+      if (Date.now() >= runDeadline) {
+        stopReason = "wall_time_budget_reached";
+        break;
+      }
       const companyName = clean(company.name, 100);
       if (companyName.length < 3) continue;
       // Space the requests out — burst-querying is what triggered GDELT's throttling.
@@ -148,7 +149,7 @@ Deno.serve(async (request) => {
       url.searchParams.set("maxrecords", "10");
 
       try {
-        const response = await fetchPublicNews(url);
+        const response = await fetchPublicNews(url, runDeadline);
         const payload = await response.json();
         const articles: Article[] = Array.isArray(payload?.articles) ? payload.articles : [];
         discovered += articles.length;
@@ -192,17 +193,24 @@ Deno.serve(async (request) => {
         await supabase.from("companies").update({
           metadata: { ...(company.metadata || {}), signal_checked_at: new Date().toISOString() },
         }).eq("id", company.id);
+        companiesCompleted++;
       } catch (error) {
+        if (error instanceof RunBudgetReached) {
+          stopReason = "wall_time_budget_reached";
+          break;
+        }
         failures.push({ company_id: company.id, error: errorText(error).slice(0, 240) });
         if (error instanceof RateLimited) {
           // Leave signal_checked_at unstamped so this company goes first next run,
           // and stop the run — more requests now would only extend the throttle.
           rateLimited = true;
+          stopReason = "provider_rate_limited";
           break;
         }
         await supabase.from("companies").update({
           metadata: { ...(company.metadata || {}), signal_checked_at: new Date().toISOString() },
         }).eq("id", company.id);
+        companiesCompleted++;
       }
     }
 
@@ -218,15 +226,15 @@ Deno.serve(async (request) => {
       records_created: created,
       completed_at: completedAt,
       error: failures.length ? JSON.stringify(failures).slice(0, 1000) : null,
-      decision: { companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false },
+      decision: { configured_company_limit: companyLimit, companies_attempted: companiesChecked, companies_completed: companiesCompleted, stop_reason: stopReason, wall_time_budget_ms: RUN_BUDGET_MS, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false },
     }).eq("id", run.id);
     await supabase.from("agent_log").insert({
       agent_name: "phase3-signal-collector",
       action: "collect_public_news_signals",
       outcome: failures.length === companiesChecked && companiesChecked > 0 ? "failed" : "completed",
-      decision: { companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false },
+      decision: { configured_company_limit: companyLimit, companies_attempted: companiesChecked, companies_completed: companiesCompleted, stop_reason: stopReason, wall_time_budget_ms: RUN_BUDGET_MS, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false },
     });
-    return Response.json({ companies_checked: companiesChecked, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false });
+    return Response.json({ configured_company_limit: companyLimit, companies_attempted: companiesChecked, companies_completed: companiesCompleted, stop_reason: stopReason, discovered, created, duplicates, irrelevant, failed_companies: failures.length, rate_limited: rateLimited, send_enabled: false });
   } catch (error) {
     const failure = errorText(error).slice(0, 1000);
     await supabase.from("source_runs").update({ status: "failed", error: failure, completed_at: new Date().toISOString() }).eq("id", run.id);

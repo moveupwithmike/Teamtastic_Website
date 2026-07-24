@@ -20,6 +20,18 @@ async function notifyMichael(payment, lead) {
 
   const jobs = [];
   if (process.env.RESEND_API_KEY && process.env.INTERNAL_NOTIFICATION_EMAIL) {
+    const db = getSupabaseAdmin();
+    const { data: reservation } = await db.rpc("reserve_email_send", {
+      p_message_type: "internal_notification",
+      p_recipient: process.env.INTERNAL_NOTIFICATION_EMAIL,
+    });
+    if (reservation?.allowed !== true) {
+      console.error("Deposit alert blocked by email policy", {
+        session: payment.stripe_session_id,
+        reason: reservation?.reason || "reservation_failed",
+      });
+      return false;
+    }
     jobs.push(fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -38,6 +50,12 @@ async function notifyMichael(payment, lead) {
   const failed = results.some((result) =>
     result.status === "rejected" || (result.status === "fulfilled" && !result.value.ok)
   );
+  if (jobs.length > 0) {
+    await getSupabaseAdmin().rpc("record_email_send_result", {
+      p_message_type: "internal_notification",
+      p_sent: !failed,
+    });
+  }
   if (failed) {
     console.error("One or more deposit alerts failed", { session: payment.stripe_session_id });
   }
@@ -102,6 +120,18 @@ export async function POST(request) {
   const supabase = getSupabaseAdmin();
   const email = session.customer_details?.email?.trim().toLowerCase() || null;
   const submissionId = session.metadata?.submission_id || session.client_reference_id || null;
+  const paymentRequestId = session.metadata?.payment_request_id || null;
+  let paymentRequest = null;
+  if (paymentRequestId) {
+    paymentRequest = (await supabase.from("payment_requests")
+      .select("*")
+      .eq("id", paymentRequestId)
+      .maybeSingle()).data;
+  }
+  const amountMatches = !paymentRequest || (
+    paymentRequest.amount_due_now_cents === (session.amount_total || 0)
+    && paymentRequest.currency === (session.currency || "usd")
+  );
 
   const { data: duplicate } = await supabase
     .from("stripe_events")
@@ -155,6 +185,8 @@ export async function POST(request) {
     payment_status: session.payment_status || "paid",
     checkout_mode: session.mode || null,
     payment_link_id: typeof session.payment_link === "string" ? session.payment_link : session.payment_link?.id || null,
+    payment_request_id: paymentRequest?.id || null,
+    payment_kind: paymentRequest?.payment_kind || session.metadata?.payment_kind || null,
     product_key: productKey,
     paid_at: new Date(event.created * 1000).toISOString(),
     matched: Boolean(lead),
@@ -169,9 +201,22 @@ export async function POST(request) {
     return new Response("Persistence failed", { status: 503 });
   }
 
+  if (paymentRequest) {
+    await supabase.from("payment_requests").update({
+      status: amountMatches ? "paid" : "mismatch",
+      stripe_payment_intent_id: typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id || null,
+      paid_at: amountMatches ? payment.paid_at : null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", paymentRequest.id);
+  }
+
   const [alertResult] = await Promise.allSettled([
     notifyMichael(payment, lead),
-    storedPayment?.id ? prepareClientLifecycle(supabase, storedPayment.id) : Promise.resolve(false),
+    storedPayment?.id && amountMatches
+      ? prepareClientLifecycle(supabase, storedPayment.id)
+      : Promise.resolve(false),
     captureServerEvent(product.analyticsEvent, lead?.submission_id || session.id, {
       matched: Boolean(lead),
       product_key: productKey,
@@ -186,6 +231,21 @@ export async function POST(request) {
     alert_attempts: 1,
     alert_error: alertSent ? null : "One or more alert providers failed",
   }).eq("stripe_event_id", event.id);
+  if (!amountMatches) {
+    await supabase.from("agent_log").insert({
+      agent_name: "stripe-webhook",
+      action: "reconcile_payment_request",
+      outcome: "blocked",
+      decision: {
+        payment_request_id: paymentRequest?.id,
+        expected_amount: paymentRequest?.amount_due_now_cents,
+        actual_amount: session.amount_total || 0,
+        expected_currency: paymentRequest?.currency,
+        actual_currency: session.currency || "usd",
+      },
+    });
+    return new Response("Payment amount requires review", { status: 200 });
+  }
   if (!alertSent) return new Response("Alert delivery failed", { status: 503 });
   return new Response("Processed", { status: 200 });
 }

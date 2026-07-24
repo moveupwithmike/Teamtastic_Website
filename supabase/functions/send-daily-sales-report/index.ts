@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -29,21 +29,15 @@ function countBy<T>(rows: T[], key: (row: T) => string) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("DAILY_REPORT_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const unauthorized = authorizeWebhook(request, "DAILY_REPORT_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
   const { data: config, error: configError } = await supabase
     .from("system_config")
     .select("master_enabled,daily_report_enabled,daily_report_recipient,daily_prospecting_cap,outbound_auto_paused")
     .eq("id", true)
     .single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
   if (!config.master_enabled || !config.daily_report_enabled) {
     return Response.json({ sent: false, skipped: true, reason: "daily_report_disabled" });
   }
@@ -55,7 +49,7 @@ Deno.serve(async (request) => {
   if (existing?.status === "sent") return Response.json({ sent: false, skipped: true, reason: "already_sent" });
 
   const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const [leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult] = await Promise.all([
+  const [leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult] = await Promise.all([
     supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
     supabase.from("messages").select("message_type,status").eq("direction", "outbound").gte("created_at", since),
@@ -64,15 +58,19 @@ Deno.serve(async (request) => {
       .in("outcome", ["blocked", "skipped", "failed", "escalated"]).gte("created_at", since).order("created_at", { ascending: false }).limit(30),
     supabase.from("deals").select("id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date")
       .eq("outcome", "open").order("next_action_due_at", { ascending: true, nullsFirst: false }),
+    supabase.from("sequence_enrollments").select("id,prospect_id,sequence_id,current_step,updated_at")
+      .eq("status", "active").is("next_action_at", null).limit(20),
   ]);
-  const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error || decisionsResult.error || dealsResult.error;
-  if (queryError) return new Response(`Report query failed: ${queryError.message}`, { status: 500 });
+  const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error
+    || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error;
+  if (queryError) return functionError("report_query_failed");
 
   const replies = repliesResult.data || [];
   const outbound = outboundResult.data || [];
   const tasks = tasksResult.data || [];
   const decisions = decisionsResult.data || [];
   const deals = dealsResult.data || [];
+  const stuckEnrollments = stuckEnrollmentsResult.data || [];
   const replyCounts = countBy(replies, (row) => row.classification || "unknown");
   const sentCounts = countBy(outbound.filter((row) => row.status === "sent"), (row) => row.message_type);
   const now = Date.now();
@@ -138,7 +136,10 @@ Deno.serve(async (request) => {
     <h2>What needs Michael</h2>
     ${list(tasks.map((task) => `<strong>${escapeHtml(task.priority)}</strong>: ${escapeHtml(task.title)}${task.due_at ? ` — due ${escapeHtml(task.due_at)}` : ""}`), "No open tasks.")}
     <h2>What the system chose not to do</h2>
-    ${list(decisions.map((decision) => `<strong>${escapeHtml(decision.outcome)}</strong>: ${escapeHtml(decision.agent_name)} / ${escapeHtml(decision.action)} — ${escapeHtml(JSON.stringify(decision.decision || {}))}`), "No blocked, skipped, failed, or escalated actions.")}
+    ${list([
+      ...decisions.map((decision) => `<strong>${escapeHtml(decision.outcome)}</strong>: ${escapeHtml(decision.agent_name)} / ${escapeHtml(decision.action)} — ${escapeHtml(JSON.stringify(decision.decision || {}))}`),
+      ...stuckEnrollments.map((enrollment) => `<strong>ESCALATED</strong>: active sequence enrollment ${escapeHtml(enrollment.id)} has no next action (step ${escapeHtml(enrollment.current_step)})`),
+    ], "No blocked, skipped, failed, escalated, or stranded actions.")}
     ${deliverabilityHtml}
   `;
   const summary = {
@@ -147,6 +148,7 @@ Deno.serve(async (request) => {
     sent: sentCounts,
     open_tasks: tasks.length,
     exceptions: decisions.length,
+    stuck_sequence_enrollments: stuckEnrollments.length,
     open_deals: deals.length,
     pipeline_value: pipelineValue,
   };

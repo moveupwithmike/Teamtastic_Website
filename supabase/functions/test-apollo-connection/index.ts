@@ -1,14 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { authorizeWebhook } from "../_shared/runtime.ts";
 
 function json(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("APOLLO_TEST_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const unauthorized = authorizeWebhook(request, "APOLLO_TEST_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
 
   const apiKey = Deno.env.get("APOLLO_API_KEY");
   if (!apiKey) return json({ connected: false, reason: "apollo_key_missing", credits_consumed: 0 }, 500);
@@ -47,7 +46,7 @@ Deno.serve(async (request) => {
   } catch (error) {
     return json({
       connected: false,
-      reason: error instanceof Error ? error.message : "apollo_connection_error",
+      reason: "apollo_connection_error",
       credits_consumed: 0,
     }, 500);
   }

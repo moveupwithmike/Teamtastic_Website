@@ -92,8 +92,9 @@ many cases. Preserve it; repeatedly generating tokens can invalidate older ones.
 
 ## Phase 3 — Cold outbound foundation
 
-Phase 3 is operating in research/scoring/draft-review mode only. It has no email
-sending code, and `system_config.prospecting_enabled` remains `false`.
+Phase 3 was initially deployed in research/scoring/draft-review mode. The July 23
+autonomy migration adds explicit `off`, `review`, and `autonomous` modes; its
+scheduled workers remain fail-closed behind the corresponding feature flags.
 
 Current activation state:
 
@@ -102,15 +103,18 @@ Current activation state:
 - The scoring model combines company fit (35 points), role fit (25), active signal
   strength (30), and PostHog intent (10).
 - `process-phase3-pipeline` scores eligible records and creates evidence-backed
-  drafts with status `review`; it cannot approve or send a draft.
+  drafts. In `review` mode they require approval; in `autonomous` mode eligible
+  drafts may be approved for the scheduled sender.
 - Suppression and ineligible-status checks run before scoring and again before
   drafting.
-- The weekday `phase3-score-and-draft` schedule exists but is inactive.
+- The weekday `phase3-score-and-draft` schedule is activated by the autonomy
+  migration but remains harmless while its feature flags or mode are off.
 - `collect-phase3-signals` is deployed against the GDELT public-news index. It
   searches CRM company names for hiring, expansion, workplace, and award news,
   stores the article title and URL as evidence, retries provider rate limits, and
   has no email access or sending capability.
-- The weekday `phase3-signal-collector` schedule exists but is inactive.
+- The weekday `phase3-signal-collector` schedule is activated by the autonomy
+  migration and remains harmless while research is disabled.
 - A controlled public-source test discovered and stored 10 evidence-backed news
   signals. The validation company and its signals were then retired.
 - Research and enrichment switches remain off. There are currently no eligible
@@ -432,6 +436,86 @@ To activate:
 
 Do not apply the migration before steps 1–4. The migration intentionally removes
 the legacy lead-email trigger when it activates the replacement.
+
+## Tier 1 cross-cutting remediation rollout
+
+Apply and deploy the July 23 remediation in this order:
+
+1. Apply the four `2026072300*` migrations in filename order. They consolidate
+   scoring, close email-policy gaps, add dynamic payment requests, and add
+   explicit outbound autonomy modes.
+2. Deploy `process-phase3-pipeline` and `send-approved-outreach`.
+3. Deploy the Next.js application with `STRIPE_SECRET_KEY`,
+   `STRIPE_WEBHOOK_SECRET`, `RESEND_WEBHOOK_SECRET`, and
+   `NEXT_PUBLIC_SITE_URL` configured. Use a restricted Stripe key where possible.
+4. In Stripe test mode, complete one corporate deposit, one family deposit, one
+   estimator full payment, and one Office proposal payment. Confirm each
+   `stripe_events.amount_total` equals its linked
+   `payment_requests.amount_due_now_cents` and the request reaches `paid`.
+5. In Resend, register
+   `https://www.teamtastic.events/api/resend/webhook` for delivered, bounced,
+   and complained events. Send a dashboard test event and confirm a fresh row in
+   `resend_webhook_events`.
+6. Query `automation.outbound_pipeline_readiness()`. Do not move past `off`
+   until the Resend webhook timestamp is fresh, required jobs are active, and
+   all pipeline feature flags are deliberately reviewed.
+7. Set `outbound_mode='review'` first. This runs discovery, enrichment, public
+   signal collection, scoring, drafting, sending of human-approved drafts, reply
+   ingestion, and follow-up preparation without auto-approving new drafts.
+8. After several supervised business days, set `outbound_mode='autonomous'`
+   only with a low `daily_prospecting_cap`. New drafts will then be approved by
+   the pipeline and the scheduled send worker may deliver them.
+
+Emergency outbound stop:
+
+```sql
+update public.system_config
+set outbound_mode='off',
+    outbound_auto_paused=true,
+    prospecting_enabled=false,
+    nurture_enabled=false,
+    updated_at=now()
+where id=true;
+```
+
+The cron jobs may remain active during an emergency stop: all affected workers
+fail closed through `system_config`, preserving their schedules and run history.
+
+Rollback the website to the legacy Payment Links by restoring the prior CTA
+components and setting `NEXT_PUBLIC_STRIPE_DEPOSIT_URL` and
+`NEXT_PUBLIC_STRIPE_FAMILY_DEPOSIT_URL`. Do not drop `payment_requests` during a
+rollback; it is payment audit history.
+
+### Tier 2 contained-remediation verification
+
+After applying `20260723000500_tier2_integrity_foundation.sql` and deploying the
+updated Next.js routes and Edge Functions:
+
+1. Disable proposal email in Office settings and confirm the proposal workflow
+   reports `proposal_email_disabled`. Re-enable it with a low cap.
+2. Send one test proposal normally. Then simulate database finalization failure
+   after Resend accepts a test send and confirm the proposal becomes
+   `reconcile_required`, retains its provider message ID, and creates exactly one
+   urgent reconciliation task. Retrying must finalize the same provider message.
+3. Cancel and reschedule test bookings while forcing Zoom and Google Calendar
+   cleanup failures. Customer state should remain cancelled/rescheduled, while
+   one idempotent urgent cleanup task is created per provider operation.
+4. Follow the original manage link after two reschedules. It must resolve to and
+   manage the newest confirmed booking. Confirm the immediate reschedule success
+   screen also links to the new manage token.
+5. Confirm cancellation reasons are optional, bounded, and persisted.
+6. Request `/api/bookings/availability` without the access cookie and confirm no
+   Google Calendar call occurs. Complete Turnstile once, browse multiple dates,
+   and confirm the read limit returns `429` when exceeded.
+7. Confirm `sequence_steps` contains three approved rows for
+   `cold-outreach-followups-v1`, with step delays of 0, 4320, and 5760 minutes.
+   Drafting and enrollment scheduling must use those rows rather than constants.
+8. Test nurture eligibility with an unrelated Stripe row, unpaid event, payment
+   mismatch, legacy paid deposit, and dynamic-Checkout paid request. Only the two
+   verified paid cases should stop nurture.
+9. Set `phase3_signal_company_limit` to 1, 5, and 25 in a non-production
+   environment. Confirm the worker honors the value and still stops immediately
+   after a persistent GDELT rate limit.
 
 ## Quiz-abandoner nurture sequence
 

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
 
 const DOMAIN_COOLDOWN_DAYS = 14;
 const BATCH_SIZE = 10;
@@ -24,23 +24,18 @@ function emailDomain(email: string) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("SEND_APPROVED_OUTREACH_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const unauthorized = authorizeWebhook(request, "SEND_APPROVED_OUTREACH_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
 
   const { data: config, error: configError } = await supabase
     .from("system_config")
-    .select("master_enabled,prospecting_enabled,outbound_auto_paused,prospecting_from_email,sequence_followups_enabled")
+    .select("master_enabled,prospecting_enabled,outbound_mode,outbound_auto_paused,prospecting_from_email,sequence_followups_enabled")
     .eq("id", true)
     .single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
   if (!config.master_enabled) return Response.json({ sent: 0, reason: "master_kill_switch" });
+  if (config.outbound_mode === "off") return Response.json({ sent: 0, reason: "outbound_mode_off" });
   if (!config.prospecting_enabled) return Response.json({ sent: 0, reason: "prospecting_disabled" });
   if (config.outbound_auto_paused) return Response.json({ sent: 0, reason: "outbound_auto_paused" });
   if (!config.prospecting_from_email) return Response.json({ sent: 0, reason: "from_address_not_configured" });
@@ -52,7 +47,7 @@ Deno.serve(async (request) => {
     .eq("status", "approved")
     .order("approved_at", { ascending: true })
     .limit(BATCH_SIZE);
-  if (draftsError) return new Response(`Query failed: ${draftsError.message}`, { status: 500 });
+  if (draftsError) return functionError("approved_draft_query_failed");
   if (!drafts?.length) return Response.json({ sent: 0, reason: "no_approved_drafts" });
 
   const domainCooldownSince = new Date(Date.now() - DOMAIN_COOLDOWN_DAYS * 86400_000).toISOString();
@@ -135,14 +130,50 @@ Deno.serve(async (request) => {
       const { data: sequence } = await supabase.from("sequences")
         .select("id").eq("name", "cold-outreach-followups-v1").maybeSingle();
       if (sequence) {
+        const { data: nextStep, error: nextStepError } = await supabase.from("sequence_steps")
+          .select("delay_minutes")
+          .eq("sequence_id", sequence.id)
+          .eq("step_number", 2)
+          .eq("status", "approved")
+          .maybeSingle();
         const { data: enrollment } = await supabase.from("sequence_enrollments").insert({
           sequence_id: sequence.id,
           prospect_id: prospect.id,
-          status: "active",
+          status: nextStep ? "active" : "stopped_missing_step",
           current_step: 1,
-          next_action_at: new Date(Date.now() + 3 * 86400_000).toISOString(),
+          next_action_at: nextStep
+            ? new Date(Date.now() + Number(nextStep.delay_minutes) * 60_000).toISOString()
+            : null,
+          stopped_reason: nextStep ? null : "sequence_step_missing",
         }).select("id").maybeSingle();
         enrollmentId = enrollment?.id || null;
+        if (!nextStep) {
+          await supabase.from("agent_log").insert({
+            agent_name: "send-approved-outreach",
+            action: "start_followup_sequence",
+            outcome: "escalated",
+            prospect_id: prospect.id,
+            decision: {
+              reason: "sequence_step_missing",
+              sequence_id: sequence.id,
+              expected_step_number: 2,
+              draft_id: draft.id,
+            },
+            error: nextStepError?.message || null,
+          });
+        }
+      } else {
+        await supabase.from("agent_log").insert({
+          agent_name: "send-approved-outreach",
+          action: "start_followup_sequence",
+          outcome: "escalated",
+          prospect_id: prospect.id,
+          decision: {
+            reason: "sequence_missing",
+            sequence_name: "cold-outreach-followups-v1",
+            draft_id: draft.id,
+          },
+        });
       }
     }
 

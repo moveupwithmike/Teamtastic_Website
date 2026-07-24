@@ -124,9 +124,6 @@ begin
   update public.tasks set status='completed',updated_at=now()
   where fingerprint='office:post-call:'||p_booking_id::text and status in ('open','in_progress');
 
-  insert into public.agent_log(agent_name,action,outcome,prospect_id,decision)
-  values ('office','record_post_call_outcome','completed',deal_record.prospect_id,
-    jsonb_build_object('deal_id',deal_record.id,'booking_id',p_booking_id,'call_outcome',p_outcome,'actor',p_actor));
   return jsonb_build_object('updated',true,'deal_id',deal_record.id,'stage',deal_record.stage,'outcome',deal_record.outcome);
 end;
 $$;

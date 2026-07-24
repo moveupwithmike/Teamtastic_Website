@@ -1,3 +1,5 @@
+import { identifyLead } from "@/lib/analytics";
+
 export function createSubmissionId() {
   return crypto.randomUUID();
 }
@@ -31,6 +33,6 @@ export async function captureLead(payload) {
     error.retryable = result?.retryable ?? true;
     throw error;
   }
+  identifyLead(result.submissionId);
   return result;
 }
-

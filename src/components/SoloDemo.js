@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Gamepad2, Award, ArrowRight, CheckCircle2, RefreshCw, Star, Mail, Building, User } from "lucide-react";
 import Link from "next/link";
+import { buildGameHandoffUrl } from "@/lib/game-handoff";
 import { toast } from "sonner";
 import { captureLead, createSubmissionId } from "@/lib/lead-client";
 import { track } from "@/lib/analytics";
@@ -120,7 +121,7 @@ export default function SoloDemo() {
       });
       setGameState("lead_captured");
       track("lead_captured", { source: "playable_demo", teamSize: "15-50", vibe: "social" });
-      toast.success("Your free-game link is ready.");
+      toast.success("Your details are saved.");
     } catch (err) {
       track("lead_capture_failed", { source: "playable_demo", code: err.code });
       toast.error(err.message || "Failed to submit. Please retry.");
@@ -258,7 +259,7 @@ export default function SoloDemo() {
                 Claim Your Free 15-Minute Icebreaker Lobby!
               </h4>
               <p className="text-slate-300 text-xs leading-relaxed">
-                Ready to try it with your team? Enter your details and we&apos;ll send a confirmation to your email. No credit card required.
+                Ready to try it with your team? Enter your details to save your result and unlock the free lobby below. No credit card required.
               </p>
 
               <form onSubmit={handleLeadSubmit} className="space-y-3.5 pt-2">
@@ -324,7 +325,7 @@ export default function SoloDemo() {
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-white">You&apos;re Ready to Play!</h3>
               <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
-                We sent a confirmation to <strong className="text-purple-300">{email}</strong>. Launch a free lobby below whenever your team is ready.
+                Your result is saved for <strong className="text-purple-300">{email}</strong>. Launch a free lobby below whenever your team is ready; we&apos;ll also email the link when delivery is available.
               </p>
             </div>
 
@@ -332,7 +333,13 @@ export default function SoloDemo() {
               <p className="text-slate-400 text-xs font-semibold">Ready to play with your team?</p>
               <div className="grid grid-cols-2 gap-2">
                 <a
-                  href="https://teamtastic.games"
+                  href={buildGameHandoffUrl({
+                    vibe: "social",
+                    size: "15-50",
+                    occasion: "team-building",
+                    recommendation: "playable_demo",
+                    submissionId,
+                  })}
                   target="_blank"
                   rel="noreferrer"
                   className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1"

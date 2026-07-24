@@ -8,6 +8,15 @@ function TimelineItem({ date, label, title, detail, tone = "purple" }) {
   return <li className="relative pl-7"><span className={`absolute left-0 top-2 h-3 w-3 rounded-full ${colors[tone]}`} /><p className="text-xs uppercase tracking-wide text-slate-500">{label} · {formatDate(date)}</p><p className="mt-1 font-semibold">{title}</p>{detail && <p className="mt-1 whitespace-pre-wrap text-sm text-slate-400">{detail}</p>}</li>;
 }
 
+function formatDuration(seconds) {
+  const total = Math.max(0, Number(seconds || 0));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  if (days) return `${days}d ${hours}h`;
+  const minutes = Math.floor((total % 3600) / 60);
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 export default async function ProspectDetail({ params }) {
   const { id } = await params;
   const db = getSupabaseAdmin();
@@ -22,11 +31,17 @@ export default async function ProspectDetail({ params }) {
     db.from("deals").select("id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date,lost_reason,package_name,budget_amount,call_outcome,call_notes,created_at,updated_at").eq("prospect_id", id).order("created_at", { ascending: false }),
     db.from("agent_log").select("id,agent_name,action,outcome,decision,error,created_at").eq("prospect_id", id).order("created_at", { ascending: false }).limit(100),
     db.from("outreach_drafts").select("id,subject,body_text,status,approval_notes,created_at,updated_at").eq("prospect_id", id).order("created_at", { ascending: false }),
-    db.from("proposals").select("id,package_name,price,currency,expires_on,subject,status,sent_at,last_error,created_at").eq("prospect_id", id).order("created_at", { ascending: false }),
+    db.from("proposals").select("id,package_name,price,currency,expires_on,subject,status,sent_at,last_error,metadata,created_at").eq("prospect_id", id).order("created_at", { ascending: false }),
   ]);
   const deals = dealsResult.data || [];
   const dealIds = deals.map((d) => d.id);
-  const { data: payments = [] } = dealIds.length ? await db.from("deal_payments").select("id,deal_id,amount,currency,payment_kind,paid_at").in("deal_id", dealIds) : { data: [] };
+  const [paymentsResult, stageHistoryResult] = dealIds.length ? await Promise.all([
+    db.from("deal_payments").select("id,deal_id,amount,currency,payment_kind,paid_at").in("deal_id", dealIds),
+    db.from("deal_stage_history").select("id,deal_id,from_stage,to_stage,entered_at,exited_at,duration_seconds,source").in("deal_id", dealIds).order("entered_at", { ascending: false }),
+  ]) : [{ data: [] }, { data: [] }];
+  const payments = paymentsResult.data || [];
+  const stageHistory = stageHistoryResult.data || [];
+  const dealNames = new Map(deals.map((deal) => [deal.id, deal.title]));
   const timeline = [
     ...(leadsResult.data || []).map((x) => ({ date: x.created_at, label: "Lead form", title: `${x.lead_source || "Website"} lead`, detail: [x.team_size && `Team: ${x.team_size}`, x.vibe && `Vibe: ${x.vibe}`, x.occasion && `Occasion: ${x.occasion}`, x.recommendation_key && `Recommendation: ${x.recommendation_key}`].filter(Boolean).join(" · "), tone: "blue" })),
     ...(messagesResult.data || []).map((x) => ({ date: x.received_at || x.sent_at || x.created_at, label: x.direction === "inbound" ? `Inbound email${x.classification ? ` — ${x.classification}` : ""}` : `Outbound email — ${x.status}`, title: x.subject || "No subject", detail: x.body_text, tone: x.direction === "inbound" ? "green" : "purple" })),
@@ -35,7 +50,7 @@ export default async function ProspectDetail({ params }) {
     ...deals.map((x) => ({ date: x.updated_at, label: `Deal — ${x.stage.replaceAll("_", " ")}`, title: `${x.title} · ${formatMoney(x.expected_value, x.currency)}`, detail: [x.next_action, x.call_outcome && `Call: ${x.call_outcome}`, x.call_notes].filter(Boolean).join("\n"), tone: x.outcome === "lost" ? "red" : "purple" })),
     ...payments.map((x) => ({ date: x.paid_at, label: "Payment", title: `${formatMoney(x.amount, x.currency)} ${x.payment_kind}`, detail: "Stripe payment matched to this deal", tone: "green" })),
     ...(draftsResult.data || []).map((x) => ({ date: x.updated_at, label: `Outreach draft — ${x.status}`, title: x.subject, detail: x.approval_notes, tone: "blue" })),
-    ...(proposalsResult.data || []).map((x) => ({ date: x.sent_at || x.created_at, label: `Proposal — ${x.status}`, title: `${x.package_name} · ${formatMoney(x.price, x.currency)}`, detail: x.subject, tone: "gold" })),
+    ...(proposalsResult.data || []).map((x) => ({ date: x.sent_at || x.created_at, label: `Proposal — ${x.status}`, title: `${x.package_name} · ${formatMoney(x.price, x.currency)}`, detail: [x.subject, x.metadata?.template_version && `Template: ${x.metadata.template_version}`].filter(Boolean).join("\n"), tone: "gold" })),
     ...(logsResult.data || []).map((x) => ({ date: x.created_at, label: `${x.agent_name} — ${x.outcome}`, title: x.action, detail: x.error || x.decision?.reason, tone: ["failed", "blocked", "escalated"].includes(x.outcome) ? "red" : "purple" })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -47,6 +62,21 @@ export default async function ProspectDetail({ params }) {
       <Card title="Company"><dl className="space-y-2 text-sm"><div><dt className="text-slate-500">Name</dt><dd>{companyResult.data?.name || "—"}</dd></div><div><dt className="text-slate-500">Domain</dt><dd>{companyResult.data?.domain || "—"}</dd></div><div><dt className="text-slate-500">Size</dt><dd>{companyResult.data?.employee_count_range || "—"}</dd></div></dl></Card>
       <Card title="Open work"><p className="text-3xl font-bold">{(tasksResult.data || []).filter((t) => ["open", "in_progress"].includes(t.status)).length}</p><p className="text-sm text-slate-400">open tasks</p><p className="mt-3 text-3xl font-bold">{deals.filter((d) => d.outcome === "open").length}</p><p className="text-sm text-slate-400">open deals</p></Card>
     </div>
+    <Card title="Stage history" count={stageHistory.length}>
+      {!stageHistory.length ? <p className="text-slate-400">No deal stage transitions have been recorded.</p> : (
+        <ol className="space-y-4">
+          {stageHistory.map((entry) => {
+            return <li key={entry.id} className="rounded-xl bg-white/[0.03] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><p className="font-semibold">{entry.from_stage ? entry.from_stage.replaceAll("_", " ") : "created"} → {entry.to_stage.replaceAll("_", " ")}</p><p className="mt-1 text-sm text-slate-400">{dealNames.get(entry.deal_id) || "Deal"} · {entry.source.replaceAll("_", " ")}</p></div>
+                <span className="text-sm text-purple-300">{entry.duration_seconds == null ? "Current stage" : `${formatDuration(entry.duration_seconds)} in stage`}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">{formatDate(entry.entered_at)}{entry.exited_at ? ` → ${formatDate(entry.exited_at)}` : " → current"}</p>
+            </li>;
+          })}
+        </ol>
+      )}
+    </Card>
     <Card title="Complete timeline" count={timeline.length}>{!timeline.length ? <p className="text-slate-400">No activity has been recorded yet.</p> : <ol className="relative space-y-6 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-white/10">{timeline.map((item, index) => <TimelineItem key={`${item.label}-${item.date}-${index}`} {...item} />)}</ol>}</Card>
   </div>;
 }

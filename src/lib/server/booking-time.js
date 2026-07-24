@@ -26,6 +26,22 @@ export function zonedWallTimeToUtc(date, time, timeZone) {
   return result;
 }
 
+export function dateInTimeZone(date, timeZone) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function zonedDayRangeUtc(date, timeZone) {
+  const [year, month, day] = date.split("-").map(Number);
+  const nextDate = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+  return [
+    zonedWallTimeToUtc(date, "00:00", timeZone),
+    zonedWallTimeToUtc(nextDate, "00:00", timeZone),
+  ];
+}
+
 export function weekdayForDate(date) {
   const [year, month, day] = date.split("-").map(Number);
   return WEEKDAYS[new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()];

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
+import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
 
 // Each window is wider than the 15-minute cron cadence so a booking is never
 // missed between runs; reminder_*_sent_at makes re-checking it idempotent.
@@ -49,22 +49,16 @@ function buildEmail(label: "24h" | "1h", booking: Record<string, unknown>, booki
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (request.headers.get("x-webhook-secret") !== Deno.env.get("BOOKING_REMINDERS_WEBHOOK_SECRET")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const unauthorized = authorizeWebhook(request, "BOOKING_REMINDERS_WEBHOOK_SECRET");
+  if (unauthorized) return unauthorized;
+  const supabase = serviceClient();
 
   const { data: config, error: configError } = await supabase
     .from("system_config")
     .select("master_enabled,booking_reminders_enabled")
     .eq("id", true)
     .single();
-  if (configError) return new Response(`Config failed: ${configError.message}`, { status: 500 });
+  if (configError) return functionError("config_query_failed");
   if (!config.master_enabled || !config.booking_reminders_enabled) {
     return Response.json({ processed: 0, sent: 0, skipped: true, reason: "booking_reminders_disabled" });
   }
