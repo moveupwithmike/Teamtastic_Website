@@ -57,6 +57,7 @@ function dateLabel(date, timeZone) {
 }
 
 function LiveSlots({ date, bookingType, visitorTimezone, selectedSlot, onSelect }) {
+  /** @type {[{loading: boolean, slots: any[], error?: boolean}, (value: any) => void]} */
   const [result, setResult] = useState({ loading: true, slots: [] });
   const [accessGranted, setAccessGranted] = useState(false);
   const [accessReset, setAccessReset] = useState(0);
@@ -123,6 +124,7 @@ export default function BookingScheduler({ fallbackUrl }) {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", company: "" });
+  /** @type {[{status: string, reason?: string, booking?: any}, (value: any) => void]} */
   const [confirmState, setConfirmState] = useState({ status: "idle" });
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
@@ -219,11 +221,11 @@ export default function BookingScheduler({ fallbackUrl }) {
           <div className="border-t border-white/10 bg-black/20 p-7 md:border-l md:border-t-0 sm:p-10">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">What happens next</p>
             <div className="mt-6 space-y-5">
-              {[
+              {/** @type {Array<[React.ComponentType<{className?: string}>, string, string]>} */ ([
                 [Clock3, "15 focused minutes", "We’ll quickly narrow the right format, timing, and next step."],
                 [Sparkles, "Real recommendations", "No generic pitch—just useful ideas for your specific team."],
                 [ShieldCheck, "No planning burden", "Teamtastic can build and facilitate the experience from start to finish."],
-              ].map(([Icon, title, body]) => (
+              ]).map(([Icon, title, body]) => (
                 <div key={title} className="flex gap-4">
                   <span className="mt-0.5 text-purple-300"><Icon className="h-5 w-5" /></span>
                   <div><h3 className="font-bold text-white">{title}</h3><p className="mt-1 text-sm leading-relaxed text-zinc-400">{body}</p></div>

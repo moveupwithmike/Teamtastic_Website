@@ -52,7 +52,7 @@ export default async function ProspectDetail({ params }) {
     ...(draftsResult.data || []).map((x) => ({ date: x.updated_at, label: `Outreach draft — ${x.status}`, title: x.subject, detail: x.approval_notes, tone: "blue" })),
     ...(proposalsResult.data || []).map((x) => ({ date: x.sent_at || x.created_at, label: `Proposal — ${x.status}`, title: `${x.package_name} · ${formatMoney(x.price, x.currency)}`, detail: [x.subject, x.metadata?.template_version && `Template: ${x.metadata.template_version}`].filter(Boolean).join("\n"), tone: "gold" })),
     ...(logsResult.data || []).map((x) => ({ date: x.created_at, label: `${x.agent_name} — ${x.outcome}`, title: x.action, detail: x.error || x.decision?.reason, tone: ["failed", "blocked", "escalated"].includes(x.outcome) ? "red" : "purple" })),
-  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return <div className="space-y-6">
     <Link href="/office/prospects" className="text-sm text-purple-300">← Back to prospects</Link>

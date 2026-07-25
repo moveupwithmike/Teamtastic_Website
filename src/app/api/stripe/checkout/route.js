@@ -83,7 +83,7 @@ export async function POST(request) {
       fingerprint,
       status: "active",
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    }).select("id,status").single();
+    }).select("id,stripe_checkout_session_id,status").single();
     if (inserted.error) {
       return NextResponse.json({ error: "payment_request_failed" }, { status: 500 });
     }

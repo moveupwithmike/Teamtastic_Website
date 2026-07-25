@@ -77,7 +77,6 @@ export default async function ManageBookingPage({ params }) {
       <BookingManage
         token={token}
         bookingTypeSlug={bookingType?.slug}
-        durationMinutes={bookingType?.duration_minutes}
         visitorTimezone={booking.visitor_timezone}
       />
     </Shell>

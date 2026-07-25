@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+/** @param {{title: string, count?: number, children: any, tone?: string}} props */
 export function Card({ title, count, children, tone = "purple" }) {
   const tones = { purple: "text-purple-300", red: "text-red-300", gold: "text-amber-300", green: "text-emerald-300" };
   return (

@@ -14,9 +14,7 @@ function callbackClient(request, response) {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, cacheHeaders) {
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        if (cacheHeaders?.forEach) {
-          cacheHeaders.forEach((value, name) => response.headers.set(name, value));
-        }
+        Object.entries(cacheHeaders || {}).forEach(([name, value]) => response.headers.set(name, value));
       },
     },
   });

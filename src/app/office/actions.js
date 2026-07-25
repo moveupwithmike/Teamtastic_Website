@@ -202,7 +202,8 @@ export async function createProposal(formData) {
   const dealId = clean(formData.get("deal_id"), 50);
   const db = getSupabaseAdmin();
   const { data: deal } = await db.from("deals").select("id,prospect_id,prospects(email,full_name)").eq("id", dealId).single();
-  if (!deal?.prospects?.email) redirect("/office?error=proposal_missing_recipient");
+  const prospect = Array.isArray(deal?.prospects) ? deal.prospects[0] : deal?.prospects;
+  if (!prospect?.email) redirect("/office?error=proposal_missing_recipient");
 
   const packageName = clean(formData.get("package_name"), 200);
   const price = money(formData.get("price"));
@@ -213,7 +214,7 @@ export async function createProposal(formData) {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.teamtastic.events").replace(/\/$/, "");
   const paymentUrl = `${siteUrl}/api/stripe/proposal-checkout?token=${encodeURIComponent(paymentToken)}`;
 
-  const name = deal.prospects.full_name?.split(" ")[0] || "there";
+  const name = prospect.full_name?.split(" ")[0] || "there";
   const subject = clean(formData.get("subject"), 300) || `Your Teamtastic ${packageName} proposal`;
   const suppliedBody = clean(formData.get("body_text"), 10000);
   const bodyText = suppliedBody || [
@@ -232,7 +233,7 @@ export async function createProposal(formData) {
   const { data: proposal, error } = await db.from("proposals").insert({
     deal_id: dealId,
     prospect_id: deal.prospect_id,
-    recipient_email: deal.prospects.email,
+    recipient_email: prospect.email,
     package_name: packageName,
     price,
     expires_on: expiresOn,

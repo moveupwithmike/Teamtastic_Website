@@ -44,6 +44,7 @@ function dateLabel(date, timeZone) {
 function SlotPicker({ bookingTypeSlug, visitorTimezone, selectedSlot, onSelect }) {
   const dates = useMemo(() => upcomingDates(visitorTimezone), [visitorTimezone]);
   const [activeDate, setActiveDate] = useState(dates[0] || "");
+  /** @type {[{loading: boolean, slots: any[], error?: boolean}, (value: any) => void]} */
   const [result, setResult] = useState({ loading: true, slots: [] });
   const [accessGranted, setAccessGranted] = useState(false);
   const [accessReset, setAccessReset] = useState(0);
@@ -111,6 +112,7 @@ function SlotPicker({ bookingTypeSlug, visitorTimezone, selectedSlot, onSelect }
 export default function BookingManage({ token, bookingTypeSlug, visitorTimezone }) {
   const [mode, setMode] = useState("idle");
   const [selectedSlot, setSelectedSlot] = useState(null);
+  /** @type {[{status: string, reason?: string, booking?: any}, (value: any) => void]} */
   const [state, setState] = useState({ status: "idle" });
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
@@ -216,7 +218,7 @@ export default function BookingManage({ token, bookingTypeSlug, visitorTimezone 
               <option value="other">Other</option>
             </select>
           </label>
-          {cancellationReason === "other" && <textarea value={cancellationDetail} onChange={(event) => setCancellationDetail(event.target.value.slice(0, 450))} maxLength="450" placeholder="Optional details" className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white" />}
+          {cancellationReason === "other" && <textarea value={cancellationDetail} onChange={(event) => setCancellationDetail(event.target.value.slice(0, 450))} maxLength={450} placeholder="Optional details" className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white" />}
           <div className="mt-4">
             <TurnstileWidget onToken={handleTurnstileToken} resetKey={turnstileReset} />
           </div>

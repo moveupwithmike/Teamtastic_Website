@@ -1,4 +1,5 @@
 import { Outfit, Caveat } from "next/font/google";
+// @ts-ignore - CSS side-effect import; plain tsc can't type relative CSS imports, Next's own build-time checker already understands them.
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";

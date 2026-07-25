@@ -1,3 +1,4 @@
+// @ts-ignore - server-only has no bundled type declarations; enforced at build time by Next.js.
 import "server-only";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";

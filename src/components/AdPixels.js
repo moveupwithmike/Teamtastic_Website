@@ -6,7 +6,8 @@ import { effectiveConsent } from "@/lib/consent";
 
 function initMetaPixel(pixelId) {
   if (window.fbq) return;
-  const fbq = function fbq(...args) {
+  /** @type {Window["fbq"]} */
+  const fbq = function (...args) {
     if (fbq.callMethod) fbq.callMethod(...args);
     else fbq.queue.push(args);
   };

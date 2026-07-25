@@ -62,6 +62,7 @@ export default async function GamePage({ params }) {
     .filter((g) => g.category === game.category && g.slug !== game.slug)
     .slice(0, 3);
 
+  /** @type {Record<string, any>[]} */
   const structuredData = [
     {
       "@context": "https://schema.org",

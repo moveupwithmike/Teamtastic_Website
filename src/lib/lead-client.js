@@ -28,6 +28,7 @@ export async function captureLead(payload) {
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result?.success) {
+    /** @type {Error & {code?: string, retryable?: boolean}} */
     const error = new Error(result?.message || "We couldn't save your details. Please try again.");
     error.code = result?.code || "UNKNOWN";
     error.retryable = result?.retryable ?? true;

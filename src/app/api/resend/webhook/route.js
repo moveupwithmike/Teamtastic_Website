@@ -19,9 +19,10 @@ export async function POST(request) {
     "svix-timestamp": request.headers.get("svix-timestamp"),
     "svix-signature": request.headers.get("svix-signature"),
   };
+  /** @type {{type: string, data: {email_id?: string, to?: string | string[], bounce_type?: string, bounce?: {type?: string}}}} */
   let event;
   try {
-    event = new Webhook(secret).verify(payload, headers);
+    event = /** @type {any} */ (new Webhook(secret).verify(payload, headers));
   } catch {
     return new Response("Invalid signature", { status: 400 });
   }

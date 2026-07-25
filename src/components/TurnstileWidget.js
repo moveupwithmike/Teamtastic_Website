@@ -43,7 +43,7 @@ export default function TurnstileWidget({ onToken, resetKey = 0 }) {
 
     if (window.turnstile) render();
     else {
-      let script = document.getElementById(SCRIPT_ID);
+      let script = /** @type {HTMLScriptElement | null} */ (document.getElementById(SCRIPT_ID));
       if (!script) {
         script = document.createElement("script");
         script.id = SCRIPT_ID;
