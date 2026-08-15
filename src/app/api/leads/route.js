@@ -13,6 +13,9 @@ const SOURCES = new Set([
   "michael_family_concierge",
   "holiday_party_money_page",
   "virtual_team_building_money_page",
+  "year_end_celebration_page",
+  "large_holiday_event_page",
+  "holiday_planning_checklist",
 ]);
 function response(status, code, message, retryable = false) {
   return NextResponse.json({ success: false, code, message, retryable }, { status });
@@ -24,6 +27,11 @@ function clean(value, max = 500) {
 
 function validEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}
+
+function optionalIsoDate(value) {
+  const date = clean(value, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) ? date : null;
 }
 
 export async function POST(request) {
@@ -83,6 +91,13 @@ export async function POST(request) {
     utm_content: clean(body.utm?.content, 200) || null,
     utm_term: clean(body.utm?.term, 200) || null,
     context: typeof body.context === "object" && body.context ? body.context : {},
+    preferred_event_date: optionalIsoDate(body.preferredEventDate),
+    alternate_event_date: optionalIsoDate(body.alternateEventDate),
+    event_timezone: clean(body.timeZone, 80) || null,
+    preferred_time: clean(body.preferredTime, 80) || null,
+    budget_range: clean(body.budgetRange, 80) || null,
+    package_interest: clean(body.packageInterest, 120) || null,
+    decision_timeline: clean(body.decisionTimeline, 80) || null,
   };
 
   try {

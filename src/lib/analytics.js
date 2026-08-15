@@ -22,6 +22,7 @@ export function track(event, properties = {}) {
     Object.entries(properties).filter(([key]) => !PII_KEYS.has(key))
   );
   posthog.capture(event, safe);
+  sendFirstPartyEvent(event, safe);
 
   if (effectiveConsent() === "granted" && AD_CONVERSION_EVENTS.has(event)) {
     window.fbq?.("track", "Lead", safe);
@@ -40,4 +41,16 @@ export function identifyLead(submissionId) {
   const id = String(submissionId || "").trim();
   if (!/^[0-9a-f-]{36}$/i.test(id)) return;
   posthog.identify(`lead:${id}`);
+  try { window.localStorage.setItem("teamtastic_submission_id", id); } catch {}
+}
+
+function sendFirstPartyEvent(event, properties) {
+  try {
+    const key="teamtastic_funnel_session";
+    let sessionId=window.localStorage.getItem(key);
+    if (!/^[0-9a-f-]{36}$/i.test(sessionId || "")) { sessionId=crypto.randomUUID(); window.localStorage.setItem(key,sessionId); }
+    const params=new URLSearchParams(window.location.search);
+    const referrerHost=document.referrer ? new URL(document.referrer).hostname : null;
+    fetch("/api/funnel-events",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({event,sessionId,submissionId:window.localStorage.getItem("teamtastic_submission_id"),landingPage:window.location.pathname,referrerHost,utm:{source:params.get("utm_source"),medium:params.get("utm_medium"),campaign:params.get("utm_campaign"),content:params.get("utm_content")},properties})}).catch(()=>{});
+  } catch {}
 }

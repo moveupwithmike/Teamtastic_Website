@@ -18,6 +18,7 @@ export function Empty({ children = "Nothing needs attention." }) {
   return <p className="rounded-xl bg-emerald-500/5 p-4 text-sm text-emerald-300">{children}</p>;
 }
 
+/** @param {{id: string, name?: string, email?: string}} props */
 export function ProspectLink({ id, name, email }) {
   return <Link className="font-semibold text-purple-300 hover:text-purple-200" href={`/office/prospects/${id}`}>{name || email || "Unknown prospect"}</Link>;
 }

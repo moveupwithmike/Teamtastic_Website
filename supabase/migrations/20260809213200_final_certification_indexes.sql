@@ -1,0 +1,3 @@
+create index final_certifications_pilot_lead_idx on public.final_production_certifications(pilot_lead_id) where pilot_lead_id is not null;
+create index final_certifications_pilot_client_idx on public.final_production_certifications(pilot_client_id) where pilot_client_id is not null;
+create index final_certifications_pilot_invitation_idx on public.final_production_certifications(pilot_portal_invitation_id) where pilot_portal_invitation_id is not null;

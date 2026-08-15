@@ -87,35 +87,139 @@ function isAutomatedSystemMessage(sender: string, subject: string, headers: Reco
   );
 }
 
-function classifyReply(subject: string, body: string) {
-  const text = `${subject}\n${body}`.toLowerCase().slice(0, 30_000);
+type Classification = { classification: string; confidence: number; reason: string; method: "regex" | "llm" };
+
+const FUZZY_CLASSIFICATIONS = ["interested", "not_interested", "referral", "question", "unknown"] as const;
+
+// These four are compliance/reputation-sensitive (opt-out law, abuse complaints) and are
+// simple enough that the regex is already near-certain. They are never routed to the LLM,
+// regardless of the gmail_llm_classification_enabled flag.
+function classifyHardStop(text: string): Classification | null {
   const has = (pattern: RegExp) => pattern.test(text);
 
   if (has(/\b(unsubscribe|remove me|stop emailing|do not (?:email|contact)|opt[ -]?out)\b/)) {
-    return { classification: "unsubscribe", confidence: 0.99, reason: "explicit opt-out language" };
+    return { classification: "unsubscribe", confidence: 0.99, reason: "explicit opt-out language", method: "regex" };
   }
   if (has(/\b(attorney|legal counsel|cease and desist|lawsuit|litigation|legal action)\b/)) {
-    return { classification: "legal", confidence: 0.97, reason: "legal escalation language" };
+    return { classification: "legal", confidence: 0.97, reason: "legal escalation language", method: "regex" };
   }
   if (has(/\b(spam|reported you|harassment|complaint|never contact)\b/)) {
-    return { classification: "complaint", confidence: 0.95, reason: "complaint or spam language" };
+    return { classification: "complaint", confidence: 0.95, reason: "complaint or spam language", method: "regex" };
   }
   if (has(/\b(out of (?:the )?office|automatic reply|auto(?:matic)? response|away from (?:my )?email|on (?:vacation|leave))\b/)) {
-    return { classification: "out_of_office", confidence: 0.96, reason: "automatic absence language" };
+    return { classification: "out_of_office", confidence: 0.96, reason: "automatic absence language", method: "regex" };
   }
+  return null;
+}
+
+// Fallback used when the LLM is disabled, fails, or returns something outside the
+// expected shape. Also the only path when gmail_llm_classification_enabled is false.
+function classifyFuzzyRegex(text: string, body: string): Classification {
+  const has = (pattern: RegExp) => pattern.test(text);
+
   if (has(/\b(not interested|no thank(?:s| you)|not a fit|please pass|we(?:'re| are) all set|do not need)\b/)) {
-    return { classification: "not_interested", confidence: 0.94, reason: "explicit negative response" };
+    return { classification: "not_interested", confidence: 0.94, reason: "explicit negative response", method: "regex" };
   }
   if (has(/\b(reach out to|contact|speak with|forwarded (?:this|your email) to|looping in|better person)\b.{0,80}\b(colleague|manager|team|hr|people|events?|them|her|him)\b/)) {
-    return { classification: "referral", confidence: 0.86, reason: "referral language" };
+    return { classification: "referral", confidence: 0.86, reason: "referral language", method: "regex" };
   }
   if (has(/\b(interested|sounds (?:good|great)|let(?:'s| us) (?:talk|chat|meet)|book (?:a )?(?:call|demo)|available (?:to|for)|tell me more|send (?:me )?(?:details|pricing))\b/)) {
-    return { classification: "interested", confidence: 0.90, reason: "positive buying language" };
+    return { classification: "interested", confidence: 0.90, reason: "positive buying language", method: "regex" };
   }
   if (body.includes("?") || has(/\b(question(?:s)?|wondering|how|what|when|where|who|can you|could you|would you|pricing|cost|programs?|services?|more information)\b/)) {
-    return { classification: "question", confidence: 0.82, reason: "question language" };
+    return { classification: "question", confidence: 0.82, reason: "question language", method: "regex" };
   }
-  return { classification: "unknown", confidence: 0.35, reason: "no high-confidence rule matched" };
+  return { classification: "unknown", confidence: 0.35, reason: "no high-confidence rule matched", method: "regex" };
+}
+
+const LLM_SYSTEM_PROMPT = `You classify inbound email replies to cold B2B sales outreach for Teamtastic, a
+corporate team-building/event-experiences company. You only ever see messages that already failed
+to match unsubscribe/legal/complaint/out-of-office detection, so classify among exactly these five:
+
+- interested: wants to move forward, hear more, book a call/demo, or get pricing/details.
+- not_interested: a soft or implicit decline that isn't a hard opt-out (e.g. "not the right time", "we're set for this year").
+- referral: redirects you to a colleague, department (HR/People/Events), or other point of contact.
+- question: asks something (pricing, logistics, program details) without a clear buy/no-buy signal yet.
+- unknown: doesn't clearly fit any of the above, or you're genuinely unsure.
+
+Call the classify_reply tool exactly once with your answer. Be conservative: prefer "unknown" with a
+low confidence over guessing when the message is ambiguous, sarcastic, or mostly quoted prior thread text.`;
+
+const LLM_TOOL_SCHEMA = {
+  name: "classify_reply",
+  description: "Classify an inbound sales-reply email into one fuzzy category.",
+  input_schema: {
+    type: "object",
+    properties: {
+      classification: { type: "string", enum: FUZZY_CLASSIFICATIONS as unknown as string[] },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      reason: { type: "string", description: "One short sentence on why." },
+    },
+    required: ["classification", "confidence", "reason"],
+  },
+};
+
+async function classifyWithLLM(subject: string, body: string): Promise<Classification> {
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 256,
+      system: LLM_SYSTEM_PROMPT,
+      tools: [LLM_TOOL_SCHEMA],
+      tool_choice: { type: "tool", name: "classify_reply" },
+      messages: [
+        { role: "user", content: `Subject: ${subject}\n\nBody:\n${body.slice(0, 6000)}` },
+      ],
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error(`Anthropic ${response.status}: ${(await response.text()).slice(0, 500)}`);
+
+  const data = await response.json();
+  const toolUse = (data.content || []).find((block: { type?: string }) => block.type === "tool_use");
+  const input = toolUse?.input as { classification?: string; confidence?: number; reason?: string } | undefined;
+  const classification = input?.classification;
+  const isValidClassification = FUZZY_CLASSIFICATIONS.includes(classification as (typeof FUZZY_CLASSIFICATIONS)[number]);
+  if (
+    !input ||
+    !classification ||
+    !isValidClassification ||
+    typeof input.confidence !== "number" ||
+    input.confidence < 0 ||
+    input.confidence > 1
+  ) {
+    throw new Error(`Anthropic returned an unusable classification: ${JSON.stringify(input).slice(0, 300)}`);
+  }
+  return {
+    classification,
+    confidence: input.confidence,
+    reason: (input.reason || "llm classification").slice(0, 300),
+    method: "llm",
+  };
+}
+
+async function classifyReply(subject: string, body: string, llmEnabled: boolean): Promise<Classification> {
+  const text = `${subject}\n${body}`.toLowerCase().slice(0, 30_000);
+  const hardStop = classifyHardStop(text);
+  if (hardStop) return hardStop;
+
+  if (llmEnabled) {
+    try {
+      return await classifyWithLLM(subject, body);
+    } catch (error) {
+      console.error("gmail-reply LLM classification failed, falling back to regex:", errorText(error));
+    }
+  }
+  return classifyFuzzyRegex(text, body);
 }
 
 async function gmailFetch(path: string, accessToken: string) {
@@ -133,13 +237,14 @@ Deno.serve(async (request) => {
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase
     .from("system_config")
-    .select("master_enabled,gmail_ingestion_enabled")
+    .select("master_enabled,gmail_ingestion_enabled,gmail_llm_classification_enabled")
     .eq("id", true)
     .single();
   if (configError) return functionError("config_query_failed");
   if (!config.master_enabled || !config.gmail_ingestion_enabled) {
     return Response.json({ processed: 0, inserted: 0, skipped: true, reason: "gmail_ingestion_disabled" });
   }
+  const llmClassificationEnabled = Boolean(config.gmail_llm_classification_enabled);
 
   const clientId = Deno.env.get("GMAIL_CLIENT_ID");
   const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET");
@@ -188,6 +293,7 @@ Deno.serve(async (request) => {
 
     let inserted = 0;
     let skippedAutomated = 0;
+    let skippedUnmatched = 0;
     let newestInternalDate = 0;
     for (const message of fullMessages) {
       const headers = headerMap(message.payload?.headers);
@@ -199,13 +305,32 @@ Deno.serve(async (request) => {
         skippedAutomated++;
         continue;
       }
-      const classification = classifyReply(subject, body);
+      const classification = await classifyReply(subject, body, llmClassificationEnabled);
 
       let { data: prospect } = await supabase
         .from("prospects")
-        .select("id")
+        .select("id,source")
         .eq("email_normalized", sender)
         .maybeSingle();
+
+      const inReplyTo = headers["in-reply-to"] || "";
+      const [threadMatch, headerMatch] = await Promise.all([
+        message.threadId
+          ? supabase.from("messages").select("id").eq("direction", "outbound").eq("provider_thread_id", message.threadId).limit(1).maybeSingle()
+          : Promise.resolve({ data: null }),
+        inReplyTo
+          ? supabase.from("messages").select("id").eq("direction", "outbound").eq("header_message_id", inReplyTo).limit(1).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      const matchesKnownOutbound = Boolean(threadMatch.data || headerMatch.data);
+
+      // Inbox warming and unrelated mail must never manufacture sales prospects.
+      // Only a known inbound lead may be captured without thread evidence. Apollo,
+      // Gmail-imported, test, and brand-new senders must match a recorded outbound.
+      if (!matchesKnownOutbound && prospect?.source !== "inbound") {
+        skippedUnmatched++;
+        continue;
+      }
       if (!prospect) {
         const created = await supabase.from("prospects").insert({
           full_name: displayName(headers.from),
@@ -213,10 +338,10 @@ Deno.serve(async (request) => {
           source: "gmail_reply",
           status: "replied",
           last_inbound_at: new Date(Number(message.internalDate || Date.now())).toISOString(),
-        }).select("id").single();
+        }).select("id,source").single();
         prospect = created.data;
         if (!prospect && created.error?.code === "23505") {
-          const raced = await supabase.from("prospects").select("id").eq("email_normalized", sender).single();
+          const raced = await supabase.from("prospects").select("id,source").eq("email_normalized", sender).single();
           prospect = raced.data;
         }
       }
@@ -250,6 +375,7 @@ Deno.serve(async (request) => {
         status: "received",
         classification: classification.classification,
         classification_confidence: classification.confidence,
+        classification_method: classification.method,
         decision_reason: classification.reason,
         received_at: receivedAt,
       });
@@ -263,15 +389,15 @@ Deno.serve(async (request) => {
       last_synced_at: new Date().toISOString(),
       last_message_internal_date: newestInternalDate || null,
       last_error: null,
-      metadata: { scanned: summaries.length, inserted, skipped_automated: skippedAutomated },
+      metadata: { scanned: summaries.length, inserted, skipped_automated: skippedAutomated, skipped_unmatched: skippedUnmatched },
     }).eq("mailbox", MAILBOX);
     await supabase.from("agent_log").insert({
       agent_name: "gmail-reply-ingestion",
       action: "poll_inbox",
       outcome: "completed",
-      decision: { mailbox: MAILBOX, scanned: summaries.length, inserted, skipped_automated: skippedAutomated },
+      decision: { mailbox: MAILBOX, scanned: summaries.length, inserted, skipped_automated: skippedAutomated, skipped_unmatched: skippedUnmatched },
     });
-    return Response.json({ processed: summaries.length, inserted, skipped_automated: skippedAutomated });
+    return Response.json({ processed: summaries.length, inserted, skipped_automated: skippedAutomated, skipped_unmatched: skippedUnmatched });
   } catch (error) {
     const message = errorText(error).slice(0, 1000);
     await supabase.from("mailbox_sync_state").update({

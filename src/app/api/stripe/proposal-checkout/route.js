@@ -30,6 +30,16 @@ export async function GET(request) {
   if (!proposal || proposal.status === "rejected") {
     return new Response("Proposal is no longer payable", { status: 410 });
   }
+  if (paymentRequest.deal_id) {
+    const { data: deal } = await db.from("deals").select("prospect_id").eq("id", paymentRequest.deal_id).maybeSingle();
+    if (deal?.prospect_id) {
+      const [{ data: datedLead }, { data: hold }] = await Promise.all([
+        db.from("leads").select("id").eq("prospect_id", deal.prospect_id).not("preferred_event_date", "is", null).limit(1).maybeSingle(),
+        db.from("event_capacity_holds").select("id").eq("deal_id", paymentRequest.deal_id).in("status", ["tentative", "confirmed"]).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).limit(1).maybeSingle(),
+      ]);
+      if (datedLead && !hold) return new Response("The requested event date must be reconfirmed before payment. Please contact Teamtastic.", { status: 409 });
+    }
+  }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: "2026-06-24.dahlia",

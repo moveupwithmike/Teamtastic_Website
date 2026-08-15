@@ -33,11 +33,16 @@ export default async function OfficeDashboard({ searchParams }) {
     ...(postCallsResult.data || []), ...(draftsResult.data || []), ...(proposalDealsResult.data || []), ...(proposalsResult.data || []),
   ].map((row) => row.prospect_id).filter(Boolean))];
   const { data: prospects = [] } = prospectIds.length
-    ? await db.from("prospects").select("id,full_name,email,status").in("id", prospectIds)
+    ? await db.from("prospects").select("id,full_name,email,status,source").in("id", prospectIds)
+    : { data: [] };
+  const { data: linkedLeads = [] } = prospectIds.length
+    ? await db.from("leads").select("prospect_id,context").in("prospect_id", prospectIds)
     : { data: [] };
   const people = new Map(prospects.map((p) => [p.id, p]));
-  const replies = repliesResult.data || [];
-  const overdue = overdueResult.data || [];
+  const syntheticProspectIds = new Set(linkedLeads.filter((lead) => lead.context?.synthetic_test === true).map((lead) => lead.prospect_id));
+  const isRealInbound = (prospectId) => people.get(prospectId)?.source === "inbound" && !syntheticProspectIds.has(prospectId);
+  const replies = (repliesResult.data || []).filter((reply) => isRealInbound(reply.prospect_id));
+  const overdue = (overdueResult.data || []).filter((deal) => isRealInbound(deal.prospect_id));
   const calls = callsResult.data || [];
   const failures = failuresResult.data || [];
   const postCalls = postCallsResult.data || [];

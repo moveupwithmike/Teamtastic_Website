@@ -15,7 +15,25 @@ export default async function PrivateOfficeLayout({ children }) {
         </div>
         <nav className="flex flex-wrap items-center gap-3 text-sm">
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office">Needs Michael</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/roadmap">Today</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/prospects">Prospects</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/organic">Intent radar</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/growth">Growth brief</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/roi">Campaign ROI</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/scoring">Lead scoring</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/warm-signals">Warm signals</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/respond">Respond</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/distribution">Distribution</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/audience">Audience</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/health">Health</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/launch">Launch</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/sla">Holiday SLA</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/capacity">Capacity</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/certification">Certification</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/final-certification">Final certification</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/activation">Activate</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/deliverability">Delivery</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/incidents">Incidents</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/settings">Settings</Link>
           <span className="hidden text-slate-400 md:inline">{user.email}</span>
           <form action={signOutOffice}><button className="rounded-lg border border-white/10 px-4 py-2 hover:bg-white/5">Sign out</button></form>

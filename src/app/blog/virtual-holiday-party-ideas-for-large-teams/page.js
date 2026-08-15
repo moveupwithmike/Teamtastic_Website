@@ -102,7 +102,7 @@ export default function VirtualHolidayPartyIdeasForLargeTeams() {
             <p className="text-zinc-400 mb-6">
               Teamtastic runs scalable virtual holiday game shows with team modes, custom questions, music rounds, and a live emcee to keep large groups engaged.
             </p>
-            <Link href="/virtual-holiday-party" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all">
+            <Link href="/virtual-holiday-party-for-large-groups" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all">
               Plan a Large Holiday Party <ArrowRight className="h-4 w-4" />
             </Link>
           </section>

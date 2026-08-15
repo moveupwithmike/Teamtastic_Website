@@ -14,6 +14,14 @@ const initialForm = {
   teamSize: "",
   occasion: "",
   vibe: "",
+  preferredEventDate: "",
+  alternateEventDate: "",
+  timeZone: "",
+  preferredTime: "",
+  budgetRange: "",
+  packageInterest: "",
+  phone: "",
+  decisionTimeline: "",
 };
 
 export default function CorporateLeadForm({
@@ -30,8 +38,10 @@ export default function CorporateLeadForm({
   submitLabel = "Check availability",
   depositLabel = isFamily ? "Reserve with $100 deposit" : "Reserve with $200 deposit",
   defaultOccasion = "",
+  holidayQualification = false,
+  defaultTeamSize = "",
 } = {}) {
-  const [form, setForm] = useState({ ...initialForm, occasion: defaultOccasion });
+  const [form, setForm] = useState({ ...initialForm, occasion: defaultOccasion, teamSize: defaultTeamSize });
   const [submissionId, setSubmissionId] = useState(() => createSubmissionId());
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
@@ -71,7 +81,16 @@ export default function CorporateLeadForm({
         source,
         ...form,
         turnstileToken,
-        context: { entry_point: entryPoint },
+        context: {
+          entry_point: entryPoint,
+          preferredEventDate: form.preferredEventDate || null,
+          alternateEventDate: form.alternateEventDate || null,
+          timeZone: form.timeZone || null,
+          preferredTime: form.preferredTime || null,
+          budgetRange: form.budgetRange || null,
+          packageInterest: form.packageInterest || null,
+          decisionTimeline: form.decisionTimeline || null,
+        },
       });
       setStatus("success");
       track("lead_captured", {
@@ -184,6 +203,49 @@ export default function CorporateLeadForm({
             </>
           )}
         </select>
+        {holidayQualification && (
+          <>
+            <label className="text-xs font-semibold text-zinc-300">
+              Preferred event date
+              <input required type="date" name="preferredEventDate" value={form.preferredEventDate} onChange={update} className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-zinc-900 px-4 text-white [color-scheme:dark]" />
+            </label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Alternate date <span className="font-normal text-zinc-500">(optional)</span>
+              <input type="date" name="alternateEventDate" min={form.preferredEventDate || undefined} value={form.alternateEventDate} onChange={update} className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-zinc-900 px-4 text-white [color-scheme:dark]" />
+            </label>
+            <select required name="timeZone" value={form.timeZone} onChange={update} aria-label="Event time zone" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+              <option value="">Event time zone</option>
+              <option value="America/New_York">Eastern Time</option><option value="America/Chicago">Central Time</option>
+              <option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option>
+              <option value="Europe/London">UK / London</option><option value="Europe/Berlin">Central Europe</option>
+              <option value="Asia/Kolkata">India</option><option value="Asia/Singapore">Singapore</option>
+              <option value="Australia/Sydney">Sydney</option><option value="Other / multiple">Other / multiple time zones</option>
+            </select>
+            <select required name="preferredTime" value={form.preferredTime} onChange={update} aria-label="Preferred event time" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+              <option value="">Preferred event time</option>
+              <option value="morning">Morning</option><option value="midday">Midday</option>
+              <option value="afternoon">Afternoon</option><option value="evening">Evening</option>
+              <option value="flexible">Flexible</option>
+            </select>
+            <select required name="budgetRange" value={form.budgetRange} onChange={update} aria-label="Estimated event budget" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+              <option value="">Estimated budget</option>
+              <option value="under-1000">Under $1,000</option><option value="1000-2500">$1,000–$2,500</option>
+              <option value="2500-5000">$2,500–$5,000</option><option value="5000-plus">$5,000+</option>
+              <option value="not-sure">Not sure yet</option>
+            </select>
+            <select required name="packageInterest" value={form.packageInterest} onChange={update} aria-label="Package interest" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+              <option value="">Package interest</option>
+              <option value="hosted-game-show">Hosted game show</option><option value="custom-year-in-review">Custom year-in-review show</option>
+              <option value="large-event-production">Large-event production</option><option value="help-me-choose">Help me choose</option>
+            </select>
+            <input type="tel" name="phone" value={form.phone} onChange={update} placeholder="Phone (optional)" aria-label="Phone number (optional)" autoComplete="tel" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
+            <select required name="decisionTimeline" value={form.decisionTimeline} onChange={update} aria-label="Decision timeline" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
+              <option value="">How soon are you deciding?</option>
+              <option value="this-week">This week</option><option value="1-2-weeks">Within 1–2 weeks</option>
+              <option value="this-month">This month</option><option value="researching">Still researching</option>
+            </select>
+          </>
+        )}
       </div>
       <div className="mt-5"><TurnstileWidget onToken={handleToken} resetKey={turnstileReset} /></div>
       {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}

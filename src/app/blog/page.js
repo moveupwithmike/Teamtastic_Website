@@ -17,6 +17,36 @@ export const metadata = {
 
 const posts = [
   {
+    slug: "best-virtual-holiday-party-companies",
+    title: "Best Virtual Holiday Party Companies for Work",
+    excerpt: "Compare hosted game shows, trivia specialists, activity marketplaces, escape rooms, and DIY platforms for remote company holiday parties.",
+    readTime: "8 min read",
+    date: "July 30, 2026",
+    category: "Buyer Guide",
+    categoryColor: "text-purple-400 border-purple-500/30 bg-purple-500/10",
+    gradient: "from-purple-500/10 to-rose-500/5",
+  },
+  {
+    slug: "virtual-holiday-party-packages",
+    title: "Virtual Holiday Party Packages for Work: What to Compare",
+    excerpt: "A practical guide to comparing holiday party packages by group size, hosting level, customization, production needs, and pricing model.",
+    readTime: "7 min read",
+    date: "July 30, 2026",
+    category: "Pricing Guide",
+    categoryColor: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+    gradient: "from-amber-500/10 to-orange-500/5",
+  },
+  {
+    slug: "holiday-team-building-activities-for-remote-teams",
+    title: "Holiday Team Building Activities for Remote Teams",
+    excerpt: "Structured holiday activities for remote teams: trivia, survey games, music rounds, awards, puzzles, and hosted game shows.",
+    readTime: "7 min read",
+    date: "July 30, 2026",
+    category: "Remote Teams",
+    categoryColor: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+    gradient: "from-emerald-500/10 to-teal-500/5",
+  },
+  {
     slug: "virtual-christmas-party-ideas-for-work",
     title: "Virtual Christmas Party Ideas for Work: 18 Remote-Friendly Options",
     excerpt: "Remote-friendly Christmas party games, music rounds, awards, and inclusive planning tips for distributed teams.",

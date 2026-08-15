@@ -1,0 +1,41 @@
+{
+  "version": "5",
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.106.1": "1b378cc89620ed0bf3e646b946b593e75d8e8ac0e43a4e07db6b71516ca757ec"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@stripe/stripe-js@^9.6.0",
+        "npm:@supabase/ssr@0.12.3",
+        "npm:@supabase/supabase-js@^2.106.1",
+        "npm:@tailwindcss/postcss@4",
+        "npm:@testing-library/jest-dom@7",
+        "npm:@testing-library/react@^16.3.2",
+        "npm:@testing-library/user-event@^14.6.1",
+        "npm:@types/node@^26.1.1",
+        "npm:@types/react-dom@^19.2.3",
+        "npm:@types/react@^19.2.17",
+        "npm:clsx@^2.1.1",
+        "npm:eslint-config-next@16.2.6",
+        "npm:eslint@9",
+        "npm:framer-motion@^12.39.0",
+        "npm:jimp@^1.6.1",
+        "npm:jsdom@^29.1.1",
+        "npm:lucide-react@^1.16.0",
+        "npm:next@16.2.6",
+        "npm:posthog-js@^1.396.6",
+        "npm:posthog-node@^5.39.4",
+        "npm:react-dom@19.2.4",
+        "npm:react@19.2.4",
+        "npm:sonner@^2.0.7",
+        "npm:stripe@^22.3.0",
+        "npm:svix@^1.98.0",
+        "npm:tailwind-merge@^3.6.0",
+        "npm:tailwindcss@4",
+        "npm:typescript@^6.0.3",
+        "npm:vitest@^4.1.10"
+      ]
+    }
+  }
+}

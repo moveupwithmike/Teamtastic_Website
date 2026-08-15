@@ -11,8 +11,14 @@ import {
   Sparkles,
   Trophy,
   Users,
+  Clock3,
+  CreditCard,
 } from "lucide-react";
 import CorporateLeadForm from "@/components/CorporateLeadForm";
+import HolidayChecklistForm from "@/components/HolidayChecklistForm";
+import { HOLIDAY_CAMPAIGN, holidayOfferCopy } from "@/lib/holiday-campaign";
+
+export const revalidate = 3600;
 
 export const metadata = {
   title: "Virtual Holiday Party for Work | Hosted Online Holiday Games | Teamtastic",
@@ -56,14 +62,19 @@ const formats = [
   },
 ];
 
-const reasons = [
+const baseReasons = [
   "Live emcee keeps the room moving, not awkward",
   "Works on Zoom, Microsoft Teams, Google Meet, and Webex",
   "Players join in-browser with no downloads",
   "Custom company questions, inside jokes, team names, and awards",
   "$200 deposit locks your date while you finalize details",
-  "Early-bird bonus: book by September 30 for a free custom company-trivia round",
 ];
+
+const campaignHeadlines = {
+  "people-ops": "The Virtual Holiday Party Your Remote Team Will Actually Show Up For",
+  "large-teams": "A Virtual Holiday Game Show Built to Engage the Whole Company",
+  "year-end": "Turn Your Year-End Celebration Into a Live Team Game Show",
+};
 
 const faqs = [
   {
@@ -72,7 +83,7 @@ const faqs = [
   },
   {
     q: "What does the early-bird holiday offer include?",
-    a: "Teams that book by September 30 receive a free custom company-trivia round and first pick of available December dates.",
+    a: "The current early-bird offer includes a free custom company-trivia round and first pick of available December dates. The active booking deadline is shown next to the availability form.",
   },
   {
     q: "How long is a Teamtastic virtual holiday party?",
@@ -92,7 +103,11 @@ const faqs = [
   },
 ];
 
-export default function VirtualHolidayParty() {
+export default async function VirtualHolidayParty({ searchParams }) {
+  const params = await searchParams;
+  const headline = campaignHeadlines[params?.utm_content] || campaignHeadlines[params?.utm_campaign] || campaignHeadlines["people-ops"];
+  const offer = holidayOfferCopy();
+  const reasons = [...baseReasons, offer.reason];
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -132,11 +147,11 @@ export default function VirtualHolidayParty() {
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-amber-200">
               <CalendarDays className="h-4 w-4" />
-              December dates book fast
+              {HOLIDAY_CAMPAIGN.availabilityMessage}
             </div>
 
             <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
-              The Virtual Holiday Party Your Remote Team Will Actually Show Up For
+              {headline}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-300">
               A live-hosted online holiday game show with custom trivia, festive music rounds, Survey Showdown, and just enough competition to make the end of year feel like a real celebration.
@@ -170,12 +185,13 @@ export default function VirtualHolidayParty() {
               entryPoint="virtual_holiday_party_inline"
               eyebrow="Holiday availability"
               title="Check December dates"
-              subtitle="Book by September 30: free custom company-trivia round + first pick of December dates"
+              subtitle={`${offer.short} + first pick of December dates`}
               successTitle="Your holiday party request is saved."
               successBody="Michael will confirm available December dates and the best-fit holiday format. You can lock the date now with a $200 deposit."
               submitLabel="Check holiday availability"
               depositLabel="Lock my date with $200"
               defaultOccasion="holiday"
+              holidayQualification
             />
           </div>
         </div>
@@ -217,7 +233,7 @@ export default function VirtualHolidayParty() {
             <span className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">Early-bird advantage</span>
             <h2 className="mt-3 text-3xl font-extrabold text-white sm:text-5xl">Book before the rush starts.</h2>
             <p className="mt-4 text-zinc-300">
-              August researchers do not feel urgency yet, but December does not care. A $200 deposit locks your preferred date, and teams that book by September 30 get a free custom company-trivia round.
+              Planning early gives you the best choice of dates. A $200 deposit starts the date-hold process, and {offer.active ? <>teams that book by {offer.deadlineLabel} receive {HOLIDAY_CAMPAIGN.bonus}.</> : <>you can ask about current seasonal customization bonuses.</>}
             </p>
             <Link
               href="#holiday-availability"
@@ -237,6 +253,57 @@ export default function VirtualHolidayParty() {
               ))}
             </ul>
           </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-sky-300">A clear 60-minute show</span>
+            <h2 className="mt-3 text-3xl font-extrabold text-white sm:text-5xl">A complete party—with no awkward dead time.</h2>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-6">
+            {[
+              ["0–5", "Welcome + team setup"], ["5–15", "Holiday warm-up"], ["15–30", "Company trivia"],
+              ["30–42", "Survey or music round"], ["42–52", "Team challenge"], ["52–60", "Final scores + awards"],
+            ].map(([time, label]) => (
+              <div key={time} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <p className="text-sm font-black text-brand-pink">{time} min</p><p className="mt-2 text-sm font-semibold text-zinc-200">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/5 bg-zinc-950/50 py-16">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-7 sm:p-9">
+            <p className="text-amber-300">★★★★★</p>
+            <blockquote className="mt-4 text-xl font-bold leading-relaxed text-white">“Michael kept 80 people laughing and engaged the entire time. It wasn’t just a game—it was an experience.”</blockquote>
+            <p className="mt-4 text-sm text-zinc-400">Verified organizer · 80-person corporate event</p>
+          </div>
+          <div className="rounded-3xl border border-purple-400/20 bg-purple-400/5 p-7 sm:p-9">
+            <p className="text-purple-300">Pittsburgh Public Schools</p>
+            <blockquote className="mt-4 text-xl font-bold leading-relaxed text-white">“The energy was AMAZING! Everyone was engaged and involved.”</blockquote>
+            <p className="mt-4 text-sm text-zinc-400">Leah McCord · Principal</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-24">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7 sm:p-9">
+            <CreditCard className="h-8 w-8 text-emerald-300" />
+            <h2 className="mt-5 text-2xl font-extrabold text-white">What happens after the $200 deposit?</h2>
+            <ol className="mt-6 space-y-4 text-sm text-zinc-300">
+              <li><strong className="text-white">1. We confirm your date.</strong> Michael checks your requested date, time zone, and event format.</li>
+              <li><strong className="text-white">2. You finalize the experience.</strong> We confirm headcount, games, customization, and the run of show.</li>
+              <li><strong className="text-white">3. The deposit applies to your event.</strong> Your remaining balance follows the approved event plan.</li>
+              <li><strong className="text-white">4. Your portal keeps everything together.</strong> Event details and game preparation carry into the Teamtastic client experience.</li>
+            </ol>
+            <div className="mt-6 flex items-center gap-2 text-xs text-zinc-500"><Clock3 className="h-4 w-4" /> Date requests are reviewed before availability is promised.</div>
+          </div>
+          <HolidayChecklistForm />
         </div>
       </section>
 

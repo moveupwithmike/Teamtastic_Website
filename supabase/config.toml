@@ -33,6 +33,17 @@ verify_jwt = false
 import_map = "./functions/collect-phase3-signals/deno.json"
 entrypoint = "./functions/collect-phase3-signals/index.ts"
 
+[functions.collect-organic-opportunities]
+enabled = true
+verify_jwt = false
+import_map = "./functions/collect-organic-opportunities/deno.json"
+entrypoint = "./functions/collect-organic-opportunities/index.ts"
+
+[functions.audit-conversion-pages]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/audit-conversion-pages/index.ts"
+
 [functions.test-apollo-connection]
 enabled = true
 verify_jwt = false

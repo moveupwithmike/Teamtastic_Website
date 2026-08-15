@@ -16,6 +16,8 @@ export default function sitemap() {
     url("/activities",                       0.7,  "monthly"),   // redirects → /games
     url("/team-experiences",                 0.85, "weekly"),
     url("/virtual-holiday-party",            0.95, "weekly"),
+    url("/virtual-year-end-team-celebration", 0.92, "weekly"),
+    url("/virtual-holiday-party-for-large-groups", 0.92, "weekly"),
     url("/virtual-family-game-night",        0.85, "weekly"),
     url("/why-teamtastic",                   0.85, "monthly"),
     url("/resources",                        0.8,  "weekly"),
@@ -24,6 +26,9 @@ export default function sitemap() {
     url("/resources/event-planning-guide",   0.7),
     url("/blog",                             0.85, "weekly"),
     url("/blog/best-virtual-team-building-companies", 0.82),
+    url("/blog/best-virtual-holiday-party-companies", 0.84),
+    url("/blog/virtual-holiday-party-packages", 0.84),
+    url("/blog/holiday-team-building-activities-for-remote-teams", 0.84),
     url("/blog/virtual-christmas-party-ideas-for-work", 0.84),
     url("/blog/how-to-plan-a-remote-office-holiday-party", 0.84),
     url("/blog/virtual-holiday-party-ideas-for-large-teams", 0.84),

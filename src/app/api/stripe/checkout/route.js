@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { calculateHostedPrice, fixedDepositPrice, PRICING_VERSION } from "@/lib/server/pricing";
 import { PRODUCT_KEYS } from "@/lib/products";
+import { validTimeZone, zonedWallTimeToUtc } from "@/lib/server/booking-time";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,14 @@ function siteOrigin(request) {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
   return new URL(request.url).origin;
+}
+
+function normalizedTime(value) {
+  const match=String(value||"").trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if(!match)return null;
+  let hour=Number(match[1]); const meridiem=match[3]?.toUpperCase();
+  if(meridiem==="PM"&&hour<12)hour+=12; if(meridiem==="AM"&&hour===12)hour=0;
+  return hour<=23?`${String(hour).padStart(2,"0")}:${match[2]}`:null;
 }
 
 export async function POST(request) {
@@ -31,10 +40,20 @@ export async function POST(request) {
 
   const db = getSupabaseAdmin();
   const { data: lead } = await db.from("leads")
-    .select("id,submission_id,email,name,context")
+    .select("id,submission_id,email,name,context,prospect_id,preferred_event_date,event_timezone,preferred_time")
     .eq("submission_id", submissionId)
     .maybeSingle();
   if (!lead) return NextResponse.json({ error: "lead_not_found" }, { status: 404 });
+
+  let capacityReservation=null;
+  const eventTime=normalizedTime(lead.preferred_time);
+  if (paymentKind === "corporate_deposit" && lead.preferred_event_date && eventTime && validTimeZone(lead.event_timezone)) {
+    const startsAt=zonedWallTimeToUtc(lead.preferred_event_date,eventTime,lead.event_timezone);
+    const endsAt=new Date(startsAt.getTime()+60*60000);
+    const {data:capacity,error:capacityError}=await db.rpc("check_event_capacity",{p_starts_at:startsAt.toISOString(),p_ends_at:endsAt.toISOString()});
+    if(capacityError||!capacity?.available)return NextResponse.json({error:"event_capacity_unavailable",reason:capacity?.reason||"capacity_check_failed"},{status:409});
+    capacityReservation={capacity,startsAt,endsAt};
+  }
 
   let amountCents;
   let label;
@@ -124,6 +143,11 @@ export async function POST(request) {
     stripe_checkout_session_id: session.id,
     status: "checkout_created",
   }).eq("id", paymentRequest.id);
+
+  if(capacityReservation){
+    const {data:existingHold}=await db.from("event_capacity_holds").select("id").eq("lead_id",lead.id).in("status",["tentative","confirmed"]).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).limit(1).maybeSingle();
+    if(!existingHold)await db.from("event_capacity_holds").insert({host_id:capacityReservation.capacity.host_id,lead_id:lead.id,prospect_id:lead.prospect_id||null,starts_at:capacityReservation.startsAt.toISOString(),ends_at:capacityReservation.endsAt.toISOString(),status:"tentative",expires_at:new Date(Date.now()+24*3600000).toISOString(),note:"Automatic hold created for deposit checkout",created_by:"checkout"});
+  }
 
   return NextResponse.json({ url: session.url });
 }

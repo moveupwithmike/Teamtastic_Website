@@ -76,6 +76,12 @@ function customerEmail(lead: Record<string, unknown>) {
       html: `<h1>Thanks, ${name}!</h1><p>Michael received your event brief and will follow up with recommendations within one business day.</p>`,
     };
   }
+  if (["holiday_party_money_page", "year_end_celebration_page", "large_holiday_event_page"].includes(source)) {
+    return {
+      subject: "We received your Teamtastic holiday event request",
+      html: `<h1>Your holiday event request is in, ${name}!</h1><p>Michael will review your dates, time zone, team size, and format preferences and follow up with availability and the best-fit experience.</p><p>If you are ready to reserve a date, you can return to Teamtastic and place the $200 date-hold deposit.</p>`,
+    };
+  }
   return {
     subject: "Your Teamtastic recommendation is ready",
     html: `<h1>Thanks, ${name}!</h1><p>We received your Teamtastic event details and saved your recommendation.</p><p>Return to Teamtastic to reserve a hosted event or launch a free game.</p>`,
@@ -114,9 +120,40 @@ Deno.serve(async (request) => {
     `Vibe: ${lead.vibe || "Not provided"}`,
     `Occasion: ${lead.occasion || "Not provided"}`,
     `Recommendation: ${lead.recommendation_key || "Not provided"}`,
+    `Preferred date: ${lead.preferred_event_date || "Not provided"}`,
+    `Alternate date: ${lead.alternate_event_date || "Not provided"}`,
+    `Time zone: ${lead.event_timezone || "Not provided"}`,
+    `Preferred time: ${lead.preferred_time || "Not provided"}`,
+    `Budget: ${lead.budget_range || "Not provided"}`,
+    `Package: ${lead.package_interest || "Not provided"}`,
+    `Decision timeline: ${lead.decision_timeline || "Not provided"}`,
+    `Phone: ${lead.phone || "Not provided"}`,
     `Landing page: ${lead.landing_page || "Unknown"}`,
   ].join("\n");
   const confirmation = customerEmail(lead);
+
+  // Certification leads exercise the real CRM sync and database triggers, but
+  // must never consume quota or contact either the synthetic buyer or staff.
+  if ((lead.context as Record<string, unknown> | null)?.synthetic_test === true) {
+    for (const notificationType of ["customer_confirmation", "internal_email"]) {
+      await supabase.from("notification_deliveries").upsert({
+        lead_id: lead.id,
+        notification_type: notificationType,
+        status: "test_suppressed",
+        attempts: 0,
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "lead_id,notification_type" });
+    }
+    await supabase.from("agent_log").insert({
+      agent_name: "b2b-certification",
+      action: "suppress_synthetic_notifications",
+      outcome: "completed",
+      prospect_id: prospectId,
+      decision: { lead_id: lead.id, external_send: false },
+    });
+    return Response.json({ success: true, synthetic_test: true, external_send: false });
+  }
 
   const notifications = [
     {

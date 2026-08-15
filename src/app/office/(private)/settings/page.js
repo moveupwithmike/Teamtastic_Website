@@ -8,7 +8,7 @@ export default async function OfficeSettings({ searchParams }) {
   const db = getSupabaseAdmin();
   const { data: config } = await db
     .from("system_config")
-    .select("prospecting_from_email,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,daily_proposal_cap")
+    .select("prospecting_from_email,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,daily_proposal_cap,organic_research_enabled,organic_scoring_enabled,organic_drafting_enabled,organic_attribution_enabled,organic_daily_opportunity_cap,organic_min_draft_score,organic_reddit_commercial_approval_confirmed")
     .eq("id", true)
     .single();
 
@@ -75,6 +75,21 @@ export default async function OfficeSettings({ searchParams }) {
           <p className="text-xs text-slate-500">Proposal emails are human-approved, suppression-checked, and counted separately from cold outreach.</p>
           {!config?.proposal_email_enabled && <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-300">Proposal drafts can be edited, but sending is currently disabled.</p>}
           <button className={buttonClass}>Save proposal settings</button>
+        </form>
+      </Card>
+
+      <Card title="Organic intent radar">
+        <form action={updateSystemConfig} className="space-y-4">
+          <input type="hidden" name="settings_scope" value="organic" />
+          <p className="rounded-lg bg-sky-500/10 p-3 text-sm text-sky-200">These switches control research, scoring, drafts, and measurement. Publishing remains manual even when every switch is on.</p>
+          <label className="flex items-start gap-3 rounded-lg border border-amber-400/20 bg-amber-500/10 p-3 text-sm"><input type="checkbox" name="organic_reddit_commercial_approval_confirmed" defaultChecked={config?.organic_reddit_commercial_approval_confirmed} className="mt-0.5 h-4 w-4" /><span><strong className="block text-amber-200">Reddit commercial data-use approval confirmed</strong>Enable only after Reddit has granted Teamtastic written permission and the required commercial contract is active.</span></label>
+          <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="organic_research_enabled" defaultChecked={config?.organic_research_enabled} disabled={!config?.organic_reddit_commercial_approval_confirmed} className="h-4 w-4" />Automated public-source research</label>
+          <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="organic_scoring_enabled" defaultChecked={config?.organic_scoring_enabled} className="h-4 w-4" />Automatic intent scoring</label>
+          <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="organic_drafting_enabled" defaultChecked={config?.organic_drafting_enabled} className="h-4 w-4" />Automatic response drafting</label>
+          <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="organic_attribution_enabled" defaultChecked={config?.organic_attribution_enabled} className="h-4 w-4" />Lead and revenue attribution</label>
+          <label className="block text-sm">Daily opportunity cap<input name="organic_daily_opportunity_cap" type="number" min="0" max="250" defaultValue={config?.organic_daily_opportunity_cap ?? 25} className={inputClass}/></label>
+          <label className="block text-sm">Minimum score for a draft<input name="organic_min_draft_score" type="number" min="0" max="100" defaultValue={config?.organic_min_draft_score ?? 80} className={inputClass}/></label>
+          <button className={buttonClass}>Save radar settings</button>
         </form>
       </Card>
     </div>
