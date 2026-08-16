@@ -260,4 +260,44 @@ describe("stripe webhook", () => {
     expect(response.status).toBe(503);
     expect(await response.text()).toBe("Alert delivery failed");
   });
+
+  it("returns 503 when the Stripe event cannot be persisted", async () => {
+    constructEvent.mockReturnValue(stripeEvent(checkoutSession()));
+    const supabase = createSupabaseAdminMock({ tables: {
+      stripe_events: ({ calls }) => calls.some(c => c.method === "insert")
+        ? { data: null, error: { code: "db_down" } }
+        : { data: null, error: null },
+      leads: { data: null, error: null },
+    } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const response = await postWebhook();
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe("Persistence failed");
+  });
+
+  it("retries lifecycle conversion and alert delivery for an incomplete duplicate", async () => {
+    constructEvent.mockReturnValue(stripeEvent(checkoutSession()));
+    const duplicate = { id: "row_retry", stripe_event_id: "evt_123", stripe_session_id: "cs_test_123", product_key: "hosted_event_deposit", amount_total: 20000, currency: "usd", lifecycle_status: "failed", lifecycle_attempts: 1, alert_status: "failed", alert_attempts: 1, lead_id: "lead_retry", customer_email: "client@example.com" };
+    const supabase = createSupabaseAdminMock({
+      tables: {
+        stripe_events: ({ calls, eqValue }) => {
+          if (calls.some(c => c.method === "select" && c.args[0] === "lifecycle_attempts")) return { data: { lifecycle_attempts: 1 }, error: null };
+          if (eqValue("stripe_event_id") === "evt_123") return { data: duplicate, error: null };
+          return { data: null, error: null };
+        },
+        leads: { data: { id: "lead_retry", name: "Jordan", company: "Acme" }, error: null },
+      },
+      rpc: {
+        process_paid_conversion: { data: null, error: { code: "conversion_down" } },
+        reserve_email_send: { data: { allowed: true }, error: null },
+        record_email_send_result: { data: null, error: null },
+      },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const response = await postWebhook();
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("Already processed");
+    expect(supabase.rpc).toHaveBeenCalledWith("process_paid_conversion", { p_stripe_event_id: "row_retry" });
+    expect(global.fetch).toHaveBeenCalled();
+  });
 });

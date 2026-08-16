@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Gamepad2, Award, ArrowRight, CheckCircle2, RefreshCw, Star, Mail, Building, User } from "lucide-react";
+import { Gamepad2, Award, ArrowRight, CheckCircle2, RefreshCw, Star, Mail, Building, User } from "lucide-react";
 import Link from "next/link";
 import { buildGameHandoffUrl } from "@/lib/game-handoff";
 import { toast } from "sonner";

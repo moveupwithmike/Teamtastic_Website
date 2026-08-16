@@ -3,9 +3,9 @@
 import { useState } from "react";
 import gamesData from "@/lib/gamesData.json";
 import {
-  Gamepad2, Sparkles, Users, Clock, Award,
-  Search, Shuffle, ArrowRight, Zap, Target,
-  Music, Brain, Puzzle, Flame
+  Gamepad2, Sparkles, Users, Clock,
+  Search, Shuffle, ArrowRight, Zap,
+  Music, Puzzle, Flame
 } from "lucide-react";
 import Link from "next/link";
 

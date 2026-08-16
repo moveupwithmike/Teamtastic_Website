@@ -81,7 +81,7 @@ export default function HowItWorks() {
       <section className="py-12 pb-24">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="space-y-16">
-            {steps.map(({ num, title, icon: Icon, desc, details, color, iconColor }, index) => (
+            {steps.map(({ num, title, icon: Icon, desc, details, color, iconColor }) => (
               <div
                 key={title}
                 className="relative flex flex-col lg:flex-row gap-8 lg:gap-12 items-center"

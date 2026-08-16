@@ -8,7 +8,7 @@ import * as incidents from "@/lib/server/office/incidents";
 import * as intelligence from "@/lib/server/office/intelligence";
 import * as outreach from "@/lib/server/office/outreach";
 import * as organic from "@/lib/server/office/organic";
-import * as growth from "@/lib/server/office/growth";
+import * as growth from "@/lib/server/office/growth-actions";
 import * as salesResponse from "@/lib/server/office/sales-response-actions";
 import * as signals from "@/lib/server/office/relationship-signals";
 import * as distribution from "@/lib/server/office/distribution";

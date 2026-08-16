@@ -4,9 +4,6 @@ import { useState, useMemo } from "react";
 import { 
   Sparkles, 
   Check, 
-  Calendar, 
-  MessageCircle, 
-  Zap, 
   ArrowRight, 
   Smile, 
   Users, 
@@ -15,9 +12,6 @@ import {
   Gift, 
   Palette, 
   Volume2, 
-  Music, 
-  PartyPopper,
-  HelpCircle,
   TrendingUp
 } from "lucide-react";
 import Link from "next/link";

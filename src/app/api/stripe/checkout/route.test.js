@@ -158,4 +158,43 @@ describe("stripe checkout", () => {
       expect.objectContaining({ idempotencyKey: "payment-request/pr_existing" }),
     );
   });
+
+  it("returns 500 when the payment request cannot be persisted", async () => {
+    const supabase = createSupabaseAdminMock({ tables: {
+      leads: { data: { id: "lead_4", submission_id: "sub_4", email: "buyer@example.com", context: {} }, error: null },
+      payment_requests: ({ calls }) => calls.some(c => c.method === "insert")
+        ? { data: null, error: { message: "write failed" } }
+        : { data: null, error: null },
+    } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    expect((await postCheckout({ submissionId: "sub_4", paymentKind: "family_deposit" })).status).toBe(500);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("checks capacity and creates a tentative hold for dated corporate deposits", async () => {
+    let hold;
+    const supabase = createSupabaseAdminMock({
+      tables: {
+        leads: { data: { id: "lead_5", prospect_id: "prospect_5", submission_id: "sub_5", email: "dated@example.com", context: {}, preferred_event_date: "2026-12-10", preferred_time: "2:30 PM", event_timezone: "America/New_York" }, error: null },
+        payment_requests: ({ calls }) => calls.some(c => c.method === "insert") ? { data: { id: "pr_5" }, error: null } : { data: null, error: null },
+        event_capacity_holds: ({ calls }) => { const inserted = calls.find(c => c.method === "insert"); if (inserted) hold = inserted.args[0]; return { data: null, error: null }; },
+      },
+      rpc: { check_event_capacity: { data: { available: true, host_id: "host_1" }, error: null } },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    expect((await postCheckout({ submissionId: "sub_5", paymentKind: "corporate_deposit" })).status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith("check_event_capacity", expect.anything());
+    expect(hold).toMatchObject({ host_id: "host_1", lead_id: "lead_5", status: "tentative" });
+  });
+
+  it("returns 409 when dated-event capacity is unavailable", async () => {
+    const supabase = createSupabaseAdminMock({
+      tables: { leads: { data: { id: "lead_6", submission_id: "sub_6", email: "dated@example.com", preferred_event_date: "2026-12-10", preferred_time: "14:30", event_timezone: "America/New_York" }, error: null } },
+      rpc: { check_event_capacity: { data: { available: false, reason: "fully_booked" }, error: null } },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const response = await postCheckout({ submissionId: "sub_6", paymentKind: "corporate_deposit" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "event_capacity_unavailable", reason: "fully_booked" });
+  });
 });

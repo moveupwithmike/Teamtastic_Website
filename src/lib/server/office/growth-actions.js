@@ -7,7 +7,6 @@ import { requireOfficeUser } from "@/lib/server/office-auth";
 import * as growthExperiments from "@/lib/server/office/growth-experiments";
 import { audit, clean, money } from "./shared";
 
-
 export async function refreshGrowthBrief() {
   const user = await requireOfficeUser();
   const result = await growthExperiments.refreshGrowthBrief(user);

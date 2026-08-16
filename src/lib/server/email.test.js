@@ -34,35 +34,36 @@ describe("sendViaResend", () => {
     const supabase = makeSupabase({ reservation: { allowed: false, reason: "daily_limit_reached" } });
     const result = await sendViaResend(supabase, {
       messageType: "booking", recipient: "jordan@example.com", subject: "Hi", text: "Hi",
+      idempotencyKey: "booking/cancel/booking_1",
     });
     expect(result).toEqual({ sent: false, reserved: false, providerMessageId: null, reason: "daily_limit_reached" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("sends through Resend and records success on a 2xx response with an id", async () => {
+  it("sends idempotently through Resend and records success on a 2xx response with an id", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: "msg_123" }) });
     const supabase = makeSupabase();
     const result = await sendViaResend(supabase, {
       messageType: "booking", recipient: "jordan@example.com", subject: "Confirmed", text: "See you then",
+      idempotencyKey: "booking/confirm/booking_1",
     });
     expect(result).toEqual({ sent: true, reserved: true, providerMessageId: "msg_123", reason: null });
     expect(supabase.rpc).toHaveBeenCalledWith("record_email_send_result", { p_message_type: "booking", p_sent: true });
     expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
       method: "POST",
-      headers: expect.not.objectContaining({ "Idempotency-Key": expect.anything() }),
+      headers: expect.objectContaining({ "Idempotency-Key": "booking/confirm/booking_1" }),
     }));
   });
 
-  it("passes an Idempotency-Key header through when one is supplied", async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: "msg_456" }) });
+  it("fails closed before reserving when the idempotency key is missing", async () => {
     const supabase = makeSupabase();
-    await sendViaResend(supabase, {
+    // @ts-expect-error Verify the runtime guard for untyped JavaScript callers.
+    const result = await sendViaResend(supabase, {
       messageType: "proposal", recipient: "lead@example.com", subject: "Proposal", text: "…",
-      idempotencyKey: "proposal/abc123",
     });
-    expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
-      headers: expect.objectContaining({ "Idempotency-Key": "proposal/abc123" }),
-    }));
+    expect(result).toEqual({ sent: false, reserved: false, providerMessageId: null, reason: "idempotency_key_required" });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("records failure and returns a reason when Resend responds with an error status", async () => {
@@ -70,6 +71,7 @@ describe("sendViaResend", () => {
     const supabase = makeSupabase();
     const result = await sendViaResend(supabase, {
       messageType: "booking", recipient: "bad@example", subject: "Hi", text: "Hi",
+      idempotencyKey: "booking/confirm/booking_bad",
     });
     expect(result.sent).toBe(false);
     expect(result.reason).toBe("invalid recipient");
@@ -81,6 +83,7 @@ describe("sendViaResend", () => {
     const supabase = makeSupabase();
     const result = await sendViaResend(supabase, {
       messageType: "booking", recipient: "jordan@example.com", subject: "Hi", text: "Hi",
+      idempotencyKey: "booking/reschedule/booking_1",
     });
     expect(result.sent).toBe(false);
     expect(result.reason).toBe("network down");
@@ -93,6 +96,7 @@ describe("sendViaResend", () => {
     await sendViaResend(supabase, {
       messageType: "internal_notification", recipient: "michael@teamtastic.com",
       subject: "Sign in", text: "plain", html: "<p>html</p>",
+      idempotencyKey: "office-magic-link/token_1",
     });
     const [, init] = fetchMock.mock.calls[0];
     const payload = JSON.parse(init.body);

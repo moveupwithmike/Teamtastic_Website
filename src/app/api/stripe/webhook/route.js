@@ -26,6 +26,7 @@ async function notifyMichael(payment, lead) {
     recipient: process.env.INTERNAL_NOTIFICATION_EMAIL,
     subject,
     text: details,
+    idempotencyKey: `stripe-deposit-alert/${payment.stripe_session_id}`,
   });
   if (!reserved) {
     console.error("Deposit alert blocked by email policy", {

@@ -5,6 +5,8 @@ import { createSupabaseAdminMock } from "@/test/supabase-admin-mock";
 const getSupabaseAdmin = vi.fn();
 const sendViaResend = vi.fn();
 const redirect = vi.fn((path) => { throw new Error(`REDIRECT:${path}`); });
+const requireOfficeUser = vi.fn();
+const createSupabaseServerClient = vi.fn();
 vi.mock("@/lib/server/supabase-admin", () => ({ getSupabaseAdmin: () => getSupabaseAdmin() }));
 vi.mock("@/lib/server/email", () => ({ sendViaResend: (...args) => sendViaResend(...args) }));
 vi.mock("@/lib/server/office-auth", () => ({
@@ -13,9 +15,9 @@ vi.mock("@/lib/server/office-auth", () => ({
       .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
     return allowed.includes(String(email || "").trim().toLowerCase());
   },
-  requireOfficeUser: vi.fn(),
+  requireOfficeUser: (...args) => requireOfficeUser(...args),
 }));
-vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: (...args) => createSupabaseServerClient(...args) }));
 vi.mock("next/navigation", () => ({ redirect: (path) => redirect(path) }));
 
 const formData = (email) => ({ get: () => email });
@@ -25,6 +27,8 @@ describe("requestMagicLink", () => {
     vi.resetModules();
     getSupabaseAdmin.mockReset();
     sendViaResend.mockReset();
+    requireOfficeUser.mockReset();
+    createSupabaseServerClient.mockReset();
     process.env.OFFICE_ALLOWED_EMAIL = "owner@example.com";
     process.env.RESEND_API_KEY = "key";
     process.env.RESEND_FROM_EMAIL = "hello@example.com";
@@ -69,5 +73,41 @@ describe("requestMagicLink", () => {
     await expect(requestMagicLink(formData("Second-Admin@example.com"))).rejects.toThrow("REDIRECT:/office/login?sent=1");
     expect(db.auth.admin.generateLink).toHaveBeenCalledWith({ type: "magiclink", email: "second-admin@example.com" });
     expect(sendViaResend).toHaveBeenCalledWith(db, expect.objectContaining({ recipient: "second-admin@example.com" }));
+  });
+
+  it("logs link-generation failures", async () => {
+    const logs = [];
+    const db = createSupabaseAdminMock({
+      tables: { agent_log: ({ calls }) => { logs.push(calls[0].args[0]); return { data: null, error: null }; } },
+      rpc: { try_claim_magic_link_send: { data: true, error: null } },
+    });
+    db.auth = { admin: { generateLink: vi.fn().mockResolvedValue({ data: {}, error: { message: "auth unavailable" } }) } };
+    getSupabaseAdmin.mockReturnValue(db);
+    const { requestMagicLink } = await import("./authentication");
+    await expect(requestMagicLink(formData("owner@example.com"))).rejects.toThrow("error=send_failed");
+    expect(logs[0]).toMatchObject({ outcome: "failed", error: "auth unavailable" });
+  });
+
+  it("logs blocked deliveries and rejects provider failures", async () => {
+    const logs = [];
+    const db = createSupabaseAdminMock({
+      tables: { agent_log: ({ calls }) => { logs.push(calls[0].args[0]); return { data: null, error: null }; } },
+      rpc: { try_claim_magic_link_send: { data: true, error: null } },
+    });
+    db.auth = { admin: { generateLink: vi.fn().mockResolvedValue({ data: { properties: { hashed_token: "hash" } }, error: null }) } };
+    getSupabaseAdmin.mockReturnValue(db);
+    sendViaResend.mockResolvedValue({ reserved: false, sent: false, reason: "daily_cap" });
+    const { requestMagicLink } = await import("./authentication");
+    await expect(requestMagicLink(formData("owner@example.com"))).rejects.toThrow("error=send_failed");
+    expect(logs[0]).toMatchObject({ outcome: "blocked", decision: { reason: "daily_cap" } });
+  });
+
+  it("signs the authenticated office user out", async () => {
+    requireOfficeUser.mockResolvedValue({ email: "owner@example.com" });
+    const signOut = vi.fn();
+    createSupabaseServerClient.mockResolvedValue({ auth: { signOut } });
+    const { signOutOffice } = await import("./authentication");
+    await expect(signOutOffice()).rejects.toThrow("REDIRECT:/office/login");
+    expect(signOut).toHaveBeenCalled();
   });
 });

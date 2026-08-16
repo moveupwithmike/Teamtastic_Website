@@ -21,6 +21,13 @@ export async function requestMagicLink(formData) {
   const admin = getSupabaseAdmin();
   const { data: claimed, error: claimError } = await admin
     .rpc("try_claim_magic_link_send", { p_email: requestedEmail });
+  console.error("TEMP_DEBUG try_claim_magic_link_send", {
+    claimed,
+    claimErrorMessage: claimError?.message,
+    claimErrorCode: claimError?.code,
+    claimErrorDetails: claimError?.details,
+    claimErrorHint: claimError?.hint,
+  });
   if (claimError || claimed !== true) redirect("/office/login?sent=1");
 
   const { data, error: linkError } = await admin.auth.admin.generateLink({

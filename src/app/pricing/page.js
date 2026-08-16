@@ -1,7 +1,7 @@
 import Pricing from "@/components/Pricing";
 import { HOSTED_PRICING } from "@/lib/pricing";
 import Link from "next/link";
-import { ArrowRight, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 
 export const metadata = {
   title: "Pricing — Virtual Team Building Plans for Every Team | Teamtastic",

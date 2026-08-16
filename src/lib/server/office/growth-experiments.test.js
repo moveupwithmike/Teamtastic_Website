@@ -97,4 +97,18 @@ describe("growth-experiments", () => {
       expect(result).toEqual({ ok: false, errorCode: "experiment_update_failed" });
     });
   });
+
+  it("reviews a growth brief", async () => {
+    const supabase = createSupabaseAdminMock({ tables: { growth_briefs: { data: null, error: null }, agent_log: { data: null, error: null } } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const { reviewGrowthBrief } = await import("./growth-experiments");
+    expect(await reviewGrowthBrief(USER, formData({ id: "brief_1" }))).toEqual({ ok: true, errorCode: undefined });
+  });
+
+  it("prepares the experiment queue and reports errors", async () => {
+    const supabase = createSupabaseAdminMock({ tables: { agent_log: { data: null, error: null } }, rpc: { prepare_growth_experiment_queue: { data: null, error: { message: "down" } } } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const { prepareGrowthExperiments } = await import("./growth-experiments");
+    expect(await prepareGrowthExperiments(USER)).toEqual({ ok: false, errorCode: "experiment_prepare_failed" });
+  });
 });

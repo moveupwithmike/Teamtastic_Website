@@ -53,7 +53,7 @@ async function logCleanupFailure(supabase, { bookingId, prospectId, name, email,
   });
 }
 
-async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTimezone, joinUrl, manageToken }) {
+async function sendConfirmationEmail(supabase, { booking, bookingType, joinUrl, manageToken }) {
   const whenText = new Intl.DateTimeFormat("en-US", {
     timeZone: booking.visitor_timezone, dateStyle: "full", timeStyle: "short",
   }).format(new Date(booking.starts_at));
@@ -82,6 +82,7 @@ async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTime
     recipient: booking.email,
     subject,
     text: bodyLines,
+    idempotencyKey: `booking-confirm/${booking.id}`,
   });
   if (!reserved) return;
 
@@ -267,7 +268,7 @@ export async function POST(request) {
   }
 
   await sendConfirmationEmail(supabase, {
-    booking: { ...booking, name, email }, bookingType, ownerTimezone, joinUrl: zoomJoinUrl, manageToken,
+    booking: { ...booking, name, email }, bookingType, joinUrl: zoomJoinUrl, manageToken,
   }).catch((error) => console.error("Booking confirmation email failed", { message: error?.message }));
 
   return NextResponse.json({

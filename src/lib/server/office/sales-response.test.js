@@ -165,4 +165,25 @@ describe("approveAndSendSalesResponse", () => {
     const result = await approveAndSendSalesResponse(USER, formData({ id: "resp_1", subject: "Hi", body_text: "Body" }));
     expect(result).toEqual({ ok: false, errorCode: encodeURIComponent("daily proposal cap reached") });
   });
+
+  it("marks an accepted-but-failed provider send as send_failed", async () => {
+    process.env.RESEND_API_KEY = "key";
+    process.env.RESEND_FROM_EMAIL = "alerts@teamtastic.com";
+    sendViaResend.mockResolvedValue({ reserved: true, sent: false, providerMessageId: null, reason: "provider timeout" });
+    const updates = [];
+    const supabase = createSupabaseAdminMock({ tables: {
+      sales_response_drafts: ({ calls }) => {
+        const update = calls.find(c => c.method === "update");
+        if (update) { updates.push(update.args[0]); return { data: { id: "resp_1" }, error: null }; }
+        return { data: { id: "resp_1", prospect_id: "p1", recipient_email: "lead@example.com", subject: "Old", generated_body: "Old" }, error: null };
+      },
+      sales_response_revisions: { data: null, error: null },
+      agent_log: { data: null, error: null },
+    } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const { approveAndSendSalesResponse } = await import("./sales-response");
+    expect(await approveAndSendSalesResponse(USER, formData({ id: "resp_1", subject: "Hi", body_text: "Body" })))
+      .toEqual({ ok: false, errorCode: "send_failed" });
+    expect(updates).toContainEqual({ status: "send_failed", last_error: "provider timeout" });
+  });
 });

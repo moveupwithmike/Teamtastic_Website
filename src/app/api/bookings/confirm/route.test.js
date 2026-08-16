@@ -57,7 +57,6 @@ async function postConfirm(body, headers = {}) {
 }
 
 function baseSupabaseTables({
-  holdResult = { held: true, booking_id: "booking_1" },
   bookingType = BOOKING_TYPE_ROW,
   confirmUpdateError = null,
 } = {}) {

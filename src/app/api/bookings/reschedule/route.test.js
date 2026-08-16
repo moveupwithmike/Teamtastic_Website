@@ -145,6 +145,18 @@ describe("booking reschedule", () => {
     expect(attemptBookingCleanup).not.toHaveBeenCalled();
   });
 
+  it("returns 503 when the new-slot hold query fails", async () => {
+    resolveManagedBooking.mockResolvedValue({ booking: OLD_BOOKING_ROW, error: null });
+    const supabase = createSupabaseAdminMock({
+      tables: baseTables(),
+      rpc: { hold_booking_slot: { data: null, error: { code: "database_unavailable" } } },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const response = await postReschedule(validBody({ token: "tok_hold_error" }), { "x-forwarded-for": "203.0.113.75" });
+    expect(response.status).toBe(503);
+    expect(createZoomMeeting).not.toHaveBeenCalled();
+  });
+
   it("moves the booking to the new slot: holds it, provisions Zoom + Calendar, confirms new, retires old", async () => {
     resolveManagedBooking.mockResolvedValue({ booking: OLD_BOOKING_ROW, error: null });
     createZoomMeeting.mockResolvedValue({ meetingId: "new_zoom_1", joinUrl: "https://zoom.us/j/new" });
@@ -234,5 +246,34 @@ describe("booking reschedule", () => {
       expect.objectContaining({ operation: "rollback_new_calendar", resourceId: "new_gcal_1" }),
       expect.any(Function),
     );
+  });
+
+  it("fails the held slot when the new booking row cannot be loaded", async () => {
+    resolveManagedBooking.mockResolvedValue({ booking: OLD_BOOKING_ROW, error: null });
+    const tables = baseTables();
+    tables.bookings = ({ calls }) => calls.some(c => c.method === "update")
+      ? { data: null, error: null }
+      : { data: null, error: { message: "missing" } };
+    const supabase = createSupabaseAdminMock({ tables, rpc: {
+      hold_booking_slot: { data: { held: true, booking_id: "new_booking_1" }, error: null },
+      fail_booking_hold: { data: null, error: null },
+    } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    expect((await postReschedule(validBody({ token: "tok_missing" }), { "x-forwarded-for": "203.0.113.77" })).status).toBe(503);
+    expect(supabase.rpc).toHaveBeenCalledWith("fail_booking_hold", expect.objectContaining({ p_error: "missing" }));
+  });
+
+  it("rolls back new Zoom when Calendar provisioning fails", async () => {
+    resolveManagedBooking.mockResolvedValue({ booking: OLD_BOOKING_ROW, error: null });
+    createZoomMeeting.mockResolvedValue({ meetingId: "new_zoom_2", joinUrl: "https://zoom.test/new" });
+    createCalendarEvent.mockRejectedValue(new Error("calendar outage"));
+    const supabase = createSupabaseAdminMock({ tables: baseTables(), rpc: {
+      hold_booking_slot: { data: { held: true, booking_id: "new_booking_1" }, error: null },
+      fail_booking_hold: { data: null, error: null },
+    } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const response = await postReschedule(validBody({ token: "tok_calendar" }), { "x-forwarded-for": "203.0.113.76" });
+    expect(response.status).toBe(502);
+    expect(attemptBookingCleanup).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ operation: "rollback_new_zoom" }), expect.any(Function));
   });
 });

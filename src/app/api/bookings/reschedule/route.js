@@ -64,6 +64,7 @@ async function sendRescheduleEmail(supabase, { booking, bookingTypeName, joinUrl
     recipient: booking.email,
     subject,
     text: bodyText,
+    idempotencyKey: `booking-reschedule/${booking.id}`,
   });
   if (!reserved) return;
 

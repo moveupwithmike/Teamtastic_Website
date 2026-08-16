@@ -13,12 +13,20 @@ import { HTTP_TIMEOUT_MS } from "@/lib/server/http";
  *   subject: string,
  *   text: string,
  *   html?: string,
- *   idempotencyKey?: string,
+ *   idempotencyKey: string,
  *   timeoutMs?: number,
  * }} options
  */
 export async function sendViaResend(supabase, options) {
   const { messageType, recipient, from, subject, text, html, idempotencyKey, timeoutMs = HTTP_TIMEOUT_MS.default } = options;
+  if (typeof idempotencyKey !== "string" || !idempotencyKey.trim()) {
+    return {
+      sent: false,
+      reserved: false,
+      providerMessageId: null,
+      reason: "idempotency_key_required",
+    };
+  }
   const { data: reservation, error: reserveError } = await supabase.rpc("reserve_email_send", {
     p_message_type: messageType,
     p_recipient: Array.isArray(recipient) ? recipient[0] : recipient,
@@ -35,8 +43,8 @@ export async function sendViaResend(supabase, options) {
   const headers = {
     Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     "Content-Type": "application/json",
+    "Idempotency-Key": idempotencyKey,
   };
-  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
 
   let sent = false;
   let providerMessageId = null;

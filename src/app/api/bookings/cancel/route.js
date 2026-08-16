@@ -35,6 +35,7 @@ async function sendCancelEmail(supabase, booking, bookingTypeName) {
     recipient: booking.email,
     subject,
     text: bodyText,
+    idempotencyKey: `booking-cancel/${booking.id}`,
   });
   if (!reserved) return;
 
