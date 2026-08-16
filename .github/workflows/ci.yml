@@ -77,7 +77,21 @@ jobs:
       - uses: supabase/setup-cli@v2
         with:
           version: latest
-      - name: Start isolated Supabase database
-        run: supabase db start
-      - name: Apply migrations and run game RPC hardening regression
+      - name: Start isolated Supabase database without the unrecovered legacy ledger
+        run: |
+          mv supabase/migrations supabase/migrations.full
+          mkdir supabase/migrations
+          supabase db start
+          rmdir supabase/migrations
+          mv supabase/migrations.full supabase/migrations
+      - name: Build the game RPC test surface
+        run: |
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+            --set ON_ERROR_STOP=1 \
+            --file supabase/tests/game_rpc_hardening_fixture.sql \
+            --file supabase/migrations/20260815165113_harden_high_risk_game_rpcs.sql \
+            --file supabase/migrations/20260815165909_harden_submit_answer_grading.sql \
+            --file supabase/migrations/20260815170028_fix_submit_answer_player_lookup.sql \
+            --file supabase/migrations/20260815172132_revoke_anon_host_scoring_resolvers.sql
+      - name: Run game RPC hardening regression
         run: supabase test db supabase/tests/game_rpc_hardening.sql
