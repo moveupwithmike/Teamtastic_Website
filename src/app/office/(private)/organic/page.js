@@ -1,10 +1,10 @@
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card, buttonClass, inputClass } from "../../office-ui";
 import { createOrganicOpportunity, reviewOrganicOpportunity, updateOrganicSourceConfig } from "../../actions";
 
 export default async function OrganicIntentPage({ searchParams }) {
   const params = await searchParams;
-  const db = getSupabaseAdmin();
+  const db = (await getOfficeDb()).db;
   const nowDate = new Date();
   const sevenDaysAgo = new Date(nowDate.getTime() - 7 * 86400000).toISOString();
   const [{ data: config }, { data: source }, { data: opportunities }, { data: runs }, opportunitiesMetric, postedMetric, leadsMetric, revenueMetric] = await Promise.all([

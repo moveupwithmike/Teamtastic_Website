@@ -1,16 +1,13 @@
-import { createHash } from "node:crypto";
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { calculateHostedPrice, fixedDepositPrice, PRICING_VERSION } from "@/lib/server/pricing";
 import { PRODUCT_KEYS } from "@/lib/products";
 import { validTimeZone, zonedWallTimeToUtc } from "@/lib/server/booking-time";
+import { hashKey } from "@/lib/server/rate-limit";
+import { clean } from "@/lib/server/validation";
 
 export const runtime = "nodejs";
-
-function clean(value, max = 100) {
-  return String(value || "").trim().slice(0, max);
-}
 
 function siteOrigin(request) {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
@@ -74,13 +71,13 @@ export async function POST(request) {
     label = fixed.label;
   }
 
-  const fingerprint = createHash("sha256").update(JSON.stringify({
+  const fingerprint = hashKey(JSON.stringify({
     leadId: lead.id,
     paymentKind,
     amountCents,
     pricingInputs,
     pricingVersion: PRICING_VERSION,
-  })).digest("hex");
+  }));
 
   const { data: existing } = await db.from("payment_requests")
     .select("id,stripe_checkout_session_id,status")

@@ -1,14 +1,13 @@
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { verifyTurnstile } from "@/lib/server/turnstile";
-import { rateLimited } from "@/lib/server/rate-limit";
+import { hashKey, RATE_LIMIT_TIERS, rateLimited } from "@/lib/server/rate-limit";
 import { AVAILABILITY_COOKIE, createAvailabilityAccess } from "@/lib/server/availability-access";
 
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
-  const key = createHash("sha256").update(`availability-access:${ip}`).digest("hex");
-  if (rateLimited(key, { windowMs: 10 * 60 * 1000, max: 5 })) {
+  const key = hashKey("availability-access", ip);
+  if (rateLimited(key, RATE_LIMIT_TIERS.standard)) {
     return NextResponse.json({ success: false, reason: "rate_limited" }, { status: 429 });
   }
   try {

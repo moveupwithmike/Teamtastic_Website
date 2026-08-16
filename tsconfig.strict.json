@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "incremental": false
+  },
+  "include": [
+    "src/lib/recommendations.js",
+    "src/lib/recommendations.test.js",
+    "src/lib/game-handoff.js",
+    "src/lib/game-handoff.test.js",
+    "src/lib/pricing.js",
+    "src/lib/pricing.test.js",
+    "src/lib/server/*.js",
+    "src/app/auth/callback/route.js",
+    "src/app/api/bookings/*/route.js"
+  ]
+}

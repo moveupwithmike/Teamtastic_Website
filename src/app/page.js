@@ -2,7 +2,7 @@ import Hero from "@/components/Hero";
 import GameQuiz from "@/components/GameQuiz";
 import SoloDemo from "@/components/SoloDemo";
 import Pricing from "@/components/Pricing";
-import { Gamepad2, Sparkles, Users, Award, ArrowRight, Zap, Target, Music } from "lucide-react";
+import { Gamepad2, Sparkles, Users, ArrowRight, Zap, Target, Music } from "lucide-react";
 import Link from "next/link";
 
 const homeFaqs = [

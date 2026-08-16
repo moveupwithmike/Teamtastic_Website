@@ -10,6 +10,9 @@ function applyCacheHeaders(response, cacheHeaders) {
   Object.entries(cacheHeaders).forEach(([key, value]) => response.headers.set(key, value));
 }
 
+// NOTE: this only refreshes the Supabase session cookie for /office/*.
+// It does not authorize anyone — that gate is requireOfficeUser() in
+// src/app/office/(private)/layout.js, which runs for every private page.
 export async function proxy(request) {
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

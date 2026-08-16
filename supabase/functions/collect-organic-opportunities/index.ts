@@ -52,7 +52,7 @@ async function redditToken() {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "ORGANIC_RESEARCH_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "ORGANIC_RESEARCH_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const db = serviceClient();
   const { data: config, error: configError } = await db.from("system_config").select("master_enabled,organic_research_enabled,organic_scoring_enabled,organic_drafting_enabled,organic_daily_opportunity_cap,organic_min_draft_score,organic_reddit_commercial_approval_confirmed").eq("id", true).single();

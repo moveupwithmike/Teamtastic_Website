@@ -1,4 +1,4 @@
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,Empty,buttonClass,formatDate} from "../../office-ui";
 import {resumeOutboundAfterDeliverabilityReview} from "../../actions";
 
@@ -10,7 +10,7 @@ export default async function DeliverabilityPage({searchParams}){
   const params=await searchParams;
   // Live rolling windows are intentionally evaluated on each private page request.
   // eslint-disable-next-line react-hooks/purity
-  const now=Date.now(),since30=new Date(now-30*86400000).toISOString(),since7=new Date(now-7*86400000).toISOString(),today=new Date(now).toISOString().slice(0,10),db=getSupabaseAdmin();
+  const now=Date.now(),since30=new Date(now-30*86400000).toISOString(),since7=new Date(now-7*86400000).toISOString(),today=new Date(now).toISOString().slice(0,10),db=(await getOfficeDb()).db;
   const [configResult,messagesResult,inboundResult,countersResult,suppressionsResult,failuresResult,webhookResult]=await Promise.all([
     db.from("system_config").select("master_enabled,prospecting_enabled,outbound_auto_paused,prospecting_from_email,daily_prospecting_cap,proposal_email_enabled,daily_proposal_cap,daily_inbound_cap,daily_nurture_cap").eq("id",true).single(),
     db.from("messages").select("id,prospect_id,message_type,status,from_address,provider,provider_message_id,sent_at,created_at").eq("direction","outbound").gte("created_at",since30).order("created_at",{ascending:false}).limit(2000),

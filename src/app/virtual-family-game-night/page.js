@@ -19,8 +19,7 @@ import {
   Sparkles,
   Heart,
   Globe,
-  Smile,
-  Compass
+  Smile
 } from "lucide-react";
 import TalkToMichaelModal from "@/components/TalkToMichaelModal";
 import CorporateLeadForm from "@/components/CorporateLeadForm";
@@ -478,7 +477,7 @@ export default function FamilyGameNightPage() {
               
               <div className="flex items-center gap-6 text-left max-w-xl">
                 <div className="hidden sm:grid grid-cols-2 gap-2 w-32 shrink-0">
-                  {["/family-zoom-1.png", "/family-zoom-4.png"].map((src, idx) => (
+                  {["/family-zoom-1.png", "/family-zoom-4.png"].map((src) => (
                     <div key={src} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10">
                       <Image src={src} fill sizes="64px" className="object-cover" alt="Family Zoom" />
                     </div>

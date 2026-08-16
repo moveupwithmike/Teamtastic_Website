@@ -1,17 +1,15 @@
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { createCalendarEvent, deleteCalendarEvent } from "@/lib/server/google-calendar";
 import { createZoomMeeting, cancelZoomMeeting } from "@/lib/server/zoom";
 import { validTimeZone } from "@/lib/server/booking-time";
 import { verifyTurnstile } from "@/lib/server/turnstile";
-import { rateLimited } from "@/lib/server/rate-limit";
+import { hashKey, rateLimited } from "@/lib/server/rate-limit";
+import { sendViaResend } from "@/lib/server/email";
+import { clean } from "@/lib/server/validation";
 
 export const runtime = "nodejs";
-
-function clean(value, max = 300) {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
-}
 
 function validEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
@@ -41,13 +39,21 @@ function siteOrigin() {
     || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://www.teamtastic.events");
 }
 
-async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTimezone, joinUrl, manageToken }) {
-  const { data: reservation } = await supabase.rpc("reserve_email_send", {
-    p_message_type: "booking",
-    p_recipient: booking.email,
+async function logCleanupFailure(supabase, { bookingId, prospectId, name, email, operation, error }) {
+  console.error("Booking rollback cleanup failed", {
+    bookingId, operation, message: error?.message || String(error),
   });
-  if (!reservation?.allowed) return;
+  await supabase.from("tasks").insert({
+    prospect_id: prospectId,
+    title: `Booking cleanup failed to complete: ${name}`,
+    description: `${operation.replaceAll("_", " ")} failed while rolling back a held booking slot for ${email}. Verify manually whether a duplicate Zoom meeting or calendar event was left behind.`,
+    priority: "urgent",
+    due_at: new Date().toISOString(),
+    source: "native_booking_cleanup_failure",
+  });
+}
 
+async function sendConfirmationEmail(supabase, { booking, bookingType, joinUrl, manageToken }) {
   const whenText = new Intl.DateTimeFormat("en-US", {
     timeZone: booking.visitor_timezone, dateStyle: "full", timeStyle: "short",
   }).format(new Date(booking.starts_at));
@@ -70,33 +76,16 @@ async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTime
     "Michael",
   ].filter((line) => line !== null).join("\n");
 
-  let sendResult = "failed";
-  let providerMessageId = null;
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL,
-        to: booking.email,
-        subject: `Confirmed: ${bookingType.name} with Teamtastic`,
-        text: bodyLines,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok && data.id) {
-      sendResult = "sent";
-      providerMessageId = data.id;
-    }
-  } catch {
-    sendResult = "failed";
-  }
+  const subject = `Confirmed: ${bookingType.name} with Teamtastic`;
+  const { reserved, sent, providerMessageId } = await sendViaResend(supabase, {
+    messageType: "booking",
+    recipient: booking.email,
+    subject,
+    text: bodyLines,
+    idempotencyKey: `booking-confirm/${booking.id}`,
+  });
+  if (!reserved) return;
 
-  await supabase.rpc("record_email_send_result", { p_message_type: "booking", p_sent: sendResult === "sent" });
   await supabase.from("messages").insert({
     prospect_id: booking.prospect_id,
     direction: "outbound",
@@ -105,10 +94,10 @@ async function sendConfirmationEmail(supabase, { booking, bookingType, ownerTime
     provider_message_id: providerMessageId,
     from_address: process.env.RESEND_FROM_EMAIL || "",
     to_addresses: [booking.email],
-    subject: `Confirmed: ${bookingType.name} with Teamtastic`,
+    subject,
     body_text: bodyLines,
-    status: sendResult,
-    sent_at: sendResult === "sent" ? new Date().toISOString() : null,
+    status: sent ? "sent" : "failed",
+    sent_at: sent ? new Date().toISOString() : null,
   });
 }
 
@@ -136,7 +125,7 @@ export async function POST(request) {
     return fail(400, "invalid_request");
   }
 
-  const rateKey = createHash("sha256").update(`${ip}:${email}`).digest("hex");
+  const rateKey = hashKey(ip, email);
   if (rateLimited(rateKey)) return fail(429, "rate_limited");
 
   try {
@@ -149,7 +138,7 @@ export async function POST(request) {
 
   const supabase = getSupabaseAdmin();
   const manageToken = randomBytes(32).toString("base64url");
-  const manageTokenHash = createHash("sha256").update(manageToken).digest("hex");
+  const manageTokenHash = hashKey(manageToken);
 
   const { data: holdResult, error: holdError } = await supabase.rpc("hold_booking_slot", {
     p_booking_type_slug: bookingTypeSlug,
@@ -237,7 +226,12 @@ export async function POST(request) {
     });
     googleEventId = event.eventId;
   } catch (error) {
-    if (zoomMeetingId) await cancelZoomMeeting(zoomMeetingId).catch(() => {});
+    if (zoomMeetingId) {
+      await cancelZoomMeeting(zoomMeetingId).catch((cleanupError) => logCleanupFailure(supabase, {
+        bookingId, prospectId: booking.prospect_id, name, email, error: cleanupError,
+        operation: "cancel_zoom_after_calendar_failure",
+      }));
+    }
     await supabase.rpc("fail_booking_hold", { p_booking_id: bookingId, p_error: String(error?.message || error) });
     await supabase.from("tasks").insert({
       prospect_id: booking.prospect_id, title: `Booking failed to confirm: ${name}`,
@@ -259,14 +253,22 @@ export async function POST(request) {
     .eq("id", bookingId)
     .eq("status", "held");
   if (confirmError) {
-    if (zoomMeetingId) await cancelZoomMeeting(zoomMeetingId).catch(() => {});
-    await deleteCalendarEvent(calendarId, googleEventId).catch(() => {});
+    if (zoomMeetingId) {
+      await cancelZoomMeeting(zoomMeetingId).catch((cleanupError) => logCleanupFailure(supabase, {
+        bookingId, prospectId: booking.prospect_id, name, email, error: cleanupError,
+        operation: "cancel_zoom_after_confirm_write_failure",
+      }));
+    }
+    await deleteCalendarEvent(calendarId, googleEventId).catch((cleanupError) => logCleanupFailure(supabase, {
+      bookingId, prospectId: booking.prospect_id, name, email, error: cleanupError,
+      operation: "delete_calendar_event_after_confirm_write_failure",
+    }));
     await supabase.rpc("fail_booking_hold", { p_booking_id: bookingId, p_error: "confirm_write_failed" });
     return fail(503, "booking_service_unavailable");
   }
 
   await sendConfirmationEmail(supabase, {
-    booking: { ...booking, name, email }, bookingType, ownerTimezone, joinUrl: zoomJoinUrl, manageToken,
+    booking: { ...booking, name, email }, bookingType, joinUrl: zoomJoinUrl, manageToken,
   }).catch((error) => console.error("Booking confirmation email failed", { message: error?.message }));
 
   return NextResponse.json({

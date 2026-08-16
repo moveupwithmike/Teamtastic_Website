@@ -1,4 +1,4 @@
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,Empty,ProspectLink,buttonClass,formatDate,formatMoney} from "../../office-ui";
 import {refreshHolidaySlaEscalations,resolveHolidayEscalation} from "../../actions";
 
@@ -7,7 +7,7 @@ const holidaySources=["holiday_party_money_page","year_end_celebration_page","la
 export default async function HolidaySlaPage(){
   // This force-dynamic server page measures response age at request time.
   // eslint-disable-next-line react-hooks/purity
-  const now=Date.now(),since=new Date(now-30*86400000).toISOString(),db=getSupabaseAdmin();
+  const now=Date.now(),since=new Date(now-30*86400000).toISOString(),db=(await getOfficeDb()).db;
   const [leadsResult,tasksResult,escalationsResult,runResult]=await Promise.all([
     db.from("leads").select("id,prospect_id,name,email,company,team_size,preferred_event_date,alternate_event_date,event_timezone,decision_timeline,created_at,context").in("lead_source",holidaySources).gte("created_at",since).order("created_at",{ascending:false}),
     db.from("tasks").select("id,prospect_id,title,priority,due_at,status").eq("source","holiday_sla").in("status",["open","in_progress"]).order("due_at").limit(100),

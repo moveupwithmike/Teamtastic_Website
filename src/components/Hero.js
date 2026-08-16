@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Mic, MicOff, Video, VideoOff, MonitorUp, Smile, PhoneOff, Settings } from "lucide-react";
+import { Sparkles, Mic, MicOff, Video, MonitorUp, Smile, PhoneOff, Settings } from "lucide-react";
 
 const chatMessages = [
   { id: 1, user: "Sarah (HR)", text: "So fun! 🎉" },

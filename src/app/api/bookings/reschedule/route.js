@@ -1,19 +1,17 @@
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { createCalendarEvent, deleteCalendarEvent } from "@/lib/server/google-calendar";
 import { createZoomMeeting, cancelZoomMeeting } from "@/lib/server/zoom";
 import { validTimeZone } from "@/lib/server/booking-time";
 import { verifyTurnstile } from "@/lib/server/turnstile";
-import { rateLimited } from "@/lib/server/rate-limit";
+import { hashKey, rateLimited } from "@/lib/server/rate-limit";
 import { attemptBookingCleanup } from "@/lib/server/booking-cleanup";
 import { resolveManagedBooking } from "@/lib/server/booking-manage";
+import { sendViaResend } from "@/lib/server/email";
+import { clean } from "@/lib/server/validation";
 
 export const runtime = "nodejs";
-
-function clean(value, max = 300) {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
-}
 
 function fail(status, reason) {
   return NextResponse.json({ success: false, reason }, { status });
@@ -40,17 +38,12 @@ const REASON_STATUS = {
 };
 
 async function sendRescheduleEmail(supabase, { booking, bookingTypeName, joinUrl, manageToken }) {
-  const { data: reservation } = await supabase.rpc("reserve_email_send", {
-    p_message_type: "booking",
-    p_recipient: booking.email,
-  });
-  if (!reservation?.allowed) return;
-
   const whenText = new Intl.DateTimeFormat("en-US", {
     timeZone: booking.visitor_timezone, dateStyle: "full", timeStyle: "short",
   }).format(new Date(booking.starts_at));
   const manageUrl = new URL(`/book/manage/${manageToken}`, siteOrigin()).toString();
 
+  const subject = `Rescheduled: ${bookingTypeName} with Teamtastic`;
   const bodyText = [
     `Hi ${booking.name},`,
     "",
@@ -66,30 +59,15 @@ async function sendRescheduleEmail(supabase, { booking, bookingTypeName, joinUrl
     "Michael",
   ].filter((line) => line !== null).join("\n");
 
-  let sendResult = "failed";
-  let providerMessageId = null;
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL,
-        to: booking.email,
-        subject: `Rescheduled: ${bookingTypeName} with Teamtastic`,
-        text: bodyText,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok && data.id) {
-      sendResult = "sent";
-      providerMessageId = data.id;
-    }
-  } catch {
-    sendResult = "failed";
-  }
+  const { reserved, sent, providerMessageId } = await sendViaResend(supabase, {
+    messageType: "booking",
+    recipient: booking.email,
+    subject,
+    text: bodyText,
+    idempotencyKey: `booking-reschedule/${booking.id}`,
+  });
+  if (!reserved) return;
 
-  await supabase.rpc("record_email_send_result", { p_message_type: "booking", p_sent: sendResult === "sent" });
   await supabase.from("messages").insert({
     prospect_id: booking.prospect_id,
     direction: "outbound",
@@ -98,10 +76,10 @@ async function sendRescheduleEmail(supabase, { booking, bookingTypeName, joinUrl
     provider_message_id: providerMessageId,
     from_address: process.env.RESEND_FROM_EMAIL || "",
     to_addresses: [booking.email],
-    subject: `Rescheduled: ${bookingTypeName} with Teamtastic`,
+    subject,
     body_text: bodyText,
-    status: sendResult,
-    sent_at: sendResult === "sent" ? new Date().toISOString() : null,
+    status: sent ? "sent" : "failed",
+    sent_at: sent ? new Date().toISOString() : null,
   });
 }
 
@@ -120,13 +98,13 @@ export async function POST(request) {
     return fail(400, "invalid_request");
   }
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
-  if (rateLimited(createHash("sha256").update(`reschedule:${ip}:${token}`).digest("hex"))) return fail(429, "rate_limited");
+  if (rateLimited(hashKey("reschedule", ip, token))) return fail(429, "rate_limited");
   try {
     if (!(await verifyTurnstile(clean(body.turnstileToken, 2048), ip))) return fail(400, "bot_verification_failed");
   } catch {
     return fail(503, "verification_unavailable");
   }
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = hashKey(token);
 
   const supabase = getSupabaseAdmin();
   const { booking: oldBooking, error: lookupError } = await resolveManagedBooking(
@@ -144,7 +122,7 @@ export async function POST(request) {
 
   // Step 1: hold the new slot. If this fails, the old booking is never touched.
   const manageToken = randomBytes(32).toString("base64url");
-  const manageTokenHash = createHash("sha256").update(manageToken).digest("hex");
+  const manageTokenHash = hashKey(manageToken);
   const { data: holdResult, error: holdError } = await supabase.rpc("hold_booking_slot", {
     p_booking_type_slug: bookingType.slug,
     p_name: oldBooking.name,
@@ -166,11 +144,18 @@ export async function POST(request) {
   }
 
   const newBookingId = holdResult.booking_id;
-  const { data: newBooking } = await supabase
+  const { data: newBooking, error: newBookingError } = await supabase
     .from("bookings")
     .select("id,starts_at,ends_at")
     .eq("id", newBookingId)
     .single();
+  if (newBookingError || !newBooking) {
+    await supabase.rpc("fail_booking_hold", {
+      p_booking_id: newBookingId,
+      p_error: newBookingError?.message || "held_booking_not_found",
+    });
+    return fail(503, "booking_service_unavailable");
+  }
 
   const { data: settings } = await supabase.from("booking_settings").select("owner_timezone,google_calendar_id").eq("id", true).single();
   const ownerTimezone = settings?.owner_timezone;

@@ -13,7 +13,7 @@ function domainFrom(value: unknown) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "APOLLO_ENRICHMENT_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "APOLLO_ENRICHMENT_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const apiKey = Deno.env.get("APOLLO_API_KEY");
   const supabase = serviceClient();
@@ -49,7 +49,7 @@ Deno.serve(async (request) => {
     }
 
     const { data: queued, error: queueError } = await supabase.from("enrichment_requests").select(
-      "id,attempts,apollo_candidate_id,apollo_candidates(id,apollo_person_id,first_name,last_name,full_name,job_title,linkedin_url,company_name)"
+      "id,attempts,request_payload,apollo_candidate_id,apollo_candidates(id,apollo_person_id,first_name,last_name,full_name,job_title,linkedin_url,company_name)"
     ).eq("provider", "apollo").eq("request_kind", "person_enrichment").eq("status", "pending")
       .or(`next_attempt_at.is.null,next_attempt_at.lte.${new Date().toISOString()}`).order("created_at").limit(Math.min(remaining, 10));
     if (queueError) throw queueError;
@@ -58,7 +58,16 @@ Deno.serve(async (request) => {
       return Response.json({ processed: 0, reason: "queue_empty", credits_consumed: 0, send_enabled: false });
     }
 
-    for (const item of queued) await supabase.from("enrichment_requests").update({ status: "processing", attempts: item.attempts + 1 }).eq("id", item.id).eq("status", "pending");
+    // Tag each claimed row with this run's id so a failure below only resets
+    // items *this* invocation claimed, not another concurrent/overlapping
+    // run's still-in-flight items.
+    for (const item of queued) {
+      await supabase.from("enrichment_requests").update({
+        status: "processing",
+        attempts: item.attempts + 1,
+        request_payload: { ...(item.request_payload || {}), claimed_by_run_id: run.id },
+      }).eq("id", item.id).eq("status", "pending");
+    }
     const candidates = queued.map((item: any) => Array.isArray(item.apollo_candidates) ? item.apollo_candidates[0] : item.apollo_candidates);
     const url = new URL("https://api.apollo.io/api/v1/people/bulk_match");
     url.searchParams.set("reveal_personal_emails", "false");
@@ -121,7 +130,11 @@ Deno.serve(async (request) => {
     return Response.json({ processed: queued.length, completed, no_match: noMatch, suppressed, maximum_possible_credits: queued.length, send_enabled: false });
   } catch (error) {
     const failure = errorText(error).slice(0, 1000);
-    await supabase.from("enrichment_requests").update({ status: "pending", last_error: failure, next_attempt_at: new Date(Date.now() + 3600000).toISOString() }).eq("status", "processing").eq("provider", "apollo");
+    // Scoped to rows this run itself claimed (see the tagging above) — a
+    // different run's still-in-flight "processing" items must not be reset
+    // just because this run failed.
+    await supabase.from("enrichment_requests").update({ status: "pending", last_error: failure, next_attempt_at: new Date(Date.now() + 3600000).toISOString() })
+      .eq("status", "processing").eq("provider", "apollo").eq("request_payload->>claimed_by_run_id", run.id);
     await supabase.from("source_runs").update({ status: "failed", error: failure, completed_at: new Date().toISOString() }).eq("id", run.id);
     return new Response("Apollo enrichment failed", { status: 500 });
   }

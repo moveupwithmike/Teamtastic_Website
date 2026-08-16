@@ -1,5 +1,5 @@
 import Link from "next/link";
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,formatDate} from "../../office-ui";
 
 const holidaySources=["holiday_party_money_page","year_end_celebration_page","large_holiday_event_page"];
@@ -11,7 +11,7 @@ function Gate({gate}){return <div className={`rounded-xl border p-4 ${tone[gate.
 export default async function LaunchPage(){
   // Server-rendered, force-dynamic page: this timestamp intentionally represents each live preflight run.
   // eslint-disable-next-line react-hooks/purity
-  const db=getSupabaseAdmin(),now=Date.now(),recent=new Date(now-30*86400000).toISOString(),stale=new Date(now-10*60000).toISOString();
+  const db=(await getOfficeDb()).db,now=Date.now(),recent=new Date(now-30*86400000).toISOString(),stale=new Date(now-10*60000).toISOString();
   const [configResult,healthResult,failedResult,pendingResult,leadsResult,dealsResult,agendaResult,mailboxResult,reportResult,distributionResult,audienceResult,briefResult,watchlistResult,incidentsResult]=await Promise.all([
     db.from("system_config").select("master_enabled,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,gmail_ingestion_enabled,daily_report_enabled,organic_research_enabled,organic_reddit_commercial_approval_confirmed").eq("id",true).maybeSingle(),
     db.from("conversion_health_runs").select("status,checks_passed,checks_failed,started_at").order("started_at",{ascending:false}).limit(1).maybeSingle(),

@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { PRODUCT_KEYS } from "@/lib/products";
+import { hashKey } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,7 @@ export async function GET(request) {
   const token = new URL(request.url).searchParams.get("token") || "";
   if (token.length < 32) return new Response("Invalid payment link", { status: 400 });
 
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = hashKey(token);
   const db = getSupabaseAdmin();
   const { data: paymentRequest } = await db.from("payment_requests")
     .select("*,proposals(id,recipient_email,package_name,status)")

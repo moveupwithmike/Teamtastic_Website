@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card, formatDate, formatMoney } from "../../../office-ui";
 
 function TimelineItem({ date, label, title, detail, tone = "purple" }) {
@@ -19,7 +19,7 @@ function formatDuration(seconds) {
 
 export default async function ProspectDetail({ params }) {
   const { id } = await params;
-  const db = getSupabaseAdmin();
+  const db = (await getOfficeDb()).db;
   const { data: prospect } = await db.from("prospects").select("*").eq("id", id).maybeSingle();
   if (!prospect) notFound();
   const [companyResult, leadsResult, messagesResult, bookingsResult, tasksResult, dealsResult, logsResult, draftsResult, proposalsResult] = await Promise.all([

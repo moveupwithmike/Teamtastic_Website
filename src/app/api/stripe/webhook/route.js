@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { captureServerEvent } from "@/lib/server/posthog";
+import { sendViaResend } from "@/lib/server/email";
 import { classifyStripeSession, PRODUCTS, PRODUCT_KEYS } from "@/lib/products";
 
 export const runtime = "nodejs";
@@ -18,48 +19,26 @@ async function notifyMichael(payment, lead) {
     lead ? `Lead: ${lead.name} (${lead.company || "No company"})` : "No matching lead was found.",
   ].join("\n");
 
-  const jobs = [];
-  if (process.env.RESEND_API_KEY && process.env.INTERNAL_NOTIFICATION_EMAIL) {
-    const db = getSupabaseAdmin();
-    const { data: reservation } = await db.rpc("reserve_email_send", {
-      p_message_type: "internal_notification",
-      p_recipient: process.env.INTERNAL_NOTIFICATION_EMAIL,
+  if (!process.env.RESEND_API_KEY || !process.env.INTERNAL_NOTIFICATION_EMAIL) return false;
+
+  const { reserved, sent, reason } = await sendViaResend(getSupabaseAdmin(), {
+    messageType: "internal_notification",
+    recipient: process.env.INTERNAL_NOTIFICATION_EMAIL,
+    subject,
+    text: details,
+    idempotencyKey: `stripe-deposit-alert/${payment.stripe_session_id}`,
+  });
+  if (!reserved) {
+    console.error("Deposit alert blocked by email policy", {
+      session: payment.stripe_session_id,
+      reason,
     });
-    if (reservation?.allowed !== true) {
-      console.error("Deposit alert blocked by email policy", {
-        session: payment.stripe_session_id,
-        reason: reservation?.reason || "reservation_failed",
-      });
-      return false;
-    }
-    jobs.push(fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL,
-        to: [process.env.INTERNAL_NOTIFICATION_EMAIL],
-        subject,
-        text: details,
-      }),
-    }));
+    return false;
   }
-  const results = await Promise.allSettled(jobs);
-  const failed = results.some((result) =>
-    result.status === "rejected" || (result.status === "fulfilled" && !result.value.ok)
-  );
-  if (jobs.length > 0) {
-    await getSupabaseAdmin().rpc("record_email_send_result", {
-      p_message_type: "internal_notification",
-      p_sent: !failed,
-    });
-  }
-  if (failed) {
+  if (!sent) {
     console.error("One or more deposit alerts failed", { session: payment.stripe_session_id });
   }
-  return jobs.length > 0 && !failed;
+  return sent;
 }
 
 async function prepareClientLifecycle(supabase, stripeEventId) {

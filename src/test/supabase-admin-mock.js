@@ -15,7 +15,8 @@ export function createSupabaseAdminMock({ tables = {}, rpc = {} } = {}) {
     const calls = [];
     const builder = {};
     const chainMethods = [
-      "select", "eq", "neq", "in", "order", "limit", "insert", "update", "delete", "upsert", "gt", "gte", "lt", "lte",
+      "select", "eq", "neq", "in", "order", "limit", "insert", "update", "delete", "upsert",
+      "gt", "gte", "lt", "lte", "or", "is", "not", "ilike",
     ];
     for (const method of chainMethods) {
       builder[method] = vi.fn((...args) => {

@@ -1,55 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
-
-// Each window is wider than the 15-minute cron cadence so a booking is never
-// missed between runs; reminder_*_sent_at makes re-checking it idempotent.
-const WINDOWS = [
-  { column: "reminder_24h_sent_at", minHours: 23.75, maxHours: 24.25, label: "24h" },
-  { column: "reminder_1h_sent_at", minHours: 0.75, maxHours: 1.25, label: "1h" },
-] as const;
-
-function buildEmail(label: "24h" | "1h", booking: Record<string, unknown>, bookingTypeName: string) {
-  const whenText = new Intl.DateTimeFormat("en-US", {
-    timeZone: booking.visitor_timezone as string, dateStyle: "full", timeStyle: "short",
-  }).format(new Date(booking.starts_at as string));
-  const joinLine = booking.zoom_join_url ? `Join link: ${booking.zoom_join_url}` : null;
-
-  if (label === "24h") {
-    return {
-      subject: `Tomorrow: your ${bookingTypeName} with Teamtastic`,
-      bodyLines: [
-        `Hi ${booking.name},`,
-        "",
-        `Quick reminder — our ${bookingTypeName} is tomorrow, ${whenText} (${(booking.visitor_timezone as string).replaceAll("_", " ")}).`,
-        "",
-        joinLine,
-        "",
-        "Come with your team in mind — we'll map out the rest together.",
-        "",
-        "Need to reschedule? Just reply to this email.",
-        "",
-        "Michael",
-      ],
-    };
-  }
-  return {
-    subject: "Starting soon: your Teamtastic call",
-    bodyLines: [
-      `Hi ${booking.name},`,
-      "",
-      `Just a heads up — our ${bookingTypeName} starts in about an hour, at ${whenText}.`,
-      "",
-      joinLine,
-      "",
-      "See you soon!",
-      "",
-      "Michael",
-    ],
-  };
-}
+import { sendViaResend } from "../_shared/email.ts";
+import { buildReminderEmail, REMINDER_WINDOWS as WINDOWS } from "../_shared/booking-reminders.ts";
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "BOOKING_REMINDERS_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "BOOKING_REMINDERS_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
 
@@ -92,49 +47,29 @@ Deno.serve(async (request) => {
         .from("booking_types").select("name").eq("id", booking.booking_type_id).single();
       const bookingTypeName = bookingType?.name || "planning call";
 
-      const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
-        p_message_type: "booking",
-        p_recipient: booking.email,
+      const { subject, bodyLines } = buildReminderEmail(window.label, booking, bookingTypeName);
+      const bodyText = bodyLines.filter((line) => line !== null).join("\n");
+      const result = await sendViaResend(supabase, {
+        messageType: "booking",
+        recipient: booking.email,
+        idempotencyKey: `booking-reminder/${booking.id}/${window.label}`,
+        from: Deno.env.get("RESEND_FROM_EMAIL"),
+        to: booking.email,
+        subject,
+        text: bodyText,
+        timeoutMs: 8000,
       });
-      if (reservationError || reservation?.allowed !== true) {
+      if (!result.reserved) {
         await supabase.from("agent_log").insert({
           agent_name: "booking-reminders", action: `send_${window.label}`, outcome: "blocked",
           prospect_id: booking.prospect_id,
-          decision: { booking_id: booking.id, reservation, error: reservationError?.message || null },
+          decision: { booking_id: booking.id, reason: result.reason },
         });
         continue;
       }
 
-      const { subject, bodyLines } = buildEmail(window.label, booking, bookingTypeName);
-      const bodyText = bodyLines.filter((line) => line !== null).join("\n");
-
-      let sendResult = "failed";
-      let providerMessageId: string | null = null;
-      try {
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: Deno.env.get("RESEND_FROM_EMAIL"),
-            to: booking.email,
-            subject,
-            text: bodyText,
-          }),
-          signal: AbortSignal.timeout(8000),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (response.ok && data.id) {
-          sendResult = "sent";
-          providerMessageId = data.id;
-        }
-      } catch {
-        sendResult = "failed";
-      }
-
-      await supabase.rpc("record_email_send_result", { p_message_type: "booking", p_sent: sendResult === "sent" });
+      const sendResult = result.sent ? "sent" : "failed";
+      const providerMessageId = result.providerMessageId;
       await supabase.from("messages").insert({
         prospect_id: booking.prospect_id,
         direction: "outbound",
@@ -181,19 +116,6 @@ Deno.serve(async (request) => {
       .from("booking_types").select("name").eq("id", booking.booking_type_id).single();
     const bookingTypeName = bookingType?.name || "planning call";
 
-    const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
-      p_message_type: "booking",
-      p_recipient: booking.email,
-    });
-    if (reservationError || reservation?.allowed !== true) {
-      await supabase.from("agent_log").insert({
-        agent_name: "booking-reminders", action: "send_no_show", outcome: "blocked",
-        prospect_id: booking.prospect_id,
-        decision: { booking_id: booking.id, reservation, error: reservationError?.message || null },
-      });
-      continue;
-    }
-
     const subject = "Sorry we missed each other";
     const bodyText = [
       `Hi ${booking.name},`,
@@ -204,34 +126,27 @@ Deno.serve(async (request) => {
       "",
       "Michael",
     ].join("\n");
-
-    let sendResult = "failed";
-    let providerMessageId: string | null = null;
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: Deno.env.get("RESEND_FROM_EMAIL"),
-          to: booking.email,
-          subject,
-          text: bodyText,
-        }),
-        signal: AbortSignal.timeout(8000),
+    const result = await sendViaResend(supabase, {
+      messageType: "booking",
+      recipient: booking.email,
+      idempotencyKey: `booking-no-show/${booking.id}`,
+      from: Deno.env.get("RESEND_FROM_EMAIL"),
+      to: booking.email,
+      subject,
+      text: bodyText,
+      timeoutMs: 8000,
+    });
+    if (!result.reserved) {
+      await supabase.from("agent_log").insert({
+        agent_name: "booking-reminders", action: "send_no_show", outcome: "blocked",
+        prospect_id: booking.prospect_id,
+        decision: { booking_id: booking.id, reason: result.reason },
       });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data.id) {
-        sendResult = "sent";
-        providerMessageId = data.id;
-      }
-    } catch {
-      sendResult = "failed";
+      continue;
     }
 
-    await supabase.rpc("record_email_send_result", { p_message_type: "booking", p_sent: sendResult === "sent" });
+    const sendResult = result.sent ? "sent" : "failed";
+    const providerMessageId = result.providerMessageId;
     await supabase.from("messages").insert({
       prospect_id: booking.prospect_id,
       direction: "outbound",

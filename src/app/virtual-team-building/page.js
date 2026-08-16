@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle, Users, Zap, Award, Star, ChevronDown } from "lucide-react";
+import { ArrowRight, CheckCircle, Users, Zap, Award, ChevronDown } from "lucide-react";
 import CorporateLeadForm from "@/components/CorporateLeadForm";
 
 export const metadata = {

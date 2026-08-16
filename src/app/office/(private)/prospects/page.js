@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { formatDate } from "../../office-ui";
 
 const STATUSES = ["new", "researching", "qualified", "nurturing", "contacted", "replied", "interested", "not_interested", "converted", "suppressed", "disqualified"];
@@ -19,7 +19,7 @@ export default async function ProspectList({ searchParams }) {
   const search = String(params?.q || "").trim().slice(0, 100);
   const status = STATUSES.includes(params?.status) ? params.status : "";
   const source = Object.hasOwn(SOURCES, params?.source) ? params.source : "";
-  const db = getSupabaseAdmin();
+  const db = (await getOfficeDb()).db;
   let query = db.from("prospects").select("id,company_id,full_name,email,job_title,source,status,score,last_inbound_at,last_outbound_at,updated_at", { count: "exact" }).order("updated_at", { ascending: false }).limit(100);
   if (status) query = query.eq("status", status);
   if (source) query = query.eq("source", source);

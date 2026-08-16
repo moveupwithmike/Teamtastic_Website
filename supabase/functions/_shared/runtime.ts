@@ -9,10 +9,28 @@ export function serviceClient() {
   return createClient(url, key);
 }
 
-export function authorizeWebhook(request: Request, secretName: string) {
+// Hashing both sides first fixes the comparison at a constant 32 bytes
+// regardless of input length, so neither the byte-by-byte XOR loop below nor
+// the earlier "do the lengths match" step can leak timing information about
+// the secret — a plain `===`/`!==` on the raw strings would.
+async function timingSafeEqual(a: string, b: string) {
+  const encoder = new TextEncoder();
+  const [hashA, hashB] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(a)),
+    crypto.subtle.digest("SHA-256", encoder.encode(b)),
+  ]);
+  const bytesA = new Uint8Array(hashA);
+  const bytesB = new Uint8Array(hashB);
+  let diff = 0;
+  for (let i = 0; i < bytesA.length; i++) diff |= bytesA[i] ^ bytesB[i];
+  return diff === 0;
+}
+
+export async function authorizeWebhook(request: Request, secretName: string) {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const expected = Deno.env.get(secretName);
-  if (!expected || request.headers.get("x-webhook-secret") !== expected) {
+  const provided = request.headers.get("x-webhook-secret");
+  if (!expected || !provided || !(await timingSafeEqual(provided, expected))) {
     return new Response("Unauthorized", { status: 401 });
   }
   return null;

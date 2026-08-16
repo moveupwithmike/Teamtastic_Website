@@ -6,7 +6,7 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "APOLLO_TEST_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "APOLLO_TEST_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
 
   const apiKey = Deno.env.get("APOLLO_API_KEY");

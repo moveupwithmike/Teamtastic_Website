@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
+import { sendViaResend } from "../_shared/email.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -29,7 +30,7 @@ function countBy<T>(rows: T[], key: (row: T) => string) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "DAILY_REPORT_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "DAILY_REPORT_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase
@@ -163,45 +164,33 @@ Deno.serve(async (request) => {
     last_error: null,
   }, { onConflict: "report_date" });
 
-  const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
-    p_message_type: "internal_notification",
-    p_recipient: recipient,
+  const result = await sendViaResend(supabase, {
+    messageType: "internal_notification",
+    recipient,
+    idempotencyKey: `daily-sales-report/${date}`,
+    from: Deno.env.get("RESEND_FROM_EMAIL"),
+    to: recipient,
+    subject,
+    html,
   });
-  if (reservationError || reservation?.allowed !== true) {
+  if (!result.reserved) {
     await supabase.from("daily_reports").update({
       status: "skipped",
-      last_error: reservationError?.message || reservation?.reason || "reservation_blocked",
+      last_error: result.reason || "reservation_blocked",
     }).eq("report_date", date);
-    return Response.json({ sent: false, skipped: true, reason: reservation?.reason || "reservation_failed" });
+    return Response.json({ sent: false, skipped: true, reason: result.reason || "reservation_failed" });
   }
 
   try {
-    const mail = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: Deno.env.get("RESEND_FROM_EMAIL"),
-        to: [recipient],
-        subject,
-        html,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const result = await mail.json().catch(() => ({}));
-    await supabase.rpc("record_email_send_result", { p_message_type: "internal_notification", p_sent: mail.ok });
     await supabase.from("daily_reports").update({
-      status: mail.ok ? "sent" : "failed",
-      provider_message_id: result.id || null,
-      last_error: mail.ok ? null : JSON.stringify(result).slice(0, 1000),
-      sent_at: mail.ok ? new Date().toISOString() : null,
+      status: result.sent ? "sent" : "failed",
+      provider_message_id: result.providerMessageId,
+      last_error: result.reason,
+      sent_at: result.sent ? new Date().toISOString() : null,
     }).eq("report_date", date);
-    if (!mail.ok) return new Response("Report delivery failed", { status: 502 });
+    if (!result.sent) return new Response("Report delivery failed", { status: 502 });
     return Response.json({ sent: true, report_date: date });
   } catch (error) {
-    await supabase.rpc("record_email_send_result", { p_message_type: "internal_notification", p_sent: false });
     await supabase.from("daily_reports").update({ status: "failed", last_error: String(error).slice(0, 1000) }).eq("report_date", date);
     return new Response("Report delivery failed", { status: 500 });
   }

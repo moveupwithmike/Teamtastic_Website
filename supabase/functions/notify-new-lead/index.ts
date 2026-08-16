@@ -1,10 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { authorizeWebhook, serviceClient, type ServiceClient } from "../_shared/runtime.ts";
+import { authorizeWebhook, serviceClient } from "../_shared/runtime.ts";
+import { sendViaResend } from "../_shared/email.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
-async function syncLeadToCrm(supabase: ServiceClient, lead: Record<string, unknown>) {
+// deno-lint-ignore no-explicit-any -- the untyped Supabase client's generic
+// SupabaseClient<...> shape doesn't survive being passed as an explicit
+// cross-function parameter type without a version-resolution mismatch; every
+// other function in this codebase just calls serviceClient() inline instead
+// of extracting a typed helper, which avoids the issue entirely.
+async function syncLeadToCrm(supabase: any, lead: Record<string, unknown>) {
   const email = String(lead.email ?? "").trim().toLowerCase();
   let { data: prospect } = await supabase
     .from("prospects")
@@ -89,7 +95,7 @@ function customerEmail(lead: Record<string, unknown>) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "LEAD_NOTIFICATION_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "LEAD_NOTIFICATION_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
 
   const { lead_id } = await request.json();
@@ -182,47 +188,34 @@ Deno.serve(async (request) => {
       .maybeSingle();
     if (existing?.status === "sent") continue;
 
-    const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
-      p_message_type: notification.messageType,
-      p_recipient: notification.to,
+    const result = await sendViaResend(supabase, {
+      messageType: notification.messageType,
+      recipient: notification.to,
+      idempotencyKey: `lead-notification/${lead.id}/${notification.type}`,
+      from: Deno.env.get("RESEND_FROM_EMAIL"),
+      to: notification.to,
+      subject: notification.subject,
+      html: notification.html,
     });
-    if (reservationError || reservation?.allowed !== true) {
+    if (!result.reserved) {
       await supabase.from("agent_log").insert({
         agent_name: "inbound-speed-to-lead",
         action: `send_${notification.type}`,
         outcome: "blocked",
         prospect_id: prospectId,
-        decision: { lead_id: lead.id, reservation, error: reservationError?.message || null },
+        decision: { lead_id: lead.id, reason: result.reason },
       });
       continue;
     }
 
     try {
-      const mail = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: Deno.env.get("RESEND_FROM_EMAIL"),
-          to: [notification.to],
-          subject: notification.subject,
-          html: notification.html,
-        }),
-      });
-      const result = await mail.json().catch(() => ({}));
-      await supabase.rpc("record_email_send_result", {
-        p_message_type: notification.messageType,
-        p_sent: mail.ok,
-      });
       await supabase.from("notification_deliveries").upsert({
         lead_id: lead.id,
         notification_type: notification.type,
-        status: mail.ok ? "sent" : "failed",
-        provider_message_id: result.id || null,
+        status: result.sent ? "sent" : "failed",
+        provider_message_id: result.providerMessageId,
         attempts: (existing?.attempts || 0) + 1,
-        last_error: mail.ok ? null : JSON.stringify(result).slice(0, 1000),
+        last_error: result.reason,
         updated_at: new Date().toISOString(),
       }, { onConflict: "lead_id,notification_type" });
       await supabase.from("messages").insert({
@@ -230,19 +223,15 @@ Deno.serve(async (request) => {
         direction: "outbound",
         message_type: notification.messageType,
         provider: "resend",
-        provider_message_id: result.id || null,
+        provider_message_id: result.providerMessageId,
         from_address: Deno.env.get("RESEND_FROM_EMAIL") || "",
         to_addresses: [notification.to],
         subject: notification.subject,
         body_html: notification.html,
-        status: mail.ok ? "sent" : "failed",
-        sent_at: mail.ok ? new Date().toISOString() : null,
+        status: result.sent ? "sent" : "failed",
+        sent_at: result.sent ? new Date().toISOString() : null,
       });
     } catch (sendError) {
-      await supabase.rpc("record_email_send_result", {
-        p_message_type: notification.messageType,
-        p_sent: false,
-      });
       await supabase.from("notification_deliveries").upsert({
         lead_id: lead.id,
         notification_type: notification.type,

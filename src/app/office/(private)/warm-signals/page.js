@@ -1,12 +1,12 @@
 import Link from "next/link";
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,Empty,buttonClass,formatDate,inputClass} from "../../office-ui";
 import {configureWarmRelationshipSignals,recordWarmRelationshipSignal,reviewWarmRelationshipSignal} from "../../actions";
 
 const labels={job_change:"Job change",new_people_ops_hire:"New People Ops hire",promotion:"Promotion",closed_lost_reactivation:"Closed-lost reactivation",past_champion:"Past champion"};
 
 export default async function WarmSignalsPage({searchParams}){
-  const params=await searchParams,db=getSupabaseAdmin();
+  const params=await searchParams,db=(await getOfficeDb()).db;
   const [{data:config},{data:signals},{data:prospects}]=await Promise.all([
     db.from("system_config").select("warm_relationship_signals_enabled,closed_lost_reactivation_days").eq("id",true).single(),
     db.from("warm_relationship_signals").select("id,prospect_id,signal_type,evidence,source,source_url,strength,status,observed_at,created_at,prospects(full_name,email,job_title),companies(name)").order("observed_at",{ascending:false}).limit(100),

@@ -42,7 +42,7 @@ export default function CorporateLeadForm({
   defaultTeamSize = "",
 } = {}) {
   const [form, setForm] = useState({ ...initialForm, occasion: defaultOccasion, teamSize: defaultTeamSize });
-  const [submissionId, setSubmissionId] = useState(() => createSubmissionId());
+  const [submissionId] = useState(() => createSubmissionId());
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [status, setStatus] = useState("idle");

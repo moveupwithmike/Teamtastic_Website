@@ -26,6 +26,8 @@ const deleteCalendarEvent = vi.fn((..._args) => Promise.resolve());
 vi.mock("@/lib/server/google-calendar", () => ({
   deleteCalendarEvent: (...args) => deleteCalendarEvent(...args),
 }));
+const verifyTurnstile = vi.fn();
+vi.mock("@/lib/server/turnstile", () => ({ verifyTurnstile: (...args) => verifyTurnstile(...args) }));
 
 const FUTURE_STARTS_AT = "2099-01-01T15:00:00.000Z";
 
@@ -83,6 +85,8 @@ describe("booking cancel", () => {
     attemptBookingCleanup.mockClear();
     cancelZoomMeeting.mockClear();
     deleteCalendarEvent.mockClear();
+    verifyTurnstile.mockReset();
+    verifyTurnstile.mockImplementation((token) => Promise.resolve(token === "development-bypass"));
   });
 
   afterEach(() => {
@@ -154,5 +158,21 @@ describe("booking cancel", () => {
 
     const response = await postCancel({ token: "tok_1", turnstileToken: "development-bypass" });
     expect(response.status).toBe(409);
+  });
+
+  it("rejects malformed JSON and unavailable verification", async () => {
+    const { POST } = await import("./route.js");
+    expect((await POST(new Request("https://teamtastic.com/api/bookings/cancel", { method: "POST", body: "{" }))).status).toBe(400);
+    verifyTurnstile.mockRejectedValueOnce(new Error("network"));
+    expect((await postCancel({ token: "tok_verify", turnstileToken: "token" }, { "x-forwarded-for": "203.0.113.88" })).status).toBe(503);
+  });
+
+  it("returns 503 when the guarded cancel update fails", async () => {
+    resolveManagedBooking.mockResolvedValue(confirmedLookup());
+    getSupabaseAdmin.mockReturnValue(createSupabaseAdminMock({ tables: {
+      bookings: { data: null, error: { code: "write_failed" } },
+    } }));
+    const response = await postCancel({ token: "tok_update", turnstileToken: "development-bypass" }, { "x-forwarded-for": "203.0.113.87" });
+    expect(response.status).toBe(503);
   });
 });

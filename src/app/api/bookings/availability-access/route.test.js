@@ -1,6 +1,8 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AVAILABILITY_COOKIE, validAvailabilityAccess } from "@/lib/server/availability-access";
+const verifyTurnstile = vi.fn();
+vi.mock("@/lib/server/turnstile", () => ({ verifyTurnstile: (...args) => verifyTurnstile(...args) }));
 
 async function postAccess(body, headers = {}) {
   const { POST } = await import("./route.js");
@@ -16,6 +18,9 @@ describe("availability access", () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
+    vi.resetModules();
+    verifyTurnstile.mockReset();
+    verifyTurnstile.mockImplementation((token) => Promise.resolve(token === "development-bypass"));
     process.env = { ...originalEnv };
     delete process.env.TURNSTILE_SECRET_KEY; // enables the development-bypass path
   });
@@ -59,5 +64,12 @@ describe("availability access", () => {
     expect(cookie.path).toBe("/api/bookings/availability");
     expect(cookie.maxAge).toBe(15 * 60);
     expect(validAvailabilityAccess(cookie.value)).toBe(true);
+  });
+
+  it("returns 503 when bot verification is unavailable", async () => {
+    verifyTurnstile.mockRejectedValueOnce(new Error("network down"));
+    const response = await postAccess({ turnstileToken: "token" }, { "x-forwarded-for": "203.0.113.99" });
+    expect(response.status).toBe(503);
+    expect((await response.json()).reason).toBe("verification_unavailable");
   });
 });

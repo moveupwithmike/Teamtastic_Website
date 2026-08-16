@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckSquare, Square, RotateCcw, Calendar, FileText, ChevronRight, Share2, Clipboard } from "lucide-react";
+import { ArrowRight, CheckSquare, Square, RotateCcw, FileText, ChevronRight, Share2, Clipboard } from "lucide-react";
 
 // Note: Next.js metadata needs to be exported from a separate layout file or we can define it inside the page body for dynamic clientside. Since Next.js v13+ allows metadata only in Server Components, we will structure this as a client component but keep clean HTML headers in document where possible or structure it cleanly. Next.js supports adding metadata in app/resources/event-planning-guide/layout.js, let's also create a layout.js file there later to handle static metadata, ensuring the client component compiles perfectly!
 

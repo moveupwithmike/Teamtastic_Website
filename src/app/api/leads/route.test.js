@@ -186,4 +186,28 @@ describe("lead capture", () => {
     }
     expect(last.status).toBe(429);
   });
+
+  it("rejects malformed and oversized JSON payloads", async () => {
+    const { POST } = await import("./route.js");
+    const malformed = await POST(new Request("https://teamtastic.com/api/leads", { method: "POST", body: "{" }));
+    expect(malformed.status).toBe(400);
+    const oversized = await postLead(leadPayload({ context: { text: "x".repeat(26_000) } }));
+    expect(oversized.status).toBe(413);
+  });
+
+  it("treats a unique-conflict insert as an idempotent duplicate", async () => {
+    const supabase = createSupabaseAdminMock({ tables: { leads: ({ calls }) => calls.some(c => c.method === "insert")
+      ? { data: null, error: { code: "23505" } }
+      : { data: null, error: null } } });
+    getSupabaseAdmin.mockReturnValue(supabase);
+    const response = await postLead(leadPayload({ email: "conflict@example.com" }));
+    expect(await response.json()).toMatchObject({ success: true, duplicate: true });
+  });
+
+  it("keeps a persisted lead successful when analytics fails", async () => {
+    captureServerEvent.mockRejectedValueOnce(Object.assign(new Error("analytics down"), { code: "DOWN" }));
+    getSupabaseAdmin.mockReturnValue(createSupabaseAdminMock({ tables: { leads: { data: null, error: null } } }));
+    const response = await postLead(leadPayload({ email: "analytics-failure@example.com" }));
+    expect(response.status).toBe(200);
+  });
 });

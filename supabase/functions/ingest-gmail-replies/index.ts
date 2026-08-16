@@ -232,7 +232,7 @@ async function gmailFetch(path: string, accessToken: string) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "GMAIL_INGESTION_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "GMAIL_INGESTION_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase

@@ -1,10 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getRecommendation } from "@/lib/recommendations";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { captureServerEvent } from "@/lib/server/posthog";
-import { rateLimited } from "@/lib/server/rate-limit";
+import { hashKey, rateLimited } from "@/lib/server/rate-limit";
 import { verifyTurnstile } from "@/lib/server/turnstile";
+import { clean } from "@/lib/server/validation";
 
 const SOURCES = new Set([
   "event_quiz",
@@ -19,10 +20,6 @@ const SOURCES = new Set([
 ]);
 function response(status, code, message, retryable = false) {
   return NextResponse.json({ success: false, code, message, retryable }, { status });
-}
-
-function clean(value, max = 500) {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
 function validEmail(email) {
@@ -56,7 +53,7 @@ export async function POST(request) {
   if (!/^[0-9a-f-]{36}$/i.test(submissionId) || !SOURCES.has(source) || !name || !validEmail(email)) {
     return response(400, "VALIDATION_ERROR", "Please check your name, email, and form details.");
   }
-  const rateKey = createHash("sha256").update(`${ip}:${email}`).digest("hex");
+  const rateKey = hashKey(ip, email);
   if (rateLimited(rateKey)) {
     return response(429, "RATE_LIMITED", "Too many attempts. Please wait a few minutes and retry.", true);
   }

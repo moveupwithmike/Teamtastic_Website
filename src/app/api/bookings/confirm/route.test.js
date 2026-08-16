@@ -57,7 +57,6 @@ async function postConfirm(body, headers = {}) {
 }
 
 function baseSupabaseTables({
-  holdResult = { held: true, booking_id: "booking_1" },
   bookingType = BOOKING_TYPE_ROW,
   confirmUpdateError = null,
 } = {}) {
@@ -202,6 +201,42 @@ describe("booking confirm", () => {
     expect(response.status).toBe(502);
     expect(body.reason).toBe("calendar_event_failed");
     expect(cancelZoomMeeting).toHaveBeenCalledWith("zoom_1");
+  });
+
+  it("still records an urgent task when the Zoom rollback itself fails after a Calendar failure", async () => {
+    createZoomMeeting.mockResolvedValue({ meetingId: "zoom_1", joinUrl: "https://zoom.us/j/123" });
+    createCalendarEvent.mockRejectedValue(new Error("calendar outage"));
+    cancelZoomMeeting.mockRejectedValue(new Error("zoom cancel also failed"));
+
+    const taskInserts = [];
+    const supabase = createSupabaseAdminMock({
+      tables: {
+        ...baseSupabaseTables(),
+        tasks: ({ calls }) => {
+          const insertCall = calls.find((c) => c.method === "insert");
+          if (insertCall) taskInserts.push(insertCall.args[0]);
+          return { data: null, error: null };
+        },
+      },
+      rpc: {
+        hold_booking_slot: () => ({ data: { held: true, booking_id: "booking_1" }, error: null }),
+        fail_booking_hold: () => ({ data: null, error: null }),
+      },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+
+    const response = await postConfirm(validBody({ email: "calendar-and-cleanup-fail@example.com" }));
+    const body = await response.json();
+
+    // The primary-failure response is unaffected by the rollback also failing.
+    expect(response.status).toBe(502);
+    expect(body.reason).toBe("calendar_event_failed");
+    expect(cancelZoomMeeting).toHaveBeenCalledWith("zoom_1");
+
+    // But the failed rollback is no longer silently swallowed: it produces its
+    // own urgent task in addition to the primary-failure task.
+    expect(taskInserts).toHaveLength(2);
+    expect(taskInserts.some((task) => task.source === "native_booking_cleanup_failure")).toBe(true);
   });
 
   it("rolls back Zoom and Calendar when the final confirm write fails", async () => {

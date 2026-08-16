@@ -1,4 +1,4 @@
-import { Gamepad2, Users, Clock, Award, CheckCircle, ArrowRight, ShieldCheck, Heart, HelpCircle } from "lucide-react";
+import { Gamepad2, Users, Clock, Award, CheckCircle, ArrowRight, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import gamesPool from "@/lib/gamesData.json";
