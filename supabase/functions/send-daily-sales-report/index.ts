@@ -29,7 +29,7 @@ function countBy<T>(rows: T[], key: (row: T) => string) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "DAILY_REPORT_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "DAILY_REPORT_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase

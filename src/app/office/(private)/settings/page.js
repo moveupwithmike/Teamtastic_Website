@@ -1,11 +1,11 @@
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { officeErrorMessage } from "@/lib/server/office-errors";
 import { Card, inputClass, buttonClass } from "../../office-ui";
 import { updateSystemConfig } from "../../actions";
 
 export default async function OfficeSettings({ searchParams }) {
   const params = await searchParams;
-  const db = getSupabaseAdmin();
+  const db = (await getOfficeDb()).db;
   const { data: config } = await db
     .from("system_config")
     .select("prospecting_from_email,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,daily_proposal_cap,organic_research_enabled,organic_scoring_enabled,organic_drafting_enabled,organic_attribution_enabled,organic_daily_opportunity_cap,organic_min_draft_score,organic_reddit_commercial_approval_confirmed")

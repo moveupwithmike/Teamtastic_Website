@@ -24,7 +24,7 @@ function emailDomain(email: string) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "SEND_APPROVED_OUTREACH_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "SEND_APPROVED_OUTREACH_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
 
@@ -54,7 +54,8 @@ Deno.serve(async (request) => {
   let sent = 0;
 
   for (const draft of drafts) {
-    const prospect = draft.prospects as Record<string, unknown> | null;
+    const prospectRaw = draft.prospects as unknown;
+    const prospect = (Array.isArray(prospectRaw) ? prospectRaw[0] : prospectRaw) as Record<string, unknown> | null;
     if (!prospect?.email_normalized) {
       await supabase.from("agent_log").insert({
         agent_name: "send-approved-outreach", action: "send_outreach", outcome: "skipped",

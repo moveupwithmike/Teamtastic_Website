@@ -8,6 +8,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireOfficeUser } from "@/lib/server/office-auth";
 import { createHelpfulDraft, organicFingerprint, scoreOrganicIntent } from "@/lib/server/organic-intent";
 import { validTimeZone, zonedWallTimeToUtc } from "@/lib/server/booking-time";
+import { sendViaResend } from "@/lib/server/email";
+import { HTTP_TIMEOUT_MS } from "@/lib/server/http";
+import * as growthExperiments from "@/lib/server/office/growth-experiments";
+import * as salesResponse from "@/lib/server/office/sales-response";
 
 function clean(value, max = 10000) {
   return String(value || "").trim().slice(0, max);
@@ -46,20 +50,6 @@ export async function requestMagicLink(formData) {
     .rpc("try_claim_magic_link_send", { p_email: allowedEmail });
   if (claimError || claimed !== true) redirect("/office/login?sent=1");
 
-  const { data: reservation } = await admin.rpc("reserve_email_send", {
-    p_message_type: "internal_notification",
-    p_recipient: allowedEmail,
-  });
-  if (reservation?.allowed !== true) {
-    await admin.from("agent_log").insert({
-      agent_name: "office",
-      action: "office_magic_link_sent",
-      outcome: "blocked",
-      decision: { reason: reservation?.reason || "reservation_failed" },
-    });
-    redirect("/office/login?error=send_failed");
-  }
-
   const { data, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: allowedEmail,
@@ -80,34 +70,32 @@ export async function requestMagicLink(formData) {
   signInUrl.searchParams.set("type", "email");
   signInUrl.searchParams.set("next", "/office");
   const safeUrl = signInUrl.toString().replaceAll("&", "&amp;");
-  const mailResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": `office-magic-link/${tokenHash}`,
-    },
-    body: JSON.stringify({
-      from,
-      to: [allowedEmail],
-      subject: "Your Teamtastic Office sign-in link",
-      html: `<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6"><h2>Sign in to Teamtastic Office</h2><p>Use the secure button below to open your private sales command center.</p><p><a href="${safeUrl}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">Open Teamtastic Office</a></p><p style="color:#64748b;font-size:13px">This one-time link expires shortly. If you did not request it, you can ignore this email.</p></div>`,
-      text: `Sign in to Teamtastic Office:\n\n${signInUrl.toString()}\n\nThis one-time link expires shortly. If you did not request it, you can ignore this email.`,
-    }),
+  const { reserved, sent, providerMessageId, reason } = await sendViaResend(admin, {
+    messageType: "internal_notification",
+    recipient: allowedEmail,
+    from,
+    subject: "Your Teamtastic Office sign-in link",
+    html: `<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6"><h2>Sign in to Teamtastic Office</h2><p>Use the secure button below to open your private sales command center.</p><p><a href="${safeUrl}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">Open Teamtastic Office</a></p><p style="color:#64748b;font-size:13px">This one-time link expires shortly. If you did not request it, you can ignore this email.</p></div>`,
+    text: `Sign in to Teamtastic Office:\n\n${signInUrl.toString()}\n\nThis one-time link expires shortly. If you did not request it, you can ignore this email.`,
+    idempotencyKey: `office-magic-link/${tokenHash}`,
   });
-  const mailResult = await mailResponse.json().catch(() => ({}));
-  await admin.rpc("record_email_send_result", {
-    p_message_type: "internal_notification",
-    p_sent: mailResponse.ok,
-  });
+  if (!reserved) {
+    await admin.from("agent_log").insert({
+      agent_name: "office",
+      action: "office_magic_link_sent",
+      outcome: "blocked",
+      decision: { reason },
+    });
+    redirect("/office/login?error=send_failed");
+  }
   await admin.from("agent_log").insert({
     agent_name: "office",
     action: "office_magic_link_sent",
-    outcome: mailResponse.ok ? "completed" : "failed",
-    decision: mailResponse.ok ? { provider_message_id: mailResult.id } : {},
-    error: mailResponse.ok ? null : (mailResult.message || `Resend returned ${mailResponse.status}`),
+    outcome: sent ? "completed" : "failed",
+    decision: sent ? { provider_message_id: providerMessageId } : {},
+    error: sent ? null : reason,
   });
-  if (!mailResponse.ok) redirect("/office/login?error=send_failed");
+  if (!sent) redirect("/office/login?error=send_failed");
   redirect("/office/login?sent=1");
 }
 
@@ -300,11 +288,9 @@ export async function updateOrganicSourceConfig(formData) {
 
 export async function refreshGrowthBrief() {
   const user = await requireOfficeUser();
-  const db = getSupabaseAdmin();
-  const { data, error } = await db.rpc("prepare_growth_brief", { p_brief_date: new Date().toISOString().slice(0, 10) });
-  await audit("refresh_growth_brief", user, { result: data, automatic_changes: false }, null, error ? "failed" : "completed", error?.message);
+  const result = await growthExperiments.refreshGrowthBrief(user);
   revalidatePath("/office/growth");
-  redirect(error ? "/office/growth?error=refresh_failed" : "/office/growth?success=refreshed");
+  redirect(result.ok ? "/office/growth?success=refreshed" : `/office/growth?error=${result.errorCode}`);
 }
 
 export async function saveCampaignAdSpend(formData) {
@@ -344,66 +330,42 @@ export async function refreshLeadScores() {
   if(error)redirect("/office/scoring?error=refresh_failed");revalidatePath("/office/scoring");redirect("/office/scoring?success=scores_refreshed");
 }
 
-function recommendedPackage(lead){if(lead.package_interest==='large-event-production'||/150|200|300/.test(lead.team_size||''))return 'Large-Group Holiday Production';if(lead.package_interest==='custom-year-in-review')return 'Custom Year-in-Review Show';return 'Hosted Teamtastic Holiday Game Show';}
-
-export async function createSalesResponseDraft(formData){
-  const user=await requireOfficeUser(),leadId=clean(formData.get("lead_id"),50),type=clean(formData.get("response_type"),30),db=getSupabaseAdmin();
-  if(!leadId||!["availability","discovery_call","proposal","deposit_request"].includes(type))redirect("/office/respond?error=invalid_draft");
-  const {data:lead}=await db.from("leads").select("*").eq("id",leadId).single();if(!lead?.email)redirect("/office/respond?error=lead_missing");
-  const [{data:deal},{data:hold}]=await Promise.all([db.from("deals").select("id,title,package_name,expected_value").eq("prospect_id",lead.prospect_id).eq("outcome","open").order("created_at",{ascending:false}).limit(1).maybeSingle(),db.from("event_capacity_holds").select("id,status,starts_at,ends_at,expires_at").eq("lead_id",lead.id).in("status",["tentative","confirmed"]).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).limit(1).maybeSingle()]);
-  const {data:proposal}=deal?await db.from("proposals").select("deposit_url,package_name,price").eq("deal_id",deal.id).order("created_at",{ascending:false}).limit(1).maybeSingle():{data:null};
-  const pkg=deal?.package_name||recommendedPackage(lead),first=lead.name?.split(" ")[0]||"there",site=(process.env.NEXT_PUBLIC_SITE_URL||"https://www.teamtastic.events").replace(/\/$/,"");
-  const schedule=[lead.preferred_event_date,lead.preferred_time,lead.event_timezone].filter(Boolean).join(" · ");
-  const capacity=hold?`We have placed a ${hold.status} hold for ${schedule||"your requested time"}.`:`Your requested timing is ${schedule||"not fully confirmed yet"}; I will confirm production capacity before promising the date.`;
-  const extras={availability:["Your Teamtastic holiday event request",`${capacity}\n\nBased on your ${lead.team_size||"team"} group and preferences, I recommend the ${pkg}.`],discovery_call:["Choose a time for your Teamtastic planning call",`The quickest next step is a 15-minute planning call. Choose a time here: ${site}/book?name=${encodeURIComponent(lead.name)}&email=${encodeURIComponent(lead.email)}&company=${encodeURIComponent(lead.company||"")}\n\n${capacity}`],proposal:[`Next steps for your ${pkg}`,`${capacity}\n\nThe ${pkg} is the strongest fit for your team. I can prepare exact scope and pricing once we confirm the final attendee count and customization.`],deposit_request:[`Reserve your Teamtastic event date`,proposal?.deposit_url?`${capacity}\n\nYou can secure the event using this private payment link: ${proposal.deposit_url}`:`${capacity}\n\nReply that you are ready to reserve the date and I will send the secure deposit link after the availability hold is confirmed.`]};
-  const [subject,core]=extras[type],body=`Hi ${first},\n\n${core}\n\nMichael\nTeamtastic`,snapshot={hold_id:hold?.id||null,status:hold?.status||"not_held",requested_date:lead.preferred_event_date,preferred_time:lead.preferred_time,timezone:lead.event_timezone};
-  const {data:draft,error}=await db.from("sales_response_drafts").insert({lead_id:lead.id,prospect_id:lead.prospect_id,deal_id:deal?.id||null,response_type:type,recipient_email:lead.email,recommended_package:pkg,subject,generated_body:body,body_text:body,capacity_snapshot:snapshot,generated_by:user.email}).select("id").single();
-  if(!error)await db.from("sales_response_revisions").insert({response_id:draft.id,revision_type:"generated",subject,body_text:body,actor:user.email,metadata:{response_type:type,capacity_snapshot:snapshot}});
-  await audit("create_sales_response_draft",user,{lead_id:leadId,response_id:draft?.id,response_type:type,package:pkg},lead.prospect_id,error?"failed":"completed",error?.message);
-  if(error)redirect("/office/respond?error=draft_failed");revalidatePath("/office/respond");redirect("/office/respond?success=draft_created");
+export async function createSalesResponseDraft(formData) {
+  const user = await requireOfficeUser();
+  const result = await salesResponse.createSalesResponseDraft(user, formData);
+  if (!result.ok) redirect(`/office/respond?error=${result.errorCode}`);
+  revalidatePath("/office/respond");
+  redirect("/office/respond?success=draft_created");
 }
 
-export async function approveAndSendSalesResponse(formData){
-  const user=await requireOfficeUser(),id=clean(formData.get("id"),50),subject=clean(formData.get("subject"),300),body=clean(formData.get("body_text"),10000),db=getSupabaseAdmin();
-  if(!id||!subject||!body)redirect("/office/respond?error=response_incomplete");
-  const {data:draft}=await db.from("sales_response_drafts").select("*").eq("id",id).in("status",["draft","send_failed"]).single();if(!draft)redirect("/office/respond?error=response_unavailable");
-  const approvedAt=new Date().toISOString();const {data:claimed}=await db.from("sales_response_drafts").update({subject,body_text:body,status:"sending",approved_by:user.email,approved_at:approvedAt,last_error:null}).eq("id",id).in("status",["draft","send_failed"]).select("id").maybeSingle();if(!claimed)redirect("/office/respond?error=response_claim_failed");
-  await db.from("sales_response_revisions").insert({response_id:id,revision_type:"approved_edit",subject,body_text:body,actor:user.email,metadata:{edited:subject!==draft.subject||body!==draft.generated_body}});
-  const {data:reservation,error:reserveError}=await db.rpc("reserve_email_send",{p_message_type:"proposal",p_recipient:draft.recipient_email});
-  if(reserveError||!reservation?.allowed){const reason=reserveError?.message||reservation?.reason||"send_blocked";await db.from("sales_response_drafts").update({status:"draft",last_error:reason}).eq("id",id);redirect(`/office/respond?error=${encodeURIComponent(reason)}`);}
-  const apiKey=process.env.RESEND_API_KEY,from=process.env.INTERNAL_NOTIFICATION_EMAIL?`Teamtastic <${process.env.INTERNAL_NOTIFICATION_EMAIL}>`:process.env.RESEND_FROM_EMAIL;
-  if(!apiKey||!from){await db.from("sales_response_drafts").update({status:"send_failed",last_error:"Email provider not configured"}).eq("id",id);redirect("/office/respond?error=email_not_configured");}
-  try{const response=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json","Idempotency-Key":`sales-response/${id}`},body:JSON.stringify({from,to:[draft.recipient_email],subject,text:body}),signal:AbortSignal.timeout(10000)});const result=await response.json();await db.rpc("record_email_send_result",{p_message_type:"proposal",p_sent:response.ok&&Boolean(result.id)});if(!response.ok||!result.id)throw new Error(result.message||`Provider returned ${response.status}`);const sentAt=new Date().toISOString();await db.from("sales_response_drafts").update({status:"sent",provider_message_id:result.id,sent_at:sentAt,last_error:null}).eq("id",id);await db.from("sales_response_revisions").insert({response_id:id,revision_type:"sent",subject,body_text:body,actor:user.email,metadata:{provider_message_id:result.id}});await db.from("messages").insert({prospect_id:draft.prospect_id,direction:"outbound",message_type:"manual",provider:"resend",from_address:from,to_addresses:[draft.recipient_email],subject,body_text:body,provider_message_id:result.id,sent_at:sentAt,status:"sent",metadata:{sales_response_id:id,response_type:draft.response_type}});await audit("send_sales_response",user,{response_id:id,response_type:draft.response_type,provider_message_id:result.id},draft.prospect_id);
-  }catch(error){await db.rpc("record_email_send_result",{p_message_type:"proposal",p_sent:false});await db.from("sales_response_drafts").update({status:"send_failed",last_error:error.message}).eq("id",id);await db.from("sales_response_revisions").insert({response_id:id,revision_type:"failed",subject,body_text:body,actor:user.email,metadata:{error:error.message}});await audit("send_sales_response",user,{response_id:id},draft.prospect_id,"failed",error.message);redirect("/office/respond?error=send_failed");}
-  revalidatePath("/office/respond");revalidatePath("/office");redirect("/office/respond?success=response_sent");
+export async function approveAndSendSalesResponse(formData) {
+  const user = await requireOfficeUser();
+  const result = await salesResponse.approveAndSendSalesResponse(user, formData);
+  if (!result.ok) redirect(`/office/respond?error=${result.errorCode}`);
+  revalidatePath("/office/respond");
+  revalidatePath("/office");
+  redirect("/office/respond?success=response_sent");
 }
 
 export async function reviewGrowthBrief(formData) {
   const user = await requireOfficeUser();
-  const id = clean(formData.get("id"), 50);
-  const db = getSupabaseAdmin();
-  const { error } = await db.from("growth_briefs").update({ status: "accepted", reviewed_at: new Date().toISOString(), reviewed_by: user.email }).eq("id", id).eq("status", "review");
-  await audit("review_growth_brief", user, { brief_id: id }, null, error ? "failed" : "completed", error?.message);
+  const result = await growthExperiments.reviewGrowthBrief(user, formData);
   revalidatePath("/office/growth");
-  redirect(error ? "/office/growth?error=review_failed" : "/office/growth?success=reviewed");
+  redirect(result.ok ? "/office/growth?success=reviewed" : `/office/growth?error=${result.errorCode}`);
 }
 
 export async function prepareGrowthExperiments() {
-  const user=await requireOfficeUser(); const db=getSupabaseAdmin();
-  const {data,error}=await db.rpc("prepare_growth_experiment_queue");
-  await audit("prepare_growth_experiments",user,{result:data,automatic_changes:false},null,error?"failed":"completed",error?.message);
-  revalidatePath("/office/growth"); redirect(error?"/office/growth?error=experiment_prepare_failed":"/office/growth?success=experiments_prepared");
+  const user = await requireOfficeUser();
+  const result = await growthExperiments.prepareGrowthExperiments(user);
+  revalidatePath("/office/growth");
+  redirect(result.ok ? "/office/growth?success=experiments_prepared" : `/office/growth?error=${result.errorCode}`);
 }
 
 export async function updateGrowthExperiment(formData) {
-  const user=await requireOfficeUser(); const db=getSupabaseAdmin(); const id=clean(formData.get("id"),50); const decision=clean(formData.get("decision"),30);
-  if(!id) redirect("/office/growth?error=experiment_missing");
-  const notes=clean(formData.get("notes"),4000)||null;
-  const {data,error}=["continue","stop","adopt","inconclusive"].includes(decision)
-    ? await db.rpc("complete_growth_experiment",{p_experiment_id:id,p_decision:decision,p_notes:notes,p_actor:user.email})
-    : await db.rpc("record_growth_experiment_transition",{p_experiment_id:id,p_decision:decision,p_actor:user.email,p_owner_action:clean(formData.get("owner_action"),2000)||null,p_notes:notes});
-  await audit("update_growth_experiment",user,{experiment_id:id,decision,result:data,automatic_changes:false},null,error?"failed":"completed",error?.message);
-  revalidatePath("/office/growth"); redirect(error?"/office/growth?error=experiment_update_failed":"/office/growth?success=experiment_updated");
+  const user = await requireOfficeUser();
+  const result = await growthExperiments.updateGrowthExperiment(user, formData);
+  revalidatePath("/office/growth");
+  redirect(result.ok ? "/office/growth?success=experiment_updated" : `/office/growth?error=${result.errorCode}`);
 }
 
 export async function refreshFinalCertification(formData){const user=await requireOfficeUser(),db=getSupabaseAdmin(),id=clean(formData.get("id"),50);const {data,error}=await db.rpc("observe_final_production_certifications");await audit("refresh_final_certification",user,{certification_id:id,result:data},null,error?"failed":"completed",error?.message);revalidatePath("/office/final-certification");redirect(error?"/office/final-certification?error=refresh_failed":"/office/final-certification?success=refreshed");}
@@ -695,6 +657,11 @@ export async function approveAndSendProposal(formData) {
   }
   if (!claimedProposal) redirect("/office?error=proposal_already_being_sent");
 
+  // Not using sendViaResend here: this flow needs its own "blocked" vs. "not
+  // configured" branches with distinct proposal-status writes and audit
+  // outcomes ahead of the actual send, which doesn't fit the helper's single
+  // reserve+send+record contract without either double-reserving or losing
+  // that distinction. See src/lib/server/email.js.
   const { data: reservation, error: reservationError } = await db.rpc("reserve_email_send", {
     p_message_type: "proposal",
     p_recipient: proposal.recipient_email,
@@ -727,7 +694,7 @@ export async function approveAndSendProposal(formData) {
         "Idempotency-Key": `proposal/${id}`,
       },
       body: JSON.stringify({ from, to: [proposal.recipient_email], subject, text: bodyText }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.slow),
     });
     const result = await response.json();
     await db.rpc("record_email_send_result", {

@@ -1,4 +1,4 @@
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,Empty,ProspectLink,buttonClass,formatDate,inputClass} from "../../office-ui";
 import {approveAndSendSalesResponse,createSalesResponseDraft} from "../../actions";
 
@@ -6,7 +6,7 @@ const holidaySources=["holiday_party_money_page","year_end_celebration_page","la
 const packageFor=lead=>lead.package_interest==="large-event-production"||/150|200|300/.test(lead.team_size||"")?"Large-Group Holiday Production":lead.package_interest==="custom-year-in-review"?"Custom Year-in-Review Show":"Hosted Teamtastic Holiday Game Show";
 
 export default async function RespondPage({searchParams}){
-  const params=await searchParams,db=getSupabaseAdmin(),now=new Date().toISOString();
+  const params=await searchParams,db=(await getOfficeDb()).db,now=new Date().toISOString();
   const [{data:leads},{data:drafts},{data:holds},{data:deals},{data:revisions}]=await Promise.all([
     db.from("leads").select("id,prospect_id,name,email,company,phone,team_size,vibe,occasion,preferred_event_date,alternate_event_date,event_timezone,preferred_time,budget_range,package_interest,decision_timeline,lead_score,lead_score_reasons,context,created_at").in("lead_source",holidaySources).order("lead_score",{ascending:false}).limit(50),
     db.from("sales_response_drafts").select("*").in("status",["draft","send_failed","sending"]).order("created_at",{ascending:false}).limit(50),

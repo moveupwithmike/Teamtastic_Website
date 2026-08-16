@@ -1,9 +1,9 @@
 import Link from "next/link";
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,buttonClass,formatDate} from "../../office-ui";
 import {refreshDailyGrowthAgenda} from "../../actions";
 const tones={urgent:"border-red-400/20 bg-red-500/10",high:"border-amber-400/20 bg-amber-500/10",normal:"border-white/10 bg-white/5"};
-export default async function RoadmapPage({searchParams}){const params=await searchParams;const db=getSupabaseAdmin();const {data:agenda}=await db.from("daily_growth_agendas").select("*").order("agenda_date",{ascending:false}).limit(1).maybeSingle();const summary=agenda?.summary||{},items=agenda?.items||[];return <div className="space-y-8">
+export default async function RoadmapPage({searchParams}){const params=await searchParams;const db=(await getOfficeDb()).db;const {data:agenda}=await db.from("daily_growth_agendas").select("*").order("agenda_date",{ascending:false}).limit(1).maybeSingle();const summary=agenda?.summary||{},items=agenda?.items||[];return <div className="space-y-8">
   {(params?.success||params?.error)&&<p className={`rounded-xl p-4 text-sm ${params.error?"bg-red-500/10 text-red-300":"bg-emerald-500/10 text-emerald-300"}`}>{params.error?"The agenda could not be refreshed.":"Today’s agenda is current."}</p>}
   <div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-3xl font-bold">Daily growth agenda</h2><p className="mt-2 text-slate-400">The highest-value sales and growth decisions across every Teamtastic queue.</p></div><form action={refreshDailyGrowthAgenda}><button className={buttonClass}>Refresh priorities</button></form></div>
   {!agenda?<Card title="No agenda yet"><p className="text-sm text-slate-400">Generate today’s ranked agenda.</p></Card>:<><div className="grid gap-4 sm:grid-cols-4"><Card title="Priorities"><p className="text-3xl font-bold">{summary.total||0}</p></Card><Card title="Urgent"><p className="text-3xl font-bold text-red-300">{summary.urgent||0}</p></Card><Card title="Sales"><p className="text-3xl font-bold text-sky-300">{summary.sales||0}</p></Card><Card title="Growth"><p className="text-3xl font-bold text-purple-300">{summary.growth||0}</p></Card></div>

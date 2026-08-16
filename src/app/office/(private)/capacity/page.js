@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { validTimeZone, zonedWallTimeToUtc } from "@/lib/server/booking-time";
 import { Card, Empty, ProspectLink, buttonClass, formatDate, inputClass } from "../../office-ui";
 import { createEventCapacityHold, releaseEventCapacityHold, updateEventCapacityHost } from "../../actions";
@@ -14,7 +14,7 @@ function normalizedTime(value) {
 }
 
 export default async function CapacityPage({ searchParams }) {
-  const params=await searchParams, db=getSupabaseAdmin(), now=new Date();
+  const params=await searchParams, db=(await getOfficeDb()).db, now=new Date();
   await db.rpc("expire_event_capacity_holds");
   const [hostsResult,holdsResult,leadsResult,eventsResult]=await Promise.all([
     db.from("event_capacity_hosts").select("*").eq("active",true).order("created_at"),

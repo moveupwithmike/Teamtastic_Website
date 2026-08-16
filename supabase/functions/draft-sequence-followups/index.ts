@@ -21,7 +21,7 @@ function render(template: string, prospect: Record<string, unknown>, companyName
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "DRAFT_SEQUENCE_FOLLOWUPS_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "DRAFT_SEQUENCE_FOLLOWUPS_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
 
@@ -51,7 +51,8 @@ Deno.serve(async (request) => {
   let skipped = 0;
 
   for (const enrollment of enrollments) {
-    const prospect = enrollment.prospects as Record<string, unknown> | null;
+    const prospectRaw = enrollment.prospects as unknown;
+    const prospect = (Array.isArray(prospectRaw) ? prospectRaw[0] : prospectRaw) as Record<string, unknown> | null;
     if (!prospect?.email_normalized) {
       skipped++;
       continue;

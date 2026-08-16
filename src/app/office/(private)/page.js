@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { officeErrorMessage } from "@/lib/server/office-errors";
 import { dateInTimeZone, zonedDayRangeUtc } from "@/lib/server/booking-time";
 import { Card, Empty, ProspectLink, formatDate, formatMoney, inputClass, buttonClass } from "../office-ui";
@@ -7,7 +7,7 @@ import { approveAndSendProposal, createProposal, reconcileProposalSend, recordCa
 
 export default async function OfficeDashboard({ searchParams }) {
   const params = await searchParams;
-  const db = getSupabaseAdmin();
+  const db = (await getOfficeDb()).db;
   const nowDate = new Date();
   const now = nowDate.toISOString();
   const sevenDaysAgo = new Date(nowDate.getTime() - 7 * 86400000).toISOString();

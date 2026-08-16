@@ -8,7 +8,7 @@ const pages=[
 ];
 
 Deno.serve(async(request)=>{
-  const unauthorized=authorizeWebhook(request,"ORGANIC_RESEARCH_WEBHOOK_SECRET");if(unauthorized)return unauthorized;
+  const unauthorized=await authorizeWebhook(request,"ORGANIC_RESEARCH_WEBHOOK_SECRET");if(unauthorized)return unauthorized;
   const db=serviceClient();const {data:run,error:runError}=await db.from("conversion_health_runs").insert({status:"running"}).select("id").single();if(runError||!run)return functionError("run_creation_failed");
   try{
     const results=[];let passed=0,failed=0;

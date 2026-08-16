@@ -1,3 +1,5 @@
+import { HTTP_TIMEOUT_MS } from "@/lib/server/http";
+
 function requireCalendarCredentials() {
   const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
@@ -18,7 +20,7 @@ export async function getGoogleCalendarAccessToken() {
       grant_type: "refresh_token",
     }),
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default),
   });
   if (!response.ok) throw new Error(`calendar_token_${response.status}`);
   const data = await response.json();
@@ -33,7 +35,7 @@ export async function getCalendarBusyRanges({ calendarId, timeMin, timeMax, time
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ timeMin, timeMax, timeZone, items: [{ id: calendarId }] }),
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default),
   });
   if (!response.ok) throw new Error(`calendar_freebusy_${response.status}`);
   const data = await response.json();
@@ -62,7 +64,7 @@ export async function createCalendarEvent({ calendarId, summary, description, st
         guestsCanInviteOthers: false,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default),
     },
   );
   if (!response.ok) throw new Error(`calendar_event_${response.status}`);
@@ -75,7 +77,7 @@ export async function deleteCalendarEvent(calendarId, eventId) {
   const accessToken = await getGoogleCalendarAccessToken();
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}?sendUpdates=all`,
-    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(8000) },
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default) },
   );
   if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`calendar_delete_${response.status}`);
 }

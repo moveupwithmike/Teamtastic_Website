@@ -58,7 +58,7 @@ function buildEmail(step: string, lead: Record<string, unknown>) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "NURTURE_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "NURTURE_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
 

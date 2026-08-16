@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card, buttonClass, inputClass } from "../../office-ui";
 import { prepareGrowthExperiments, refreshGrowthBrief, reviewGrowthBrief, updateGrowthExperiment } from "../../actions";
 
@@ -8,7 +8,7 @@ const signedPct = (value) => value == null ? "—" : `${Number(value)>=0?"+":""}
 
 export default async function GrowthBriefPage({ searchParams }) {
   const params = await searchParams;
-  const db = getSupabaseAdmin();
+  const db = (await getOfficeDb()).db;
   const [{ data: brief }, { data: funnel }, {data:experiments}] = await Promise.all([db.from("growth_briefs").select("*").order("brief_date", { ascending: false }).limit(1).maybeSingle(),db.rpc("get_first_party_funnel_summary",{p_days:30}),db.from("growth_experiments").select("*").neq("status","rejected").order("proposed_at",{ascending:false}).limit(30)]);
   const summary = brief?.summary || {};
   const segments = brief?.segments || [];

@@ -12,7 +12,7 @@ function clean(value: unknown, limit = 300) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "APOLLO_DISCOVERY_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "APOLLO_DISCOVERY_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const apiKey = Deno.env.get("APOLLO_API_KEY");
   if (!apiKey) return Response.json({ discovered: 0, reason: "apollo_key_missing", credits_consumed: 0 }, { status: 500 });

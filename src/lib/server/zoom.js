@@ -1,3 +1,5 @@
+import { HTTP_TIMEOUT_MS } from "@/lib/server/http";
+
 function requireZoomCredentials() {
   const accountId = process.env.ZOOM_ACCOUNT_ID;
   const clientId = process.env.ZOOM_CLIENT_ID;
@@ -12,7 +14,7 @@ async function getZoomAccessToken() {
     method: "POST",
     headers: { Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}` },
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default),
   });
   if (!response.ok) throw new Error(`zoom_token_${response.status}`);
   const data = await response.json();
@@ -39,7 +41,7 @@ export async function createZoomMeeting({ topic, startsAt, durationMinutes, time
       },
     }),
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default),
   });
   if (!response.ok) throw new Error(`zoom_meeting_${response.status}`);
   const data = await response.json();
@@ -53,7 +55,7 @@ export async function cancelZoomMeeting(meetingId) {
     method: "DELETE",
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.default),
   });
   if (!response.ok && response.status !== 404) throw new Error(`zoom_cancel_${response.status}`);
 }

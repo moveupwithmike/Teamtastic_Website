@@ -1,10 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { authorizeWebhook, serviceClient, type ServiceClient } from "../_shared/runtime.ts";
+import { authorizeWebhook, serviceClient } from "../_shared/runtime.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
-async function syncLeadToCrm(supabase: ServiceClient, lead: Record<string, unknown>) {
+// deno-lint-ignore no-explicit-any -- the untyped Supabase client's generic
+// SupabaseClient<...> shape doesn't survive being passed as an explicit
+// cross-function parameter type without a version-resolution mismatch; every
+// other function in this codebase just calls serviceClient() inline instead
+// of extracting a typed helper, which avoids the issue entirely.
+async function syncLeadToCrm(supabase: any, lead: Record<string, unknown>) {
   const email = String(lead.email ?? "").trim().toLowerCase();
   let { data: prospect } = await supabase
     .from("prospects")
@@ -89,7 +94,7 @@ function customerEmail(lead: Record<string, unknown>) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "LEAD_NOTIFICATION_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "LEAD_NOTIFICATION_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
 
   const { lead_id } = await request.json();

@@ -49,7 +49,7 @@ function buildEmail(label: "24h" | "1h", booking: Record<string, unknown>, booki
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "BOOKING_REMINDERS_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "BOOKING_REMINDERS_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
 

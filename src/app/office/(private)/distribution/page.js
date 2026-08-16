@@ -1,8 +1,8 @@
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card,buttonClass,inputClass } from "../../office-ui";
 import { prepareDistributionQueue,reviewDistributionItem } from "../../actions";
 
-export default async function DistributionPage({searchParams}){const params=await searchParams;const db=getSupabaseAdmin();const {data:items}=await db.from("distribution_items").select("*").neq("status","archived").order("created_at",{ascending:false}).limit(50);return <div className="space-y-8">
+export default async function DistributionPage({searchParams}){const params=await searchParams;const db=(await getOfficeDb()).db;const {data:items}=await db.from("distribution_items").select("*").neq("status","archived").order("created_at",{ascending:false}).limit(50);return <div className="space-y-8">
   {(params?.success||params?.error)&&<p className={`rounded-xl p-4 text-sm ${params.error?"bg-red-500/10 text-red-300":"bg-emerald-500/10 text-emerald-300"}`}>{params.error?"The distribution action could not be completed.":"Distribution queue updated."}</p>}
   <div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-3xl font-bold">Campaign distribution</h2><p className="mt-2 text-slate-400">Audience-specific drafts with tracked links. Nothing posts or sends automatically.</p></div><form action={prepareDistributionQueue}><button className={buttonClass}>Prepare this month&apos;s drafts</button></form></div>
   <div className="grid gap-4 sm:grid-cols-3"><Card title="Drafts"><p className="text-3xl font-bold text-purple-300">{(items||[]).filter(x=>x.status==="draft").length}</p></Card><Card title="Ready / scheduled"><p className="text-3xl font-bold text-sky-300">{(items||[]).filter(x=>["approved","scheduled"].includes(x.status)).length}</p></Card><Card title="Published"><p className="text-3xl font-bold text-emerald-300">{(items||[]).filter(x=>x.status==="published").length}</p></Card></div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,Empty,buttonClass,inputClass} from "../../office-ui";
 import {saveCampaignAdSpend} from "../../actions";
 
@@ -8,7 +8,7 @@ const pct=value=>value===null||value===undefined?"—":`${(Number(value)*100).to
 const ratio=value=>value===null||value===undefined?"—":`${Number(value).toFixed(2)}×`;
 
 export default async function RoiPage({searchParams}){
-  const params=await searchParams,days=[7,30,90,365].includes(Number(params?.days))?Number(params.days):30,db=getSupabaseAdmin();
+  const params=await searchParams,days=[7,30,90,365].includes(Number(params?.days))?Number(params.days):30,db=(await getOfficeDb()).db;
   const [{data:report,error},{data:spend}]=await Promise.all([db.rpc("get_lead_source_roi",{p_days:days}),db.from("campaign_ad_spend").select("*").order("spend_date",{ascending:false}).limit(50)]);
   const summary=report?.summary||{},campaigns=report?.campaigns||[],flagged=campaigns.filter(x=>x.traffic_without_qualified_leads);
   return <div className="space-y-8">

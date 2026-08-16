@@ -1,4 +1,4 @@
-import {getSupabaseAdmin} from "@/lib/server/supabase-admin";
+import { getOfficeDb } from "@/lib/server/office-auth";
 import {Card,Empty,ProspectLink,buttonClass,formatDate,inputClass} from "../../office-ui";
 import {overrideLeadScore,refreshLeadScores} from "../../actions";
 
@@ -9,7 +9,7 @@ const tone=score=>score>=70?"border-emerald-400/30 bg-emerald-500/10":score>=40?
 const pct=value=>value===null||value===undefined?"—":`${(Number(value)*100).toFixed(1)}%`;
 
 export default async function ScoringPage({searchParams}){
-  const params=await searchParams,db=getSupabaseAdmin();
+  const params=await searchParams,db=(await getOfficeDb()).db;
   const [{data:leads},{data:performance},{data:history}]=await Promise.all([
     db.from("leads").select("id,prospect_id,name,email,company,team_size,preferred_event_date,event_timezone,budget_range,package_interest,decision_timeline,lead_score,lead_score_reasons,lead_score_version,lead_score_override,lead_score_override_reason,lead_score_overridden_by,lead_score_overridden_at,lead_scored_at,created_at,context").in("lead_source",holidaySources).order("lead_score",{ascending:false}).limit(100),
     db.rpc("get_lead_score_performance",{p_days:180}),

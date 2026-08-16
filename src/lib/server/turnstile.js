@@ -1,3 +1,5 @@
+import { HTTP_TIMEOUT_MS } from "@/lib/server/http";
+
 export async function verifyTurnstile(token, ip) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return process.env.NODE_ENV !== "production" && token === "development-bypass";
@@ -8,7 +10,7 @@ export async function verifyTurnstile(token, ip) {
   const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
     method: "POST",
     body: form,
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS.fast),
   });
   const data = await result.json();
   return data.success === true;

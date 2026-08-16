@@ -90,7 +90,7 @@ async function fingerprint(value: string) {
 }
 
 Deno.serve(async (request) => {
-  const unauthorized = authorizeWebhook(request, "PHASE3_PIPELINE_WEBHOOK_SECRET");
+  const unauthorized = await authorizeWebhook(request, "PHASE3_PIPELINE_WEBHOOK_SECRET");
   if (unauthorized) return unauthorized;
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase.from("system_config").select(

@@ -72,7 +72,9 @@ describe("stripe webhook", () => {
     getSupabaseAdmin.mockReset();
     captureServerEvent.mockClear();
     constructEvent.mockReset();
-    global.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (vi.fn(() => Promise.resolve({ ok: true }))));
+    global.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (
+      vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ id: "email_test_id" }) }))
+    ));
   });
 
   afterEach(() => {
