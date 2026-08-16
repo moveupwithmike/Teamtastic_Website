@@ -8,7 +8,11 @@ const redirect = vi.fn((path) => { throw new Error(`REDIRECT:${path}`); });
 vi.mock("@/lib/server/supabase-admin", () => ({ getSupabaseAdmin: () => getSupabaseAdmin() }));
 vi.mock("@/lib/server/email", () => ({ sendViaResend: (...args) => sendViaResend(...args) }));
 vi.mock("@/lib/server/office-auth", () => ({
-  officeAllowedEmail: () => (process.env.OFFICE_ALLOWED_EMAIL || process.env.INTERNAL_NOTIFICATION_EMAIL || "").trim().toLowerCase(),
+  isOfficeAllowedEmail: (email) => {
+    const allowed = (process.env.OFFICE_ALLOWED_EMAILS || process.env.OFFICE_ALLOWED_EMAIL || process.env.INTERNAL_NOTIFICATION_EMAIL || "")
+      .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    return allowed.includes(String(email || "").trim().toLowerCase());
+  },
   requireOfficeUser: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() }));
@@ -49,5 +53,21 @@ describe("requestMagicLink", () => {
       idempotencyKey: "office-magic-link/hash_123",
       text: expect.stringContaining("token_hash=hash_123"),
     }));
+  });
+
+  it("sends the link to whichever admin on the allow-list requested it, not a single fixed address", async () => {
+    process.env.OFFICE_ALLOWED_EMAILS = "owner@example.com,second-admin@example.com";
+    const db = createSupabaseAdminMock({
+      tables: { agent_log: () => ({ data: null, error: null }) },
+      rpc: { try_claim_magic_link_send: () => ({ data: true, error: null }) },
+    });
+    db.auth = { admin: { generateLink: vi.fn().mockResolvedValue({ data: { properties: { hashed_token: "hash_456" } }, error: null }) } };
+    getSupabaseAdmin.mockReturnValue(db);
+    sendViaResend.mockResolvedValue({ reserved: true, sent: true, providerMessageId: "msg_2", reason: null });
+    const { requestMagicLink } = await import("./authentication");
+
+    await expect(requestMagicLink(formData("Second-Admin@example.com"))).rejects.toThrow("REDIRECT:/office/login?sent=1");
+    expect(db.auth.admin.generateLink).toHaveBeenCalledWith({ type: "magiclink", email: "second-admin@example.com" });
+    expect(sendViaResend).toHaveBeenCalledWith(db, expect.objectContaining({ recipient: "second-admin@example.com" }));
   });
 });

@@ -34,33 +34,65 @@ describe("office-auth", () => {
     process.env = { ...originalEnv };
   });
 
-  describe("officeAllowedEmail", () => {
-    it("lowercases and trims OFFICE_ALLOWED_EMAIL", async () => {
-      process.env.OFFICE_ALLOWED_EMAIL = "  Boss@Example.com  ";
+  describe("officeAllowedEmails", () => {
+    beforeEach(() => {
+      delete process.env.OFFICE_ALLOWED_EMAILS;
+      delete process.env.OFFICE_ALLOWED_EMAIL;
       delete process.env.INTERNAL_NOTIFICATION_EMAIL;
-      const { officeAllowedEmail } = await import("./office-auth");
-      expect(officeAllowedEmail()).toBe("boss@example.com");
     });
 
-    it("falls back to INTERNAL_NOTIFICATION_EMAIL when OFFICE_ALLOWED_EMAIL is unset", async () => {
-      delete process.env.OFFICE_ALLOWED_EMAIL;
+    it("splits, lowercases, and trims a comma-separated OFFICE_ALLOWED_EMAILS", async () => {
+      process.env.OFFICE_ALLOWED_EMAILS = "  Boss@Example.com , Second@Example.com ";
+      const { officeAllowedEmails } = await import("./office-auth");
+      expect(officeAllowedEmails()).toEqual(["boss@example.com", "second@example.com"]);
+    });
+
+    it("falls back to OFFICE_ALLOWED_EMAIL when OFFICE_ALLOWED_EMAILS is unset", async () => {
+      process.env.OFFICE_ALLOWED_EMAIL = "Boss@Example.com";
+      const { officeAllowedEmails } = await import("./office-auth");
+      expect(officeAllowedEmails()).toEqual(["boss@example.com"]);
+    });
+
+    it("falls back to INTERNAL_NOTIFICATION_EMAIL when neither OFFICE_ALLOWED_* var is set", async () => {
       process.env.INTERNAL_NOTIFICATION_EMAIL = "Fallback@Example.com";
-      const { officeAllowedEmail } = await import("./office-auth");
-      expect(officeAllowedEmail()).toBe("fallback@example.com");
+      const { officeAllowedEmails } = await import("./office-auth");
+      expect(officeAllowedEmails()).toEqual(["fallback@example.com"]);
     });
 
-    it("prefers OFFICE_ALLOWED_EMAIL over INTERNAL_NOTIFICATION_EMAIL when both are set", async () => {
-      process.env.OFFICE_ALLOWED_EMAIL = "primary@example.com";
-      process.env.INTERNAL_NOTIFICATION_EMAIL = "secondary@example.com";
-      const { officeAllowedEmail } = await import("./office-auth");
-      expect(officeAllowedEmail()).toBe("primary@example.com");
+    it("prefers OFFICE_ALLOWED_EMAILS over the singular fallbacks when set", async () => {
+      process.env.OFFICE_ALLOWED_EMAILS = "primary@example.com";
+      process.env.OFFICE_ALLOWED_EMAIL = "secondary@example.com";
+      process.env.INTERNAL_NOTIFICATION_EMAIL = "tertiary@example.com";
+      const { officeAllowedEmails } = await import("./office-auth");
+      expect(officeAllowedEmails()).toEqual(["primary@example.com"]);
     });
 
-    it("returns an empty string when neither env var is set", async () => {
-      delete process.env.OFFICE_ALLOWED_EMAIL;
-      delete process.env.INTERNAL_NOTIFICATION_EMAIL;
-      const { officeAllowedEmail } = await import("./office-auth");
-      expect(officeAllowedEmail()).toBe("");
+    it("returns an empty array when no env var is set", async () => {
+      const { officeAllowedEmails } = await import("./office-auth");
+      expect(officeAllowedEmails()).toEqual([]);
+    });
+  });
+
+  describe("isOfficeAllowedEmail", () => {
+    beforeEach(() => {
+      process.env.OFFICE_ALLOWED_EMAILS = "boss@example.com,second@example.com";
+    });
+
+    it("matches any address in the allow-list, case-insensitively", async () => {
+      const { isOfficeAllowedEmail } = await import("./office-auth");
+      expect(isOfficeAllowedEmail("Boss@Example.com")).toBe(true);
+      expect(isOfficeAllowedEmail("Second@Example.com")).toBe(true);
+    });
+
+    it("rejects addresses not on the allow-list", async () => {
+      const { isOfficeAllowedEmail } = await import("./office-auth");
+      expect(isOfficeAllowedEmail("attacker@example.com")).toBe(false);
+    });
+
+    it("rejects an empty/missing email", async () => {
+      const { isOfficeAllowedEmail } = await import("./office-auth");
+      expect(isOfficeAllowedEmail("")).toBe(false);
+      expect(isOfficeAllowedEmail(undefined)).toBe(false);
     });
   });
 

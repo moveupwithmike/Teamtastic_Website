@@ -3,15 +3,14 @@
 import { redirect } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { officeAllowedEmail, requireOfficeUser } from "@/lib/server/office-auth";
+import { isOfficeAllowedEmail, requireOfficeUser } from "@/lib/server/office-auth";
 import { sendViaResend } from "@/lib/server/email";
 import { clean } from "./shared";
 
 
 export async function requestMagicLink(formData) {
   const requestedEmail = clean(formData.get("email"), 320).toLowerCase();
-  const allowedEmail = officeAllowedEmail();
-  if (!allowedEmail || requestedEmail !== allowedEmail) redirect("/office/login?sent=1");
+  if (!isOfficeAllowedEmail(requestedEmail)) redirect("/office/login?sent=1");
 
   const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL
     || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://www.teamtastic.events");
@@ -21,12 +20,12 @@ export async function requestMagicLink(formData) {
 
   const admin = getSupabaseAdmin();
   const { data: claimed, error: claimError } = await admin
-    .rpc("try_claim_magic_link_send", { p_email: allowedEmail });
+    .rpc("try_claim_magic_link_send", { p_email: requestedEmail });
   if (claimError || claimed !== true) redirect("/office/login?sent=1");
 
   const { data, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
-    email: allowedEmail,
+    email: requestedEmail,
   });
   const tokenHash = data?.properties?.hashed_token;
   if (linkError || !tokenHash) {
@@ -46,7 +45,7 @@ export async function requestMagicLink(formData) {
   const safeUrl = signInUrl.toString().replaceAll("&", "&amp;");
   const { reserved, sent, providerMessageId, reason } = await sendViaResend(admin, {
     messageType: "internal_notification",
-    recipient: allowedEmail,
+    recipient: requestedEmail,
     from,
     subject: "Your Teamtastic Office sign-in link",
     html: `<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.6"><h2>Sign in to Teamtastic Office</h2><p>Use the secure button below to open your private sales command center.</p><p><a href="${safeUrl}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">Open Teamtastic Office</a></p><p style="color:#64748b;font-size:13px">This one-time link expires shortly. If you did not request it, you can ignore this email.</p></div>`,

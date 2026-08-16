@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { officeAllowedEmail } from "@/lib/server/office-auth";
+import { isOfficeAllowedEmail } from "@/lib/server/office-auth";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 function callbackClient(request, response) {
@@ -43,7 +43,7 @@ export async function GET(request) {
     : await supabase.auth.exchangeCodeForSession(code || "");
   const user = data.user;
   const email = user?.email?.toLowerCase();
-  if (error || !user || !email || email !== officeAllowedEmail()) {
+  if (error || !user || !email || !isOfficeAllowedEmail(email)) {
     await supabase.auth.signOut();
     const errorResponse = NextResponse.redirect(new URL("/office/login?error=not_allowed", url.origin));
     errorResponse.headers.set("Cache-Control", "private, no-store");
