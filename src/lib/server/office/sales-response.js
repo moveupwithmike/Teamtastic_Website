@@ -1,22 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { sendViaResend } from "@/lib/server/email";
 import { HTTP_TIMEOUT_MS } from "@/lib/server/http";
-
-function clean(value, max = 10000) {
-  return String(value || "").trim().slice(0, max);
-}
-
-async function audit(action, user, decision = {}, prospectId = null, outcome = "completed", error = null) {
-  const db = getSupabaseAdmin();
-  await db.from("agent_log").insert({
-    agent_name: "office",
-    action,
-    outcome,
-    prospect_id: prospectId,
-    decision: { ...decision, actor: user.email },
-    error,
-  });
-}
+import { audit, clean } from "./shared";
 
 function recommendedPackage(lead) {
   if (lead.package_interest === "large-event-production" || /150|200|300/.test(lead.team_size || "")) return "Large-Group Holiday Production";

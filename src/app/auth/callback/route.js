@@ -25,8 +25,9 @@ export async function GET(request) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
-  const next = url.searchParams.get("next")?.startsWith("/office")
-    ? url.searchParams.get("next")
+  const requestedNext = url.searchParams.get("next");
+  const next = requestedNext?.startsWith("/office")
+    ? requestedNext
     : "/office";
 
   if (!code && !(tokenHash && type === "email")) {
@@ -39,9 +40,10 @@ export async function GET(request) {
   const supabase = callbackClient(request, response);
   const { data, error } = tokenHash
     ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "email" })
-    : await supabase.auth.exchangeCodeForSession(code);
-  const email = data.user?.email?.toLowerCase();
-  if (error || !email || email !== officeAllowedEmail()) {
+    : await supabase.auth.exchangeCodeForSession(code || "");
+  const user = data.user;
+  const email = user?.email?.toLowerCase();
+  if (error || !user || !email || email !== officeAllowedEmail()) {
     await supabase.auth.signOut();
     const errorResponse = NextResponse.redirect(new URL("/office/login?error=not_allowed", url.origin));
     errorResponse.headers.set("Cache-Control", "private, no-store");
@@ -52,7 +54,7 @@ export async function GET(request) {
     agent_name: "office",
     action: "office_sign_in",
     outcome: "completed",
-    decision: { actor: email, auth_user_id: data.user.id },
+    decision: { actor: email, auth_user_id: user.id },
   });
 
   response.headers.set("Cache-Control", "private, no-store");

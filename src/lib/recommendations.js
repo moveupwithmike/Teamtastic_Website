@@ -1,43 +1,7 @@
-/**
- * Recommendation engine — all game titles and slugs are verified against
- * gamesData.json. Add new recommendations only when the slug exists in the
- * catalog so the `/games/[slug]` link resolves correctly.
- */
+import recommendationData from "../../supabase/functions/_shared/recommendations.json";
 
-export const recommendations = {
-  competitive: {
-    key: "competitive",
-    title: "Lightning Feud + Survey Showdown",
-    games: ["Lightning Feud", "Survey Showdown", "Game Masters", "Last Key Standing"],
-    slugs: ["lightning-feud", "survey-showdown", "game-masters", "last-key-standing"],
-    badge: "Highly Competitive &amp; Fast-Paced",
-    desc: "Perfect for fast-paced teams who love friendly banter, rapid-fire survey battles, and buzz-in buzzer rounds.",
-  },
-  social: {
-    key: "social",
-    title: "Superlatives + The Hot Seat",
-    games: ["Superlatives", "The Hot Seat", "Wrong Answers Only", "Tiny Campfire"],
-    slugs: ["superlatives", "the-hot-seat", "wrong-answers-only", "tiny-campfire"],
-    badge: "Chill &amp; Hilarious",
-    desc: "Great for social hours: laugh together with hot-takes, hilarious superlatives, and cozy campfire vibes.",
-  },
-  collaborative: {
-    key: "collaborative",
-    title: "Mystery Box + Focus Frenzy",
-    games: ["Mystery Box", "Focus Frenzy", "Mystery Mosaic", "Puzzle Dash"],
-    slugs: ["mystery-box", "focus-frenzy", "mystery-mosaic", "puzzle-dash"],
-    badge: "Brainy &amp; Collaborative",
-    desc: "Designed for logical teams that enjoy cooperative code-cracking, collaborative puzzles, and shared victories.",
-  },
-  icebreaker: {
-    key: "icebreaker",
-    title: "Think Fast + Online Office Games",
-    games: ["Think Fast", "Online Office Games", "Fast Facts", "Emoji Madness"],
-    slugs: ["think-fast", "online-office-games", "fast-facts", "emoji-madness"],
-    badge: "Fast-Paced &amp; Connecting",
-    desc: "Spark laughter quickly with rapid-fire team challenges, emoji battles, and structured low-pressure prompts.",
-  },
-};
+/** Canonical recommendation data is shared with Supabase Edge Functions. */
+export const recommendations = recommendationData;
 
 export function getRecommendation(vibe = "competitive") {
   return recommendations[vibe] || recommendations.competitive;

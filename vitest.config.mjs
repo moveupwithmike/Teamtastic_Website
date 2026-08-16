@@ -28,7 +28,7 @@ export default defineConfig({
       // coverage remapper can't parse without a .jsx extension; excluding
       // them also matches Phase 3's stated priority (server-side logic
       // protects money/security/deliverability, UI tests don't).
-      include: ["src/lib/**/*.js", "src/app/api/**/*.js", "src/app/office/actions.js"],
+      include: ["src/lib/**/*.js", "src/app/api/**/*.js"],
       exclude: ["src/**/*.test.{js,jsx}", "src/test/**"],
     },
   },

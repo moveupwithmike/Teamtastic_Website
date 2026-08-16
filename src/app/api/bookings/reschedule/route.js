@@ -143,11 +143,18 @@ export async function POST(request) {
   }
 
   const newBookingId = holdResult.booking_id;
-  const { data: newBooking } = await supabase
+  const { data: newBooking, error: newBookingError } = await supabase
     .from("bookings")
     .select("id,starts_at,ends_at")
     .eq("id", newBookingId)
     .single();
+  if (newBookingError || !newBooking) {
+    await supabase.rpc("fail_booking_hold", {
+      p_booking_id: newBookingId,
+      p_error: newBookingError?.message || "held_booking_not_found",
+    });
+    return fail(503, "booking_service_unavailable");
+  }
 
   const { data: settings } = await supabase.from("booking_settings").select("owner_timezone,google_calendar_id").eq("id", true).single();
   const ownerTimezone = settings?.owner_timezone;

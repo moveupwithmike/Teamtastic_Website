@@ -25,6 +25,8 @@
 
 begin;
 
+select plan(1);
+
 do $$
 declare
   v_admin_user_id uuid := gen_random_uuid();
@@ -193,6 +195,7 @@ begin
   end if;
 end $$;
 
-rollback;
+select pass('game RPC authorization hardening remains enforced');
+select * from finish();
 
-select 'game_rpc_hardening_test_passed' as result;
+rollback;

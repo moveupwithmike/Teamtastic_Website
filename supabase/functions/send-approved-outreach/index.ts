@@ -1,27 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
+import { sendViaResend } from "../_shared/email.ts";
+import { emailDomain, withinSendingWindow } from "../_shared/outreach.ts";
 
 const DOMAIN_COOLDOWN_DAYS = 14;
 const BATCH_SIZE = 10;
-
-function easternNow() {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York", weekday: "short", hour: "2-digit", hour12: false,
-    }).formatToParts(new Date()).filter((p) => p.type !== "literal").map((p) => [p.type, p.value])
-  );
-  // hour12:false can format midnight as "24" in some runtimes — normalize back to 0.
-  return { weekday: parts.weekday, hour: Number(parts.hour) % 24 };
-}
-
-function withinSendingWindow() {
-  const { weekday, hour } = easternNow();
-  return !["Sat", "Sun"].includes(weekday) && hour >= 9 && hour < 17;
-}
-
-function emailDomain(email: string) {
-  return String(email || "").split("@")[1]?.toLowerCase() || null;
-}
 
 Deno.serve(async (request) => {
   const unauthorized = await authorizeWebhook(request, "SEND_APPROVED_OUTREACH_WEBHOOK_SECRET");
@@ -91,35 +74,25 @@ Deno.serve(async (request) => {
       }
     }
 
-    const { data: reservation, error: reservationError } = await supabase.rpc("reserve_email_send", {
-      p_message_type: "prospecting",
-      p_recipient: prospect.email,
+    const result = await sendViaResend(supabase, {
+      messageType: "prospecting",
+      recipient: prospect.email as string,
+      idempotencyKey: `approved-outreach/${draft.id}`,
+      from: config.prospecting_from_email,
+      to: prospect.email as string,
+      reply_to: Deno.env.get("INTERNAL_NOTIFICATION_EMAIL"),
+      subject: draft.subject,
+      text: draft.body_text,
     });
-    if (reservationError || reservation?.allowed !== true) {
+    if (!result.reserved) {
       await supabase.from("agent_log").insert({
         agent_name: "send-approved-outreach", action: "send_outreach", outcome: "blocked",
-        prospect_id: prospect.id, decision: { draft_id: draft.id, reservation, error: reservationError?.message || null },
+        prospect_id: prospect.id, decision: { draft_id: draft.id, reason: result.reason },
       });
       break; // cap reached / disabled — no point trying the rest of the batch
     }
 
-    const mail = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: config.prospecting_from_email,
-        to: [prospect.email],
-        reply_to: Deno.env.get("INTERNAL_NOTIFICATION_EMAIL"),
-        subject: draft.subject,
-        text: draft.body_text,
-      }),
-    });
-    const result = await mail.json().catch(() => ({}));
-    const success = mail.ok && !!result.id;
-    await supabase.rpc("record_email_send_result", { p_message_type: "prospecting", p_sent: success });
+    const success = result.sent;
 
     const sentAt = new Date().toISOString();
 
@@ -184,7 +157,7 @@ Deno.serve(async (request) => {
       direction: "outbound",
       message_type: "prospecting",
       provider: "resend",
-      provider_message_id: result.id || null,
+      provider_message_id: result.providerMessageId,
       from_address: config.prospecting_from_email,
       to_addresses: [prospect.email],
       subject: draft.subject,
@@ -195,8 +168,8 @@ Deno.serve(async (request) => {
 
     await supabase.from("outreach_drafts").update(
       success
-        ? { status: "sent", sent_at: sentAt, provider_message_id: result.id, send_error: null, sequence_enrollment_id: enrollmentId }
-        : { status: "failed", send_error: JSON.stringify(result).slice(0, 1000) },
+        ? { status: "sent", sent_at: sentAt, provider_message_id: result.providerMessageId, send_error: null, sequence_enrollment_id: enrollmentId }
+        : { status: "failed", send_error: result.reason },
     ).eq("id", draft.id);
 
     if (success) {
