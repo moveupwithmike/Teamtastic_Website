@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authorizeWebhook, serviceClient } from "../_shared/runtime.ts";
 import { sendViaResend } from "../_shared/email.ts";
+import { provenanceBlocksDelivery } from "../_shared/lead-notifications.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -154,7 +155,7 @@ Deno.serve(async (request) => {
         .eq("record_type", recordType)
         .eq("record_id", recordId)
         .maybeSingle();
-      if (status?.classification && status.classification !== "production") {
+      if (provenanceBlocksDelivery(status?.classification)) {
         classificationBlocked = true;
         break;
       }

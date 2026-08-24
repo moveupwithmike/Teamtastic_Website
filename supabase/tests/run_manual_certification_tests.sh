@@ -11,7 +11,6 @@ set -euo pipefail
 
 DUMP="${1:-/var/folders/kf/_9q4m3bs27g2t2h1pc2lnk8m0000gn/T/opencode/prod_schema.sql}"
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-MIGRATION="$TESTS_DIR/../migrations/20260824140000_manual_certification_operator_controls.sql"
 CONTAINER="tt-cert-verify"
 
 psql_exec() { docker exec -i "$CONTAINER" psql -U postgres -d postgres "$@"; }
@@ -73,10 +72,19 @@ echo "    all critical objects present"
 echo "==> applying local extension stubs"
 psql_exec -q -v ON_ERROR_STOP=1 < "$TESTS_DIR/local_stubs.sql" >/dev/null
 
-echo "==> applying migration 20260824140000_manual_certification_operator_controls"
-psql_exec -q -v ON_ERROR_STOP=1 < "$MIGRATION" >/dev/null
-echo "==> re-applying migration (idempotency check)"
-psql_exec -q -v ON_ERROR_STOP=1 < "$MIGRATION" >/dev/null
+MIGRATIONS=(
+  "$TESTS_DIR/../migrations/20260823192406_enforce_complete_launch_readiness.sql"
+  "$TESTS_DIR/../migrations/20260824140000_manual_certification_operator_controls.sql"
+  "$TESTS_DIR/../migrations/20260824150000_classification_aware_launch_readiness.sql"
+)
+echo "==> applying forward migrations (${#MIGRATIONS[@]})"
+for m in "${MIGRATIONS[@]}"; do
+  psql_exec -q -v ON_ERROR_STOP=1 < "$m" >/dev/null
+done
+echo "==> re-applying migrations (idempotency check)"
+for m in "${MIGRATIONS[@]}"; do
+  psql_exec -q -v ON_ERROR_STOP=1 < "$m" >/dev/null
+done
 echo "    idempotent"
 
 echo "==> running regression suite: manual_certification_operator_controls"
@@ -84,6 +92,12 @@ if ! SUITE_OUT="$(psql_exec -v ON_ERROR_STOP=1 < "$TESTS_DIR/manual_certificatio
   echo "$SUITE_OUT"; exit 1
 fi
 echo "$SUITE_OUT" | tail -3
+
+echo "==> running regression suite: classification_aware_launch_readiness"
+if ! READINESS_OUT="$(psql_exec -v ON_ERROR_STOP=1 < "$TESTS_DIR/classification_aware_launch_readiness.sql" 2>&1)"; then
+  echo "$READINESS_OUT"; exit 1
+fi
+echo "$READINESS_OUT" | tail -3
 
 echo "==> building race fixture certification"
 psql_exec -q -v ON_ERROR_STOP=1 < "$TESTS_DIR/manual_certification_race_fixture.sql" >/dev/null
