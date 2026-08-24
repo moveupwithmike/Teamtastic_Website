@@ -140,7 +140,31 @@ Deno.serve(async (request) => {
 
   // Certification leads exercise the real CRM sync and database triggers, but
   // must never consume quota or contact either the synthetic buyer or staff.
-  if ((lead.context as Record<string, unknown> | null)?.synthetic_test === true) {
+  // Authoritative provenance (the classification ledger) is consulted in
+  // addition to the native context marker so late-classified or mixed-
+  // lineage leads fail closed even if their context was never flagged.
+  let classificationBlocked = false;
+  {
+    const recordTypes: Array<[string, string]> = [["lead", String(lead.id)]];
+    if (lead.prospect_id) recordTypes.push(["prospect", String(lead.prospect_id)]);
+    for (const [recordType, recordId] of recordTypes) {
+      const { data: status } = await supabase
+        .from("production_record_classification_status")
+        .select("classification")
+        .eq("record_type", recordType)
+        .eq("record_id", recordId)
+        .maybeSingle();
+      if (status?.classification && status.classification !== "production") {
+        classificationBlocked = true;
+        break;
+      }
+    }
+  }
+
+  if (
+    (lead.context as Record<string, unknown> | null)?.synthetic_test === true ||
+    classificationBlocked
+  ) {
     for (const notificationType of ["customer_confirmation", "internal_email"]) {
       await supabase.from("notification_deliveries").upsert({
         lead_id: lead.id,

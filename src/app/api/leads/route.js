@@ -67,6 +67,21 @@ export async function POST(request) {
   }
 
   const recommendation = getRecommendation(clean(body.vibe, 80));
+  // Provenance is server-authoritative. Callers may attach their own analytics
+  // context, but certification/synthetic markers are stripped so public form
+  // submissions always inherit production provenance at creation time.
+  const callerContext =
+    typeof body.context === "object" && body.context ? body.context : {};
+  const protectedContextKeys = new Set([
+    "synthetic_test",
+    "certification_id",
+    "certification_run_id",
+    "execution_key",
+    "recipient_classification",
+    "external_send",
+    "external_notifications",
+    "cleanup_disposition",
+  ]);
   const row = {
     submission_id: submissionId,
     name,
@@ -87,7 +102,9 @@ export async function POST(request) {
     utm_campaign: clean(body.utm?.campaign, 200) || null,
     utm_content: clean(body.utm?.content, 200) || null,
     utm_term: clean(body.utm?.term, 200) || null,
-    context: typeof body.context === "object" && body.context ? body.context : {},
+    context: Object.fromEntries(
+      Object.entries(callerContext).filter(([key]) => !protectedContextKeys.has(key))
+    ),
     preferred_event_date: optionalIsoDate(body.preferredEventDate),
     alternate_event_date: optionalIsoDate(body.alternateEventDate),
     event_timezone: clean(body.timeZone, 80) || null,
