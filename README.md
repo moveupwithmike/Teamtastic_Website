@@ -1,4 +1,15 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Teamtastic Website Storefront & CRM
+
+This repository contains the Next.js marketing storefront and the Supabase Edge Function-backed sales engine/CRM for emcee-hosted virtual team-building events.
+
+## 📖 Project Documentation
+
+Project documentation is structured and organized in the `/docs` directory. Refer to the **[Central Documentation Index (docs/README.md)](docs/README.md)** for:
+- **System Architecture & Design**: Storefront details, schema mapping, and native booking engine integrations.
+- **Sales Engine & Automation**: Outbound Apollo pipelines, scoring rules, Resend lifecycle emails, and the CRM CRM layout.
+- **Project Governance**: Development best practices, document update rules, and guidelines for AI coding agents.
+
+---
 
 ## Getting Started
 

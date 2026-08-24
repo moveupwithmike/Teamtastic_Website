@@ -2,12 +2,12 @@
 
 ## Initialization
 
-- **Client:** [src/instrumentation-client.js](../../src/instrumentation-client.js) (Next 15.3+ pattern; runs before hydration). Consent-gated: skipped entirely if `localStorage.teamtastic_analytics_consent === "denied"`. Config: `api_host: "/ingest"` (reverse proxy below), `persistence` is cookie-backed only when consent is explicitly `granted`, otherwise **memory** (no identifiers persisted); `person_profiles: "identified_only"`, `respect_dnt`, `capture_exceptions`, `defaults: "2026-01-30"`.
-- **Reverse proxy:** [next.config.mjs](../../next.config.mjs) rewrites `/ingest/*` → `us.i.posthog.com` (+ static assets), defeating ad-blocker domain lists. `skipTrailingSlashRedirect` is set as PostHog requires.
-- **Server:** [src/lib/server/posthog.js](../../src/lib/server/posthog.js) — `posthog-node` singleton, `flushAt: 1` (immediate flush per event; correct for serverless), no-op when the key is unset.
-- [PostHogProvider.js](../../src/components/PostHogProvider.js) is a **documented no-op** kept for backwards compatibility and still rendered in `layout.js` — dead code, safe to delete both sides.
+- **Client:** [src/instrumentation-client.js](../../../src/instrumentation-client.js) (Next 15.3+ pattern; runs before hydration). Consent-gated: skipped entirely if `localStorage.teamtastic_analytics_consent === "denied"`. Config: `api_host: "/ingest"` (reverse proxy below), `persistence` is cookie-backed only when consent is explicitly `granted`, otherwise **memory** (no identifiers persisted); `person_profiles: "identified_only"`, `respect_dnt`, `capture_exceptions`, `defaults: "2026-01-30"`.
+- **Reverse proxy:** [next.config.mjs](../../../next.config.mjs) rewrites `/ingest/*` → `us.i.posthog.com` (+ static assets), defeating ad-blocker domain lists. `skipTrailingSlashRedirect` is set as PostHog requires.
+- **Server:** [src/lib/server/posthog.js](../../../src/lib/server/posthog.js) — `posthog-node` singleton, `flushAt: 1` (immediate flush per event; correct for serverless), no-op when the key is unset.
+- [PostHogProvider.js](../../../src/components/PostHogProvider.js) is a **documented no-op** kept for backwards compatibility and still rendered in `layout.js` — dead code, safe to delete both sides.
 
-## The `track()` wrapper — [src/lib/analytics.js](../../src/lib/analytics.js)
+## The `track()` wrapper — [src/lib/analytics.js](../../../src/lib/analytics.js)
 
 All client events go through `track(event, properties)`, which (a) drops everything if consent is denied, and (b) strips a PII deny-list (`name`, `email`, `phone`, `message`, `turnstileToken`) from properties. Server events go through `captureServerEvent(event, distinctId, props)` with `submissionId` as the distinct ID.
 
@@ -28,7 +28,7 @@ All client events go through `track(event, properties)`, which (a) drops everyth
 | `pricing_cta_clicked` | Pricing tier cards | tier_name, tier_cta |
 | `deposit_completed` | Stripe webhook (server) | matched, amount, currency, source |
 
-Wizard-built dashboard + funnel insights are linked in [posthog-setup-report.md](../../posthog-setup-report.md) (project 496937).
+Wizard-built dashboard + funnel insights are linked in [posthog-setup-report.md](../../tracking/posthog-setup-report.md) (project 496937).
 
 ## Gaps
 

@@ -1,6 +1,6 @@
 # 06 — Payments & Booking
 
-## Configuration — [src/lib/stripe.js](../../src/lib/stripe.js)
+## Configuration — [src/lib/stripe.js](../../../src/lib/stripe.js)
 
 `PAYMENT_CONFIG` holds three externally-hosted checkout surfaces (no in-app checkout exists):
 
@@ -32,8 +32,8 @@ Pricing is stated in four places with **three disagreeing anchors**:
 
 | Surface | Claim |
 |---|---|
-| [Pricing.js](../../src/components/Pricing.js) estimator | $35/pp core, $58/pp premium, **$350 minimum**, add-ons ($25–40/pp kits, +$250 awards, +$300 premium host, +$200 theme, +$150 extra time) |
-| [CtaBannerWithModal.js](../../src/components/CtaBannerWithModal.js) | "start at **$35 per person**" |
+| [Pricing.js](../../../src/components/Pricing.js) estimator | $35/pp core, $58/pp premium, **$350 minimum**, add-ons ($25–40/pp kits, +$250 awards, +$300 premium host, +$200 theme, +$150 extra time) |
+| [CtaBannerWithModal.js](../../../src/components/CtaBannerWithModal.js) | "start at **$35 per person**" |
 | GameQuiz result CTA | "$200 Deposit" + free-game launch |
 | Pricing add-ons | Custom content is quoted separately based on scope |
 

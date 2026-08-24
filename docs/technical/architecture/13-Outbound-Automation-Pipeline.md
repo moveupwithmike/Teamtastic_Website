@@ -1,5 +1,12 @@
 # 13 — Outbound Automation Pipeline
 
+> **August 23, 2026 launch-hardening note:** Production scheduling is active,
+> while sending remains gated by `system_config` and the controlled activation
+> workflow. Launch readiness now blocks on unresolved high/critical incidents,
+> overdue urgent/high tasks, and incomplete final production certification.
+> Recovered automation incidents and their generated tasks are closed after a
+> later successful run of the same operation.
+
 An autonomous cold-outreach engine: find prospects (Apollo.io) → enrich → collect public signals (GDELT news) → score → draft (deterministic templates, no LLM) → human approval in `/office` → send → ingest Gmail replies → classify → sequence follow-ups. Implemented entirely as 8 self-contained Deno Edge Functions (no shared helper modules — each `index.ts` duplicates its own auth/client/error-handling boilerplate) plus Postgres triggers and `pg_cron`. **None use Supabase JWT verification** (`verify_jwt = false` for all); each checks a static `x-webhook-secret` header against its own env var instead — that header is the entire auth layer for these 8 public HTTP endpoints.
 
 ## Pipeline stages

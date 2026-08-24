@@ -2,7 +2,7 @@
 
 ## Data source
 
-[src/lib/gamesData.json](../../src/lib/gamesData.json) — a 51-entry array, the single source of truth for the catalog page, the 51 SSG detail pages, and `generateStaticParams`. Schema per game:
+[src/lib/gamesData.json](../../../src/lib/gamesData.json) — a 51-entry array, the single source of truth for the catalog page, the 51 SSG detail pages, and `generateStaticParams`. Schema per game:
 
 ```
 id / slug / title / tagline / description
@@ -52,13 +52,13 @@ There is no shared schema, type definition, or test asserting the engine underst
 
 ## Surfaces
 
-### Catalog page — [games/page.js](../../src/app/games/page.js)
+### Catalog page — [games/page.js](../../../src/app/games/page.js)
 Client component: category tab filter + text search (title/tagline/vibe) + random-game spotlight. Straightforward and works. Issues:
 - Hard-coded stat chip "51 Custom Modules" will silently lie when the JSON changes; derive from `gamesData.length` (which is already used two lines above for tab counts).
 - Search is O(n) per keystroke over 51 items — fine at this scale; no action needed.
 - Header metadata via `useEffect` — SEO issue covered in doc 01.
 
-### Detail page — [games/[slug]/page.js](../../src/app/games/[slug]/page.js)
+### Detail page — [games/[slug]/page.js](../../../src/app/games/[slug]/page.js)
 Server component, SSG. Renders badge, title, tagline, description, 4 metric tiles, two CTAs, and the 3 `howToPlay` steps. Right column is an explicitly "Simulated Lobby Stage" placeholder (bouncing icon), not a screenshot.
 
 ## Gaps & per-flow issues
@@ -66,6 +66,6 @@ Server component, SSG. Renders badge, title, tagline, description, 4 metric tile
 1. **Half the schema is dead weight.** `includes`, `testimonials`, `faqs`, `isOriginal` are populated for all 51 games but rendered nowhere. Either render them on the detail page (testimonials + FAQs are high-conversion content and FAQs could emit `FAQPage` structured data) or strip them from the JSON. This looks like an unfinished detail-page build-out.
 2. **45 imported games have placeholder-quality data.** Identical player counts/durations and `howToPlay` descs that duplicate their titles make 45 of the 51 detail pages read as thin/near-duplicate content — an SEO liability layered on top of the missing per-page metadata (doc 01). The catalog page masks this; the detail pages expose it.
 3. **Untracked conversion path.** The detail page's primary CTA ("Launch Free Game Lobby") has **no analytics event**, while the equivalent quiz CTA fires `free_game_clicked`. Per-game conversion — arguably the most interesting product signal in the catalog ("which game pages actually drive lobby launches?") — is invisible. Note this is a server component; the CTA needs a small client wrapper to `track()`.
-4. **Recommendation titles don't match the catalog.** The quiz recommendation engine ([recommendations.js](../../src/lib/recommendations.js)) recommends "What the Meme" (catalog: "What The Meme"), "Sound Bite Trivia", "Tell a Fun Fact", "Boss Raid Escape", "Canvas Co-op", "Quick Buzz", "Standup Trivia" — **6 of the 8 recommended game names don't exist in the 51-game catalog** (and none link to a `/games/[slug]` page). The concierge modal's separate recommendation list ("Signature Trivia Jam", "Game Show Challenge", "Music Bingo Mania"…) is likewise mostly uncatalogued. Customers get recommended games they can't look up on the site.
+4. **Recommendation titles don't match the catalog.** The quiz recommendation engine ([recommendations.js](../../../src/lib/recommendations.js)) recommends "What the Meme" (catalog: "What The Meme"), "Sound Bite Trivia", "Tell a Fun Fact", "Boss Raid Escape", "Canvas Co-op", "Quick Buzz", "Standup Trivia" — **6 of the 8 recommended game names don't exist in the 51-game catalog** (and none link to a `/games/[slug]` page). The concierge modal's separate recommendation list ("Signature Trivia Jam", "Game Show Challenge", "Music Bingo Mania"…) is likewise mostly uncatalogued. Customers get recommended games they can't look up on the site.
 5. **Two independent recommendation engines.** `src/lib/recommendations.js` (enum-keyed, shared with the server) vs `TalkToMichaelModal.getRecommendations()` (free-string matching, ~100 lines inline in the component, with a separate family variant). Same concept, two divergent implementations and two divergent catalogs of made-up titles. Consolidate to one module keyed to real `gamesData` entries.
 6. **Category fallback hides data errors.** Catalog card styling falls back to `categoryStyles["chill"]` for unknown categories — a typo'd category in the JSON would render silently instead of failing at build. Minor, but a build-time validation of the JSON (categories, unique slugs, sitemap sync) would catch #4's class of drift too.

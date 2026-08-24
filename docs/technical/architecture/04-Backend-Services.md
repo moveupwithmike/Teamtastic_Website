@@ -1,6 +1,6 @@
 # 04 — Backend Services (Supabase, Notifications, Stripe Webhook)
 
-## Supabase schema — [202607030001_reliable_lead_capture.sql](../../supabase/migrations/202607030001_reliable_lead_capture.sql)
+## Supabase schema — [202607030001_reliable_lead_capture.sql](../../../supabase/migrations/202607030001_reliable_lead_capture.sql)
 
 Shared project `cutcpkegxwhnafrvfbcd` ("Teamtastic Antigravity"), also used by teamtastic.games.
 
@@ -23,11 +23,11 @@ Hardening in the same migration: RLS enabled on the two new tables; `REVOKE inse
 
 **Notification trigger:** `leads_notify_after_insert` → `notify_new_lead()` (SECURITY DEFINER) reads `lead_notification_function_url` + `lead_notification_webhook_secret` from **Supabase Vault** and fires `pg_net.http_post({lead_id})` at the Edge Function. The migration also drops a legacy `on_lead_created` trigger to prevent duplicate customer emails.
 
-## Edge Function — [notify-new-lead](../../supabase/functions/notify-new-lead/index.ts)
+## Edge Function — [notify-new-lead](../../../supabase/functions/notify-new-lead/index.ts)
 
 Deno function, deployed with JWT verification off; authenticates via `x-webhook-secret` header. For a lead ID it sends up to two Resend emails — `customer_confirmation` (to the lead) and `internal_email` (lead summary to `INTERNAL_NOTIFICATION_EMAIL`) — with per-type idempotency: it skips types already `sent` in `notification_deliveries` and upserts status/attempts/error per attempt. HTML-escapes all lead-provided values.
 
-**Operational reference:** deployment order, Vault secret names, env vars, verification checklist, and monitoring SQL live in [LEAD_FUNNEL_OPERATIONS.md](../../LEAD_FUNNEL_OPERATIONS.md).
+**Operational reference:** deployment order, Vault secret names, env vars, verification checklist, and monitoring SQL live in [LEAD_FUNNEL_OPERATIONS.md](../../planning/LEAD_FUNNEL_OPERATIONS.md).
 
 ### Gaps
 
@@ -38,7 +38,7 @@ Deno function, deployed with JWT verification off; authenticates via `x-webhook-
 3. **Customer confirmation is generic** ("Michael's team will follow up") for *all four* sources — including the playable demo, which explicitly promised starter-lobby login credentials (doc 03, flow 2). The function receives `lead.lead_source` and could branch per source; it currently doesn't.
 4. **`vault.decrypted_secrets` + `pg_net` coupling**: if Vault secrets are absent the trigger silently no-ops (by design, so inserts never fail). Same silent-loss caveat as #1 — the inverse query is the only detector.
 
-## Stripe webhook — [/api/stripe/webhook](../../src/app/api/stripe/webhook/route.js)
+## Stripe webhook — [/api/stripe/webhook](../../../src/app/api/stripe/webhook/route.js)
 
 `checkout.session.completed` only. Pipeline: 503 if secrets unset → signature verification (`constructEvent`) → dedupe by `stripe_event_id` (replays return "Already processed", but **retry alert delivery** if the prior alert failed — nice touch) → lead matching: `session.metadata.submission_id` / `client_reference_id` first, else latest lead by `email_normalized` → insert `stripe_events` → in parallel: internal Resend alert + PostHog `deposit_completed`.
 

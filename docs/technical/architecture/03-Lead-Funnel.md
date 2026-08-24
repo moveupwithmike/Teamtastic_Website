@@ -4,12 +4,12 @@ Four interactive experiences feed one intake endpoint. Each sends a distinct `so
 
 | Source | Component | Where it appears |
 |---|---|---|
-| `event_quiz` | [GameQuiz.js](../../src/components/GameQuiz.js) | Home `#quiz` (linked from Pricing, Hero, banners) |
-| `playable_demo` | [SoloDemo.js](../../src/components/SoloDemo.js) | Home |
-| `michael_event_concierge` | [TalkToMichaelModal.js](../../src/components/TalkToMichaelModal.js) | CTA banners on team-experiences (+ FAQ chat button) |
+| `event_quiz` | [GameQuiz.js](../../../src/components/GameQuiz.js) | Home `#quiz` (linked from Pricing, Hero, banners) |
+| `playable_demo` | [SoloDemo.js](../../../src/components/SoloDemo.js) | Home |
+| `michael_event_concierge` | [TalkToMichaelModal.js](../../../src/components/TalkToMichaelModal.js) | CTA banners on team-experiences (+ FAQ chat button) |
 | `michael_family_concierge` | same modal, `isFamily` | virtual-family-game-night |
 
-Shared client plumbing: [lead-client.js](../../src/lib/lead-client.js) (`createSubmissionId()` UUID for idempotency; `getAttribution()` grabs landing page, referrer, UTM params; `captureLead()` POSTs and normalizes errors with `code`/`retryable`) and [TurnstileWidget.js](../../src/components/TurnstileWidget.js) (lazy-loads Cloudflare script, dark theme, expiry/error states, dev-mode `development-bypass` token when no site key).
+Shared client plumbing: [lead-client.js](../../../src/lib/lead-client.js) (`createSubmissionId()` UUID for idempotency; `getAttribution()` grabs landing page, referrer, UTM params; `captureLead()` POSTs and normalizes errors with `code`/`retryable`) and [TurnstileWidget.js](../../../src/components/TurnstileWidget.js) (lazy-loads Cloudflare script, dark theme, expiry/error states, dev-mode `development-bypass` token when no site key).
 
 ## Flow 1 — Event Quiz (`event_quiz`)
 
@@ -27,7 +27,7 @@ Selections auto-advance after 300 ms; Back/Next nav with progress dots; on submi
 - **`quiz_started` over-fires.** It's emitted inside `handleSelect` whenever `step === 0` (GameQuiz.js:61), so going Back to step 0 and re-selecting, or retaking the quiz, fires it again — inflating the funnel's entry count. Guard with a `hasStarted` ref. Same design in SoloDemo is correct (fires in `startQuiz`).
 - **Step-gating hack.** Next-button disable uses `!formData[Object.keys(formData)[step]]` (GameQuiz.js:289) — it depends on the *insertion order of object keys* matching step order. Works today; breaks silently if anyone reorders/adds a field to `formData`. Map step → field explicitly.
 - The unavailable $99/mo subscription CTA has been removed. The result screen now presents only the hosted-event deposit and free-game paths.
-- **Recommendation duplication drift already happened.** The quiz previously computed recommendations client-side; the API now computes them server-side from `vibe` via [recommendations.js](../../src/lib/recommendations.js). Good. But the fallback (`getRecommendation()` defaults to `competitive`) means a lead with a missing/typo'd vibe silently gets a competitive package rather than an error — acceptable, but worth knowing.
+- **Recommendation duplication drift already happened.** The quiz previously computed recommendations client-side; the API now computes them server-side from `vibe` via [recommendations.js](../../../src/lib/recommendations.js). Good. But the fallback (`getRecommendation()` defaults to `competitive`) means a lead with a missing/typo'd vibe silently gets a competitive package rather than an error — acceptable, but worth knowing.
 
 ## Flow 2 — Playable Demo (`playable_demo`)
 
@@ -56,7 +56,7 @@ Step 1 eventType → 2 groupSize → 3 vibe → 4 preferences
 - **Stale state on close.** `X`/backdrop call `onClose` without reset; only the step-6 "Done" button resets. Reopening mid-flow resumes — arguably a feature — but reopening *after* step 6 shows the old success screen with the previous lead's data. `handleReset` should also run when closing from step 6.
 - Submitted `context.recommendations` stores the recommendation titles — fine, but they're the fictional titles from the previous point.
 
-## The intake endpoint — [/api/leads](../../src/app/api/leads/route.js)
+## The intake endpoint — [/api/leads](../../../src/app/api/leads/route.js)
 
 Pipeline: size caps (25 KB body) → shape/format validation (UUID `submissionId`, allow-listed `source`, email regex ≤254) → rate limit (>5 submissions per `sha256(ip:email)` per 10 min) → Turnstile siteverify (5 s timeout; fail-closed in prod, `development-bypass` token accepted outside prod) → duplicate check on `submission_id` (returns `duplicate: true` success) → insert → fire-and-forget PostHog `lead_captured`.
 
