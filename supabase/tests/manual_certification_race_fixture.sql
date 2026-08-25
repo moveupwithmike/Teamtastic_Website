@@ -80,19 +80,16 @@ insert into public.messages(prospect_id, direction, channel, from_address, to_ad
 select pr.id, 'inbound', 'email', 'ryan.race@example.test', array['hello@teamtastic.events']::text[], 'Re: your event quote', 'Thanks - this looks great for our team.', 'received', now() - interval '26 hours'
 from prospect_race pr;
 
--- Eleven manual gates.
+-- Nine manual gates (journey gates are post-launch milestones in v6.2).
 do $$
 declare m text;
 begin
-  foreach m in array array['office_access_verified','security_advisors_reviewed','safari_public_lead_form','turnstile_success_behavior','turnstile_rejection_behavior','email_mailbox_receipt','real_inbox_placement','calendar_zoom_workflow','real_lead_client_journey','client_portal_access','operational_owner_attestation']
+  foreach m in array array['office_access_verified','security_advisors_reviewed','safari_public_lead_form','turnstile_success_behavior','turnstile_rejection_behavior','email_mailbox_receipt','real_inbox_placement','calendar_zoom_workflow','operational_owner_attestation']
   loop
     perform public.record_final_certification_evidence(
       (select id from cert_race), m, 'passed', 'office://manual/race-'||m, 'Operator Person',
       'Named operator verified this gate directly in production for the race.',
-      'manual', 'production', case when m in ('client_portal_access','real_lead_client_journey','calendar_zoom_workflow')
-        then jsonb_build_object('client_id', (select id from client_race),
-                                'invitation_id', (select id from invitation_race))
-        else '{}'::jsonb end);
+      'manual', 'production', '{}'::jsonb);
   end loop;
 end $$;
 

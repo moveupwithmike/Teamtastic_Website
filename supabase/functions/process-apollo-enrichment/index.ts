@@ -115,11 +115,25 @@ Deno.serve(async (request) => {
 
       let prospect: any = null;
       ({ data: prospect } = await supabase.from("prospects").select("id").eq("email_normalized", email).maybeSingle());
-      if (!prospect) ({ data: prospect } = await supabase.from("prospects").insert({
-        company_id: company.id, first_name: clean(person.first_name || candidate.first_name, 100), last_name: clean(person.last_name || candidate.last_name, 100),
-        full_name: clean(person.name || candidate.full_name, 200), email, job_title: clean(person.title || candidate.job_title, 200), linkedin_url: clean(person.linkedin_url || candidate.linkedin_url, 500),
-        source: "apollo", status: "researching", metadata: { apollo_person_id: candidate.apollo_person_id, email_status: person.email_status },
-      }).select("id").single());
+      if (!prospect) {
+        ({ data: prospect } = await supabase.from("prospects").insert({
+          company_id: company.id, first_name: clean(person.first_name || candidate.first_name, 100), last_name: clean(person.last_name || candidate.last_name, 100),
+          full_name: clean(person.name || candidate.full_name, 200), email, job_title: clean(person.title || candidate.job_title, 200), linkedin_url: clean(person.linkedin_url || candidate.linkedin_url, 500),
+          source: "apollo", status: "researching", metadata: { apollo_person_id: candidate.apollo_person_id, email_status: person.email_status },
+        }).select("id").single());
+        // Lifecycle policy v6.2: an Apollo-discovered contact defaults to the
+        // research_seed classification. Discovery and enrichment alone never
+        // constitute a lead; only trusted human promotion moves it into the
+        // production lifecycle.
+        if (prospect?.id) {
+          await supabase.from("production_record_classifications").insert({
+            record_type: "prospect", record_id: prospect.id, classification: "research_seed",
+            reason: "Apollo discovery defaults to research_seed under lifecycle policy v6.2 until a human verifies genuine interest.",
+            actor: "automation:process-apollo-enrichment",
+            evidence: { apollo_person_id: candidate.apollo_person_id, discovery_only: true },
+          });
+        }
+      }
 
       await supabase.from("enrichment_requests").update({ prospect_id: prospect.id, company_id: company.id, status: "completed", response_summary: { matched: true, verified_work_email: true, email_status: person.email_status } }).eq("id", item.id);
       await supabase.from("apollo_candidates").update({ status: "enriched", company_domain: domain, company_employee_count: Number(organization.estimated_num_employees || 0) || null, provider_summary: { verified_work_email: true, email_status: person.email_status } }).eq("id", candidate.id);

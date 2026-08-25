@@ -7,6 +7,13 @@
 tasks, deals, incidents, certification evidence, outreach drafts, migrations,
 scheduled-job health, and current Supabase advisors.
 
+> **August 25 correction:** A complete record-level review confirmed that the
+> database contains zero verified real leads or qualified opportunities. The
+> four `qualified` rows are Apollo research seeds with no engagement or
+> commercial evidence. RASHIDA Glass was confirmed fake and permanently deleted
+> on August 24. The current path forward is the clean-launch checklist in
+> [20-Remaining-Work-Implementation-Plan.md](20-Remaining-Work-Implementation-Plan.md).
+
 ## Executive Update
 
 Copilot closed a large portion of the V6 operational backlog without sending
@@ -158,7 +165,8 @@ root causes are the two deal actions, the lead review, and certification.
 3. Decide whether to continue pursuing Reddit commercial API permission.
 4. Perform the manual certification checks that require real browsers,
    mailboxes, calendar/Zoom, and a real customer journey.
-5. Review and approve or retire the four existing outreach drafts.
+5. Retire the four existing outreach drafts; they belong to the Apollo
+   research-seed set and are not approved production opportunities.
 6. Provide the named operational-owner attestation and final launch sign-off.
 
 No AI agent should invent these outcomes or approve its own outbound copy on

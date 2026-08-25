@@ -33,12 +33,39 @@ Deno.serve(async (request) => {
   if (draftsError) return functionError("approved_draft_query_failed");
   if (!drafts?.length) return Response.json({ sent: 0, reason: "no_approved_drafts" });
 
-  const domainCooldownSince = new Date(Date.now() - DOMAIN_COOLDOWN_DAYS * 86400_000).toISOString();
+  // Defense-in-depth classification gate: only drafts whose prospect is
+  // explicitly production-classified may ever reach the provider. Retired
+  // drafts can never be approved again (terminal trigger), and research_seed
+  // / test_qa / certification / unresolved prospects fail closed here even if
+  // a stale approval row exists.
+  const prospectIds = [...new Set(drafts.map((d) => d.prospect_id as string))];
+  const { data: classifications } = await supabase
+    .from("production_record_classification_status")
+    .select("record_id,classification")
+    .eq("record_type", "prospect")
+    .in("record_id", prospectIds);
+  const classificationByProspect = new Map(
+    (classifications || []).map((c) => [c.record_id as string, c.classification as string]),
+  );
+
   let sent = 0;
+
+  const domainCooldownSince = new Date(Date.now() - DOMAIN_COOLDOWN_DAYS * 86400_000).toISOString();
 
   for (const draft of drafts) {
     const prospectRaw = draft.prospects as unknown;
     const prospect = (Array.isArray(prospectRaw) ? prospectRaw[0] : prospectRaw) as Record<string, unknown> | null;
+
+    // Fail closed on non-production prospect classification.
+    const classification = classificationByProspect.get(draft.prospect_id as string);
+    if (classification && classification !== "production") {
+      await supabase.from("agent_log").insert({
+        agent_name: "send-approved-outreach", action: "send_outreach", outcome: "blocked",
+        prospect_id: draft.prospect_id, decision: { draft_id: draft.id, reason: `prospect_classification_${classification}` },
+      });
+      continue;
+    }
+
     if (!prospect?.email_normalized) {
       await supabase.from("agent_log").insert({
         agent_name: "send-approved-outreach", action: "send_outreach", outcome: "skipped",

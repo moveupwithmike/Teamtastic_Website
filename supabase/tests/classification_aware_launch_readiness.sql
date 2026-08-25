@@ -175,6 +175,92 @@ select automation.evaluate_launch_readiness() as readiness;
 select pg_temp.assert_that('readiness.test_task_excluded',
   (pg_temp.task_check()->>'count')::int = 0 and not (pg_temp.task_check()->>'blocking')::boolean);
 
+-- 8b/9. Research seeds: discovery-only records are never real-business truth.
+-- An Apollo-style qualified account with an open deal blocks ONLY while it is
+-- implicitly production; classifying it research_seed excludes the whole
+-- subtree; trusted promotion restores blocker power.
+insert into public.prospects(full_name, email, source, status)
+values ('Seed Spencer', 'seed.spencer@example.test', 'apollo', 'qualified');
+
+insert into public.deals(prospect_id, title, outcome)
+select id, 'Seed deal missing action', 'open' from public.prospects
+where email_normalized='seed.spencer@example.test';
+
+select automation.evaluate_launch_readiness() as readiness;
+select pg_temp.assert_that('research_seed.unclassified_apollo_still_blocks',
+  (pg_temp.deal_check()->>'missing')::int >= 1,
+  'Unclassified records remain production by default - the boundary cannot be loosened by omission.');
+
+insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
+values ('prospect', (select id from public.prospects where email_normalized='seed.spencer@example.test'),
+        'research_seed', 'Apollo discovery without any verified interest signal; held for human outreach review.', 'op@teamtastic.test',
+        jsonb_build_object('discovery_only', true));
+
+select automation.evaluate_launch_readiness() as readiness;
+select pg_temp.assert_that('research_seed.subtree_deal_never_blocks',
+  (pg_temp.deal_check()->>'missing')::int = 0 and not (pg_temp.deal_check()->>'blocking')::boolean,
+  pg_temp.deal_check()::text);
+
+-- Overdue urgent tasks under the seed are excluded too.
+insert into public.tasks(prospect_id, title, priority, status, due_at)
+select id, 'Seed urgent follow-up', 'urgent', 'open', now() - interval '2 hours'
+from public.prospects where email_normalized='seed.spencer@example.test';
+
+select automation.evaluate_launch_readiness() as readiness;
+select pg_temp.assert_that('research_seed.subtree_task_excluded',
+  (pg_temp.task_check()->>'count')::int = 0);
+
+-- Trusted promotion moves the record into the production lifecycle and its
+-- real-business effects return immediately.
+select pg_temp.assert_that('research_seed.promotion_restores_blockers',
+  (
+    select count(*) from public.tasks t
+    where t.title='Seed urgent follow-up'
+      and automation.record_affects_production_readiness('task', t.id)
+  ) = 0,
+  'pre-promotion sanity');
+
+do $$
+declare v jsonb;
+begin
+  v := automation.promote_research_seed_to_production(
+    (select id from public.prospects where email_normalized='seed.spencer@example.test'),
+    'Op Promoter',
+    'Prospect replied in writing requesting pricing; verified inbound interest on record.',
+    jsonb_build_object('verified_reply', true));
+  if not coalesce((v->>'promoted')::boolean, false) then
+    raise exception 'ASSERTION FAILED: promotion did not complete';
+  end if;
+end $$;
+
+select automation.evaluate_launch_readiness() as readiness;
+select pg_temp.assert_that('research_seed.promoted_task_blocks_again',
+  (pg_temp.task_check()->>'count')::int = 1);
+select pg_temp.assert_that('research_seed.derived_lifecycle_after_promotion',
+  (select lifecycle_stage from automation.derive_sales_lifecycle_stage(
+     (select id from public.prospects where email_normalized='seed.spencer@example.test'))) = 'opportunity');
+
+delete from public.tasks where title='Seed urgent follow-up';
+delete from public.deals where title='Seed deal missing action';
+
+-- Caller input can never spoof classification into an exclusion: for record
+-- types/ids with no excluding ledger entry the predicate stays fail-closed
+-- (true), whatever type confusion a caller attempts.
+select pg_temp.assert_that('research_seed.caller_input_cannot_spoof',
+  automation.record_affects_production_readiness('deal', (select id from public.prospects where email_normalized='seed.spencer@example.test'))
+  and automation.record_affects_production_readiness('task', (select id from public.deals where outcome='open' limit 1)::uuid) is not null);
+
+-- Pipeline summary parity: research seeds drop out of real-business metrics.
+select pg_temp.assert_that('research_seed.pipeline_summary_excludes_seeds',
+  case
+    when to_regclass('public.production_pipeline_summary') is null then true
+    else (select qualified_prospects from public.production_pipeline_summary)
+       = (select count(*) from public.prospects p
+          join public.production_record_classification_status s
+            on s.record_type='prospect' and s.record_id=p.id
+          where p.status='qualified' and s.classification='production')
+  end);
+
 commit;
 
 select 'ALL ASSERTIONS PASSED' as result, count(*) as assertions from test_results;

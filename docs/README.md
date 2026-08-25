@@ -45,10 +45,11 @@ docs/
 | | [17-Analytics-and-Consent.md](technical/architecture/17-Analytics-and-Consent.md) | PostHog reverse-proxy setups and client-side cookie permissions. | Active |
 | | [18-Security-Auth-and-Rate-Limiting.md](technical/architecture/18-Security-Auth-and-Rate-Limiting.md) | Turnstile defense, booking capability tokens, and CRM route security. | Active |
 | | [19-Gaps-Unfinished-Wiring-and-Standards.md](technical/architecture/19-Gaps-Unfinished-Wiring-and-Coding-Standards.md) | Ranked gap analysis across all storefront and CRM components. | Active |
-| | [20-Remaining-Work-Implementation-Plan.md](technical/architecture/20-Remaining-Work-Implementation-Plan.md) | Target action plan for remaining open engineering issues. | Active |
+| | [20-Remaining-Work-Implementation-Plan.md](technical/architecture/20-Remaining-Work-Implementation-Plan.md) | Active clean-launch checklist for separating synthetic data, completing certification, and starting the first real outbound pilot. | Active |
 | | [21-Teamtastic-Games-Handoff.md](technical/architecture/21-Teamtastic-Games-Handoff.md) | Product handoff and external `teamtastic.games` interaction rules. | Active |
 | | [22-Website-and-Sales-Engine-Architecture-Assessment-v6.md](technical/architecture/22-Website-and-Sales-Engine-Architecture-Assessment-v6.md) | V6 launch assessment, ratings, blockers, AI lead-generation coverage, roadmap, and complete open-task ledger. | Active |
 | | [23-Website-and-Sales-Engine-Reassessment-v6.1.md](technical/architecture/23-Website-and-Sales-Engine-Reassessment-v6.1.md) | August 24 V6.1 production reassessment, completed work, remaining blockers, human approvals, and activation status. | Active |
+| | [24-Launch-Certification-Policy-v6.2.md](technical/architecture/24-Launch-Certification-Policy-v6.2.md) | August 25 V6.2 certification policy: pre-launch vs post-launch split, research_seed class, sales lifecycle, post-launch customer-journey milestone, controlled-scale gating. | Active |
 | **Tracking** | [TEST_COVERAGE.md](tracking/TEST_COVERAGE.md) | Unit test metrics, test runners, and script execution paths. | Active |
 | | [posthog-setup-report.md](tracking/posthog-setup-report.md) | Funnel tracking stats and analytics board link references. | Active |
 | | [CODE_REVIEW_PLAN_V2.md](tracking/reviews/CODE_REVIEW_PLAN_V2.md) | Current code review structure and audit standards. | Active |

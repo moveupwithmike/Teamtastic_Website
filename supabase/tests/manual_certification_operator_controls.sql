@@ -38,7 +38,8 @@ insert into public.conversion_health_runs(status, started_at, completed_at)
 values ('healthy', now() - interval '2 hours', now() - interval '1 hour');
 
 insert into public.mailbox_sync_state(mailbox, status, last_synced_at)
-values ('mailbox@teamtastic.test', 'healthy', now() - interval '10 minutes');
+values ('mailbox@teamtastic.test', 'healthy', now() - interval '10 minutes')
+on conflict (mailbox) do update set status = 'healthy', updated_at = now(), last_synced_at = now();
 
 -- Certification A with two parallel candidate journeys (client A and client B)
 -- so cross-record binding failures are proven rejections of the bypass itself,
@@ -119,144 +120,163 @@ begin
 end $$;
 
 -- ===========================================================================
--- Section 1. Portal evidence cross-record integrity
+-- Section 1. Journey gates retired pre-launch; post-launch milestone owns
+-- the first genuine customer journey
 -- ===========================================================================
 
--- 1a. Prior bypass regression: journey satisfied through client A while the
--- portal attestation claims client B must be rejected outright.
+-- 1a. The two circular journey gates no longer exist as pre-launch
+-- requirements: caller evidence for them is rejected outright.
 do $$
 begin
   begin
     perform public.record_final_certification_evidence(
       (select id from cert_a), 'client_portal_access', 'passed',
-      'office://portal/client-b-access-verified', 'Operator Person',
+      'office://portal/client-a-access-verified', 'Operator Person',
       'Verified real client portal access end to end for this certification.',
-      'manual', 'production',
-      jsonb_build_object(
-        'client_id', (select id from client_b),
-        'invitation_id', (select id from invitation_b),
-        'lead_id', (select l.id from public.leads l join prospect_b pb on pb.id=l.prospect_id)
-      ));
-    raise exception 'ASSERTION FAILED (portal.cross_client_rejected): bypass succeeded';
+      'manual', 'production', jsonb_build_object('client_id', (select id from client_a)));
+    raise exception 'ASSERTION FAILED (journey.portal_gate_retired): bypass succeeded';
   exception
     when others then
       if sqlerrm like 'ASSERTION FAILED%' then raise; end if;
-      perform pg_temp.assert_that('portal.cross_client_rejected', true,
-        left(sqlerrm, 120));
+      perform pg_temp.assert_that('journey.portal_gate_retired', sqlerrm like '%Unsupported certification check%', left(sqlerrm, 120));
+  end;
+
+  begin
+    perform public.record_final_certification_evidence(
+      (select id from cert_a), 'real_lead_client_journey', 'passed',
+      'office://journey/client-a-verified', 'Operator Person',
+      'Attested a real lead-to-client progression for this certification.',
+      'manual', 'production', jsonb_build_object('client_id', (select id from client_a)));
+    raise exception 'ASSERTION FAILED (journey.progression_gate_retired): bypass succeeded';
+  exception
+    when others then
+      if sqlerrm like 'ASSERTION FAILED%' then raise; end if;
+      perform pg_temp.assert_that('journey.progression_gate_retired', sqlerrm like '%Unsupported certification check%', left(sqlerrm, 120));
   end;
 end $$;
 
--- 1b. Attesting the canonical client passes and is bound to full lineage.
-do $$
-declare v jsonb; v_row record;
-begin
-  select public.record_final_certification_evidence(
-    (select id from cert_a), 'client_portal_access', 'passed',
-    'office://portal/client-a-access-verified', 'Operator Person',
-    'Verified real client portal access end to end for this certification.',
-    'manual', 'production',
-    jsonb_build_object(
-      'client_id', (select id from client_a),
-      'invitation_id', (select id from invitation_a),
-      'lead_id', (select l.id from public.leads l join prospect_a pa on pa.id=l.prospect_id)
-    )
-  ) into v;
-  perform pg_temp.assert_that('portal.canonical_passes', (v->>'recorded')::boolean and (v->>'status')='passed');
-  select * into v_row from public.final_certification_evidence where id=(v->>'evidence_id')::bigint;
-  perform pg_temp.assert_that('portal.evidence_bound_to_canonical',
-    v_row.metadata->>'client_id' = (select id from client_a)::text
-    and v_row.metadata->>'invitation_id' = (select id from invitation_a)::text
-    and v_row.metadata->>'prospect_id' is not null
-    and v_row.metadata->>'contact_id' is not null
-    and (v_row.metadata->>'lineage_validated_at') is not null);
-end $$;
+-- 1b. The post-launch milestone subsystem starts pending: nothing may claim
+-- a customer journey that does not genuinely exist in authoritative records.
+select pg_temp.assert_that('milestone.pending_before_any_genuine_journey',
+  not exists(select 1 from public.launch_phase_milestone_state
+             where milestone_key='first_real_customer_journey_validation' and validated)
+  and not exists(select 1 from public.launch_phase_milestones));
 
--- 1c. Stale satisfaction: once journey A stops satisfying current lineage
--- rules, historical passing evidence must stop satisfying the gate.
-do $$
-declare v_gate record;
-begin
-  select * into v_gate from public.final_certification_gate_status
-   where certification_id=(select id from cert_a) and check_name='client_portal_access';
-  perform pg_temp.assert_that('portal.satisfied_while_lineage_holds', v_gate.satisfied and v_gate.lineage_valid);
-end $$;
+do $$ begin perform automation.observe_post_launch_milestones(); end $$;
+do $$ begin perform automation.observe_post_launch_milestones(); end $$;
 
-insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
-select 'lead', l.id, 'test_qa', 'Operator confirmed this journey was a browser test fixture, not a customer.', 'operator@teamtastic.test',
-       jsonb_build_object('owner_confirmed_test', true)
-from public.leads l join prospect_a pa on pa.id=l.prospect_id;
-
--- With A invalidated, the canonical journey deterministically rebinds to the
--- remaining valid candidate (B); the historical A-bound portal evidence must
--- stop satisfying the gate immediately.
+-- Alice's journey IS genuine production: accepted portal contact, open deal,
+-- production classifications. The observer detects and pins it automatically;
+-- callers supply nothing.
 do $$
-declare v_lineage record; v_gate record;
+declare v_state record; v_lineage record;
 begin
+  perform automation.observe_post_launch_milestones();
+
+  select * into v_state from public.launch_phase_milestone_state
+   where milestone_key='first_real_customer_journey_validation';
+
   select * into v_lineage from automation.final_certification_journey_lineage((select id from cert_a));
-  perform pg_temp.assert_that('lineage.rebinds_after_invalidation',
-    v_lineage.lineage_valid = true and v_lineage.client_id = (select id from client_b),
-    format('resolved %s valid=%s', v_lineage.client_id, v_lineage.lineage_valid));
 
-  select * into v_gate from public.final_certification_gate_status
-   where certification_id=(select id from cert_a) and check_name='client_portal_access';
-  perform pg_temp.assert_that('portal.stale_evidence_no_longer_satisfies',
-    v_gate.satisfied = false,
-    format('satisfied=%s lineage=%s', v_gate.satisfied, v_gate.lineage_valid));
+  perform pg_temp.assert_that('milestone.validated_automatically',
+    v_state.validated and not v_state.invalidated);
+  perform pg_temp.assert_that('milestone.bound_to_canonical_client',
+    v_state.client_id = (select id from client_a) and v_state.client_id = v_lineage.client_id);
+  perform pg_temp.assert_that('milestone.binds_full_chain',
+    v_state.lead_id is not null and v_state.prospect_id is not null
+    and v_state.contact_id is not null and v_state.portal_invitation_id is not null);
+  perform pg_temp.assert_that('milestone.evidence_records_acceptance_authority',
+    v_state.evidence->>'portal_acceptance_authority' = 'client_contacts.accepted_at');
 end $$;
 
--- Invalidate the rebound journey too: with NO currently valid production
--- journey, the resolver reports full invalidation and the gate stays dead.
-update public.portal_invitations set status='failed' where id=(select id from invitation_b);
+-- Component milestones bind to the SAME canonical client.
+select pg_temp.assert_that('milestone.components_share_client',
+  (select client_id from public.launch_phase_milestone_state where milestone_key='first_real_client')
+    = (select client_id from public.launch_phase_milestone_state where milestone_key='first_real_customer_journey_validation'));
+
+-- 1c. Current-world revalidation: reclassifying the bound account away from
+-- production immediately stops the milestone reporting validated - while its
+-- immutable history row is preserved.
+insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
+values ('prospect', (select id from prospect_a), 'research_seed',
+        'Suite scenario: account demoted to research seed pending verified-interest re-review.', 'operator@teamtastic.test',
+        jsonb_build_object('scenario', 'milestone_invalidation'));
 
 do $$
-declare v_lineage record; v_gate record;
+declare v_state record;
 begin
-  select * into v_lineage from automation.final_certification_journey_lineage((select id from cert_a));
-  perform pg_temp.assert_that('lineage.invalid_when_no_journey_qualifies',
-    v_lineage.lineage_valid = false and v_lineage.invalid_reason = 'no_currently_valid_production_journey');
-
-  select * into v_gate from public.final_certification_gate_status
-   where certification_id=(select id from cert_a) and check_name='client_portal_access';
-  perform pg_temp.assert_that('portal.gate_dead_without_any_valid_journey',
-    v_gate.satisfied = false and v_gate.lineage_valid = false);
+  select * into v_state from public.launch_phase_milestone_state
+   where milestone_key='first_real_customer_journey_validation';
+  perform pg_temp.assert_that('milestone.invalidated_when_world_changes',
+    v_state.achieved and not v_state.validated and v_state.invalidated,
+    format('achieved=%s validated=%s', v_state.achieved, v_state.validated));
 end $$;
 
--- Bring B back so the restoration scenario below exercises a clean rebind.
-update public.portal_invitations set status='sent' where id=(select id from invitation_b);
-
--- A genuine inbound customer reply on the canonical journey.
-insert into public.messages(prospect_id, direction, channel, from_address, to_addresses, subject, body_text, status, received_at)
-select pa.id, 'inbound', 'email', 'alice.journey@example.test', array['hello@teamtastic.events']::text[], 'Re: your event quote', 'Thanks - this looks great for our team.', 'received', now() - interval '26 hours'
-from prospect_a pa;
-
--- Restore journey A. The authoritative model propagates non-production
--- classifications to ancestor records and keeps them sticky until explicit
--- human review entries exist, so clearing the journey requires reviewing the
--- lead AND its prospect AND the client.
-insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
-select 'lead', l.id, 'production', 'Re-reviewed alongside payment records: confirmed genuine production customer.', 'operator@teamtastic.test',
-       jsonb_build_object('reviewed_as_production', true)
-from public.leads l join prospect_a pa on pa.id=l.prospect_id;
-
-insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
-select 'prospect', p.id, 'production', 'Human review completed: prospect verified against genuine payment history.', 'operator@teamtastic.test',
-       jsonb_build_object('reviewed_as_production', true)
-from public.prospects p join prospect_a pa on pa.id=p.id;
-
-insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
-select 'client', c.id, 'production', 'Human review completed: client account verified as a genuine customer.', 'operator@teamtastic.test',
-       jsonb_build_object('reviewed_as_production', true)
-from public.clients c join prospect_a pa on pa.id=c.primary_prospect_id;
+-- Immutable history survives the invalidation.
+select pg_temp.assert_that('milestone.history_row_immutable_and_present',
+  exists(select 1 from public.launch_phase_milestones
+         where milestone_key='first_real_customer_journey_validation'));
 
 do $$
-declare v_gate record;
 begin
-  select * into v_gate from public.final_certification_gate_status
-   where certification_id=(select id from cert_a) and check_name='client_portal_access';
-  perform pg_temp.assert_that('portal.revalidates_after_restoration', v_gate.satisfied = true);
+  begin
+    update public.launch_phase_milestones set observed_by='tampered' where milestone_key='first_real_engaged_lead';
+    raise exception 'ASSERTION FAILED (milestone.update_blocked): succeeded';
+  exception when others then
+    if sqlerrm like 'ASSERTION FAILED%' then raise; end if;
+    perform pg_temp.assert_that('milestone.update_blocked', sqlerrm like '%append-only and immutable%', left(sqlerrm,120));
+  end;
 end $$;
 
--- 1d. A fully synthetic journey can never satisfy the portal gate.
+-- Trusted promotion is the ONLY sanctioned way back into the lifecycle, and
+-- it restores current-world validity immediately.
+do $$
+declare v_result jsonb; v_validated boolean;
+begin
+  v_result := automation.promote_research_seed_to_production(
+    (select id from prospect_a),
+    'Operator Person',
+    'Human review confirmed genuine inbound interest and payment history for this account.',
+    jsonb_build_object('reviewed_invoice', true));
+  perform pg_temp.assert_that('promotion.trusted_workflow_succeeds', (v_result->>'promoted')::boolean);
+
+  select validated into v_validated from public.launch_phase_milestone_state
+   where milestone_key='first_real_customer_journey_validation';
+  perform pg_temp.assert_that('milestone.revalidates_after_promotion', v_validated);
+end $$;
+
+do $$
+begin
+  begin
+    perform automation.promote_research_seed_to_production(
+      (select id from prospect_b), 'automation', 'Automated actors can never promote records into the production lifecycle.', '{}');
+    raise exception 'ASSERTION FAILED (promotion.named_actor_required): succeeded';
+  exception when others then
+    if sqlerrm like 'ASSERTION FAILED%' then raise; end if;
+    perform pg_temp.assert_that('promotion.named_actor_required', sqlerrm like '%named human actor%', left(sqlerrm,120));
+  end;
+
+  begin
+    perform automation.promote_research_seed_to_production(
+      (select id from prospect_b), 'Operator Person', 'too short', '{}');
+    raise exception 'ASSERTION FAILED (promotion.reason_required): succeeded';
+  exception when others then
+    if sqlerrm like 'ASSERTION FAILED%' then raise; end if;
+    perform pg_temp.assert_that('promotion.reason_required', sqlerrm like '%evidentiary reason%', left(sqlerrm,120));
+  end;
+
+  begin
+    perform automation.promote_research_seed_to_production(
+      (select id from prospect_b), 'Operator Person',
+      'Prospect B was never a research seed, so promotion must be rejected here.', '{}');
+    raise exception 'ASSERTION FAILED (promotion.only_from_seed): succeeded';
+  exception when others then
+    if sqlerrm like 'ASSERTION FAILED%' then raise; end if;
+    perform pg_temp.assert_that('promotion.only_from_seed', sqlerrm like '%not classified research_seed%', left(sqlerrm,120));
+  end;
+end $$;
+
+-- 1d. A fully synthetic journey can never satisfy the post-launch milestone.
 insert into public.final_production_certifications(started_by, preflight_evidence, known_limitations)
 values ('synthetic-check@teamtastic.test', '{}'::jsonb, '[]'::jsonb);
 update public.final_production_certifications
@@ -279,25 +299,28 @@ insert into public.clients(name, primary_prospect_id) select 'Synthetic Client',
 create temp table client_syn as
   select c.id from public.clients c join public.prospects p on p.id=c.primary_prospect_id
   where p.email_normalized='cert.synthetic@example.test';
-insert into public.client_contacts(client_id, name, email)
-select id, 'Synthetic Contact', 'cert.synthetic@example.test' from client_syn;
+insert into public.client_contacts(client_id, name, email, accepted_at)
+select id, 'Synthetic Contact', 'cert.synthetic@example.test', now() from client_syn;
 create temp table contact_syn as select cc.id from public.client_contacts cc join client_syn on client_syn.id=cc.client_id;
 insert into public.portal_invitations(client_contact_id, idempotency_key, status, sent_at, created_at)
 select id, 'invite-syn-stub', 'sent', now(), now() from contact_syn;
 
+-- The holiday SLA trigger auto-creates the open progression deal for this
+-- synthetic capture path; no manual deal insert is needed here.
+
 do $$
-declare v jsonb; v_row record;
+declare v_canonical record; v_state record;
 begin
-  select public.record_final_certification_evidence(
-    (select id from cert_syn), 'client_portal_access', 'passed',
-    'office://portal/synthetic-attempt', 'Operator Person',
-    'Attempted portal attestation against a synthetic fixture journey.',
-    'manual', 'production', '{}'::jsonb
-  ) into v;
-  select * into v_row from public.final_certification_evidence where id=(v->>'evidence_id')::bigint;
-  perform pg_temp.assert_that('portal.synthetic_journey_forced_failed',
-    v_row.status='failed' and v_row.metadata->>'failure_reason'='missing_current_production_lineage',
-    v_row.status || '/' || coalesce(v_row.metadata->>'failure_reason','none'));
+  perform automation.observe_post_launch_milestones();
+
+  select * into v_canonical from automation.first_production_customer_journey();
+  perform pg_temp.assert_that('milestone.synthetic_journey_excluded',
+    v_canonical.lead_id is null or v_canonical.client_id <> (select id from client_syn));
+
+  select * into v_state from public.launch_phase_milestone_state
+   where milestone_key='first_real_customer_journey_validation';
+  perform pg_temp.assert_that('milestone.still_bound_to_genuine_journey',
+    v_state.validated and v_state.client_id = (select id from client_a));
 end $$;
 
 -- 1e. Evidence metadata pointing at another certification is rejected.
@@ -482,11 +505,34 @@ select pg_temp.assert_that('notify.ledger_blocks_regardless_of_name',
      join public.leads l on l.id=d.lead_id
     where l.email_normalized='cert+lookalike@example.com' and d.status='test_suppressed') = 2);
 
+-- 2g. research_seed provenance fails closed at the delivery boundary too:
+-- leads under a seed account are suppressed, never dispatched.
+insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
+values ('prospect', (select id from prospect_rita), 'research_seed',
+        'Suite scenario: demoted to research seed while interest is re-verified by a human reviewer.', 'operator@teamtastic.test',
+        jsonb_build_object('scenario', 'research_seed_suppression'));
+
+insert into public.leads(submission_id, name, email, email_normalized, lead_source, status, prospect_id)
+values (gen_random_uuid(), 'Rita Seed Contact', 'rita.seed@example.test', 'rita.seed@example.test', 'website', 'new',
+        (select id from prospect_rita));
+
+select pg_temp.assert_that('notify.research_seed_prospect_fails_closed',
+  (select count(*) from public.notification_deliveries d
+     join public.leads l on l.id=d.lead_id
+    where l.email_normalized='rita.seed@example.test' and d.status='test_suppressed') = 2);
+
+insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
+values ('prospect', (select id from prospect_rita), 'production',
+        'Human review completed: verified genuine customer with matching history.', 'operator@teamtastic.test',
+        jsonb_build_object('reviewed_as_production', true));
+
 -- ===========================================================================
 -- Section 3. Sign-off concurrency, immutability, and authority
 -- ===========================================================================
 
--- Build certification A to full 25-gate readiness using authoritative writers.
+-- Build certification A to full pre-launch readiness using authoritative
+-- writers. No customer journey is required anymore: the journey gates are
+-- post-launch milestones now.
 
 -- Nine automated gates that need only a canonical execution key.
 do $$
@@ -535,30 +581,36 @@ do $$ begin
   perform automation.record_automated_certification_result((select id from cert_a),'booking_workflow','passed','booking://stub','Certification booking exercised native persistence safely.','{}'::jsonb,now(),'execution',now(),null,'suite:booking_workflow');
 end $$;
 
--- Manual gates (11 before sign-off). Journey-scoped ones validate lineage live.
+-- Manual gates (9 before sign-off). calendar_zoom_workflow is now decoupled
+-- from live customer lineage: it records as a named-operator verification
+-- without any journey metadata.
 do $$
 declare m text;
 begin
-  foreach m in array array['office_access_verified','security_advisors_reviewed','safari_public_lead_form','turnstile_success_behavior','turnstile_rejection_behavior','email_mailbox_receipt','real_inbox_placement','calendar_zoom_workflow','real_lead_client_journey','client_portal_access','operational_owner_attestation']
+  foreach m in array array['office_access_verified','security_advisors_reviewed','safari_public_lead_form','turnstile_success_behavior','turnstile_rejection_behavior','email_mailbox_receipt','real_inbox_placement','calendar_zoom_workflow','operational_owner_attestation']
   loop
     perform public.record_final_certification_evidence(
       (select id from cert_a), m, 'passed', 'office://manual/suite-'||m, 'Operator Person',
       'Named operator verified this gate directly in production during the suite.',
-      'manual', 'production', case when m in ('client_portal_access','real_lead_client_journey','calendar_zoom_workflow')
-        then jsonb_build_object('client_id', (select id from client_a),
-                                'invitation_id', (select id from invitation_a))
-        else '{}'::jsonb end);
+      'manual', 'production', '{}'::jsonb);
   end loop;
 end $$;
 
--- 3a. With all 24 gates satisfied, readiness upgrades; sign-off succeeds and
--- records the exact certified state snapshot.
+-- 3a. With every pre-launch gate satisfied - and NO real-customer-journey
+-- requirement - readiness upgrades; sign-off succeeds and records the exact
+-- certified state snapshot.
 do $$
-declare v_status text;
+declare v_status text; v_milestone_validated boolean;
 begin
   perform automation.observe_final_production_certifications();
   select status into v_status from public.final_production_certifications where id=(select id from cert_a);
   perform pg_temp.assert_that('signoff.ready_after_full_gates', v_status = 'ready_for_signoff', v_status);
+
+  -- The genuine Alice journey exists, so the post-launch milestone is already
+  -- validated - but that state is informational here, never a prerequisite.
+  select validated into v_milestone_validated from public.launch_phase_milestone_state
+    where milestone_key='first_real_customer_journey_validation';
+  perform pg_temp.assert_that('milestone.informational_during_signoff', v_milestone_validated);
 end $$;
 
 do $$
@@ -576,7 +628,11 @@ begin
     v_row.signed_off_by='Michael Scott' and v_row.signed_off_at is not null and v_row.completed_at is not null);
   perform pg_temp.assert_that('signoff.records_state_snapshot', v_row.signed_off_state is not null and v_row.signed_off_state ? 'gates');
   select count(*) into v_gates from jsonb_array_elements(v_row.signed_off_state->'gates');
-  perform pg_temp.assert_that('signoff.snapshot_has_all_25_gates', v_gates = 25, v_gates::text);
+  perform pg_temp.assert_that('signoff.snapshot_has_all_23_prelaunch_gates', v_gates = 23, v_gates::text);
+  perform pg_temp.assert_that('signoff.snapshot_records_policy_version', v_row.signed_off_state->>'policy_version' = 'v6.2-pre-launch');
+  perform pg_temp.assert_that('signoff.snapshot_records_post_launch_state',
+    v_row.signed_off_state ? 'post_launch_journey_state'
+    and (v_row.signed_off_state->'post_launch_journey_state'->>'first_real_customer_journey_validation') is not null);
   select bool_and(g->>'satisfied'='true') into v_all_satisfied from jsonb_array_elements(v_row.signed_off_state->'gates') g;
   perform pg_temp.assert_that('signoff.snapshot_all_satisfied', coalesce(v_all_satisfied,false));
   perform pg_temp.assert_that('signoff.snapshot_records_evidence_version', v_row.signed_off_state ? 'evidence_version');
@@ -686,6 +742,80 @@ begin
   perform pg_temp.assert_that('readiness.downgrade_enforced', v_status = 'running', v_status);
 end $$;
 
+-- 3g. THE core policy regression: a certification whose ONLY missing piece
+-- would once have been the real-customer journey now reaches ready_for_signoff
+-- and passes with every remaining pre-launch gate satisfied. The synthetic
+-- journey (even with an accepted portal contact) never satisfies the
+-- post-launch milestone, which stays bound to the genuine journey.
+do $$
+declare c text; m text; v_status text; v_result jsonb; v_row public.final_production_certifications%rowtype; v_state record;
+begin
+  -- Correlated signed provider evidence scoped to this certification.
+  insert into public.email_delivery_evidence(provider_message_id, evidence_stage, evidence_source, source_event_id, evidence_reference, observed_at, recorded_by, metadata)
+  values ('pm-cert-syn-1', 'api_accepted', 'resend_api', 'evt-syn-accept-1', 'resend://accepted/pm-cert-syn-1', now() - interval '3 hours', 'automation:final-certification',
+          jsonb_build_object('certification_id', (select id from cert_syn), 'recipient_classification', 'teamtastic_owned_test_mailbox',
+                             'execution_id', 'exec-syn-1', 'sender_identity', 'hello@teamtastic.events', 'provider_acceptance_result', 'accepted')),
+         ('pm-cert-syn-1', 'provider_delivered', 'resend_webhook', 'evt-syn-deliver-1', 'resend://delivered/pm-cert-syn-1', now() - interval '3 hours' + interval '4 seconds', 'automation:final-certification',
+          jsonb_build_object('certification_id', (select id from cert_syn)));
+
+  foreach c in array array['automated_tests_passed','production_build_passed','stripe_verified','scheduled_automations_verified','controlled_load_passed','chromium_public_lead_form','firefox_public_lead_form','mobile_viewport_basics','server_confirmed_lead_persistence','email_api_accepted','email_provider_delivered','authenticated_email_delivery']
+  loop
+    perform automation.record_automated_certification_result(
+      (select id from cert_syn), c, 'passed', 'ci://run/syn-'||c,
+      'Canonical runner result for the journey-free readiness scenario.',
+      '{}'::jsonb, now(), 'execution', now(), null, 'syn-suite:'||c);
+  end loop;
+
+  -- Booking gate for the synthetic cert needs its own qualifying booking.
+  insert into public.bookings(booking_type_id, prospect_id, name, email, visitor_timezone, starts_at, ends_at,
+                              blocked_starts_at, blocked_ends_at, status, manage_token_hash, source, context)
+  select bt.id, ps.id, 'Teamtastic Certification', 'cert.mailbox@teamtastic.test', 'America/New_York',
+         now() - interval '5 hours', now() - interval '4 hours',
+         now() - interval '5 hours', now() - interval '4 hours',
+         'completed', md5(random()::text), 'final_certification',
+         jsonb_build_object('synthetic_test', true, 'certification_id', (select id from cert_syn),
+                            'execution_key', 'syn-booking-1', 'recipient_classification', 'teamtastic_owned_test_mailbox')
+  from public.booking_types bt cross join prospect_syn ps
+  where bt.slug='suite-cert-type';
+
+  perform automation.record_automated_certification_result((select id from cert_syn),'booking_workflow','passed','booking://syn-stub','Certification booking exercised native persistence safely.','{}'::jsonb,now(),'execution',now(),null,'syn-suite:booking_workflow');
+
+  foreach m in array array['office_access_verified','security_advisors_reviewed','safari_public_lead_form','turnstile_success_behavior','turnstile_rejection_behavior','email_mailbox_receipt','real_inbox_placement','calendar_zoom_workflow','operational_owner_attestation']
+  loop
+    perform public.record_final_certification_evidence(
+      (select id from cert_syn), m, 'passed', 'office://manual/syn-'||m, 'Operator Person',
+      'Named operator verified this gate directly in production during the suite.',
+      'manual', 'production', '{}'::jsonb);
+  end loop;
+
+  perform automation.observe_final_production_certifications();
+  select status into v_status from public.final_production_certifications where id=(select id from cert_syn);
+  perform pg_temp.assert_that('signoff.ready_without_real_customer_journey', v_status = 'ready_for_signoff', v_status);
+
+  v_result := public.sign_off_final_production_certification((select id from cert_syn), 'Michael Scott');
+  perform pg_temp.assert_that('signoff.passes_without_customer_journey', (v_result->>'passed')::boolean);
+
+  select * into v_row from public.final_production_certifications where id=(select id from cert_syn);
+  perform pg_temp.assert_that('signoff.journeyfree_snapshot_records_post_launch_truth',
+    (v_row.signed_off_state->'post_launch_journey_state'->>'first_real_customer_journey_validation')
+      = (automation.post_launch_milestone_summary()->>'first_real_customer_journey_validation'));
+
+  -- The post-launch milestone remains bound to the GENUINE journey only; the
+  -- synthetic chain (even with an accepted portal contact) never claimed it.
+  select * into v_state from public.launch_phase_milestone_state
+   where milestone_key='first_real_customer_journey_validation';
+  perform pg_temp.assert_that('milestone.visible_and_not_a_prelaunch_blocker',
+    not v_state.invalidated and v_state.client_id = (select id from client_a));
+end $$;
+
+-- 3h. The controlled-scale phase gate refuses to open while the milestone is
+-- still pending (transition authority is exercised in launch_phase_policy.sql;
+-- here we prove the summary feed it consumes is truthful).
+select pg_temp.assert_that('scale_gate_feed_truthful',
+  not ((automation.post_launch_milestone_summary()->>'first_real_customer_journey_validation')::boolean)
+  or exists(select 1 from public.launch_phase_milestones
+            where milestone_key='first_real_customer_journey_validation'));
+
 -- ===========================================================================
 -- Section 4. Authority surface
 -- ===========================================================================
@@ -706,7 +836,25 @@ select pg_temp.assert_that('authority.lock_helper_not_public',
 select pg_temp.assert_that('authority.view_exposes_live_lineage',
   exists(select 1 from information_schema.columns
          where table_schema='public' and table_name='final_certification_gate_status'
-           and column_name in ('lineage_valid','lineage_invalid_reason')));
+            and column_name in ('lineage_valid','lineage_invalid_reason')));
+
+select pg_temp.assert_that('authority.milestones_service_role_read_only',
+  has_table_privilege('service_role', 'public.launch_phase_milestones', 'SELECT')
+  and not has_table_privilege('service_role', 'public.launch_phase_milestones', 'INSERT')
+  and not has_table_privilege('service_role', 'public.launch_phase_milestones', 'UPDATE')
+  and not has_table_privilege('service_role', 'public.launch_phase_milestones', 'DELETE'));
+
+select pg_temp.assert_that('authority.milestone_state_readable_by_service_role',
+  has_table_privilege('service_role', 'public.launch_phase_milestone_state', 'SELECT'));
+
+select pg_temp.assert_that('authority.promotion_and_observer_restricted',
+  has_function_privilege('service_role', 'automation.promote_research_seed_to_production(uuid,text,text,jsonb)', 'EXECUTE')
+  and not has_function_privilege('anon', 'automation.promote_research_seed_to_production(uuid,text,text,jsonb)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'automation.observe_post_launch_milestones()', 'EXECUTE'));
+
+select pg_temp.assert_that('authority.lifecycle_helpers_restricted',
+  not has_function_privilege('anon', 'automation.derive_sales_lifecycle_stage(uuid)', 'EXECUTE')
+  and has_function_privilege('service_role', 'automation.first_production_customer_journey()', 'EXECUTE'));
 
 commit;
 

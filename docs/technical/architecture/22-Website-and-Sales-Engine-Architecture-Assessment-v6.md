@@ -201,10 +201,12 @@ because it also hosts the game application.
    foreign keys, repeated permissive policies, and RLS initialization patterns.
    Many belong to the game application, but sharing the project makes them a
    website launch concern until individually dispositioned.
-10. **Sales data needs closure rules.** Four qualified prospects lacked an open
-    follow-up task at review time, and two open deals appeared to lack a raw
-    next-action value even though the readiness query reported none missing.
-    Query definitions must be reconciled.
+10. **Sales data needs provenance, not follow-up assignment.** A later August 25
+    review confirmed that the four rows labeled `qualified` are Apollo research
+    seeds with no inbound engagement, deal, task, message, reply, meeting, or
+    customer interaction. They are not real opportunities and must not receive
+    production follow-up. Pipeline views must distinguish production, test,
+    certification, and research records.
 
 ## 6. Critical Launch Blockers
 
@@ -282,7 +284,7 @@ anonymous-user policy behavior, and exposed-schema/RLS access.
 | WSE-V6-I3 | Classify and close/re-date all 31 tasks | Operations | Zero overdue urgent/high; every remaining task has a valid next action |
 | WSE-V6-I4 | Resolve/disable GDELT collector | Engineering | No open high incident; fallback documented |
 | WSE-V6-I5 | Review shared Supabase security warnings | Engineering | Written warning disposition and fixes for exposed high-risk functions/policies |
-| WSE-V6-I6 | Verify four qualified prospects have follow-up ownership | Sales | Every qualified prospect has an open task or documented disposition |
+| WSE-V6-I6 | Reclassify the four Apollo research seeds and exclude them from production pipeline totals | Engineering + Sales | No test/research record appears as a real qualified opportunity |
 | WSE-V6-I7 | Reconcile deal next-action query definitions | Engineering + Sales | Office and readiness counts agree on the same open-deal rule |
 
 ### Near term — first 30 days

@@ -12,8 +12,8 @@ export default async function LaunchPage(){
   // Server-rendered, force-dynamic page: this timestamp intentionally represents each live preflight run.
   // eslint-disable-next-line react-hooks/purity
   const db=(await getOfficeDb()).db,now=Date.now(),recent=new Date(now-30*86400000).toISOString(),stale=new Date(now-10*60000).toISOString();
-  const [configResult,healthResult,failedResult,pendingResult,leadsResult,dealsResult,agendaResult,mailboxResult,reportResult,distributionResult,audienceResult,briefResult,watchlistResult,incidentsResult]=await Promise.all([
-    db.from("system_config").select("master_enabled,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,gmail_ingestion_enabled,daily_report_enabled,organic_research_enabled,organic_reddit_commercial_approval_confirmed").eq("id",true).maybeSingle(),
+  const [configResult,healthResult,failedResult,pendingResult,leadsResult,dealsResult,agendaResult,mailboxResult,reportResult,distributionResult,audienceResult,briefResult,watchlistResult,incidentsResult,certResult,milestonesResult,launchStateResult]=await Promise.all([
+    db.from("system_config").select("master_enabled,prospecting_enabled,outbound_auto_paused,daily_prospecting_cap,sequence_followups_enabled,proposal_email_enabled,gmail_ingestion_enabled,daily_report_enabled,outbound_mode,organic_research_enabled,organic_reddit_commercial_approval_confirmed").eq("id",true).maybeSingle(),
     db.from("conversion_health_runs").select("status,checks_passed,checks_failed,started_at").order("started_at",{ascending:false}).limit(1).maybeSingle(),
     db.from("notification_deliveries").select("id",{count:"exact",head:true}).eq("status","failed").gte("created_at",recent),
     db.from("notification_deliveries").select("id",{count:"exact",head:true}).eq("status","pending").lt("created_at",stale).gte("created_at",recent),
@@ -26,9 +26,12 @@ export default async function LaunchPage(){
     db.from("audience_snapshots").select("snapshot_date,generated_at").order("snapshot_date",{ascending:false}).limit(1).maybeSingle(),
     db.from("growth_briefs").select("brief_date,generated_at").order("brief_date",{ascending:false}).limit(1).maybeSingle(),
     db.from("launch_readiness_snapshots").select("status,blocker_count,warning_count,created_at").order("created_at",{ascending:false}).limit(1).maybeSingle(),
-    db.from("production_incidents").select("id,severity",{count:"exact"}).neq("status","resolved").in("severity",["critical","high"])
+    db.from("production_incidents").select("id,severity",{count:"exact"}).neq("status","resolved").in("severity",["critical","high"]),
+    db.from("final_production_certifications").select("id,status,policy_version").order("started_at",{ascending:false}).limit(1).maybeSingle(),
+    db.from("launch_phase_milestone_state").select("*").order("sort_order"),
+    db.from("b2b_launch_state").select("phase,launched_by,paused_reason").eq("id",true).maybeSingle()
   ]);
-  const config=configResult.data,health=healthResult.data,leads=leadsResult.data||[],deals=dealsResult.data||[],agenda=agendaResult.data,mailbox=mailboxResult.data,report=reportResult.data;
+  const config=configResult.data,health=healthResult.data,leads=leadsResult.data||[],deals=dealsResult.data||[],agenda=agendaResult.data,mailbox=mailboxResult.data,report=reportResult.data,cert=certResult.data,milestones=milestonesResult.data||[],launchState=launchStateResult.data;
   const missingQualification=leads.filter(x=>!x.preferred_event_date||!x.event_timezone).length;
   const missingNextAction=deals.filter(x=>!x.next_action?.trim()||!x.next_action_due_at).length;
   const queryFailure=[configResult,healthResult,failedResult,pendingResult,leadsResult,dealsResult].some(x=>x.error);
@@ -44,6 +47,20 @@ export default async function LaunchPage(){
     {title:"Production incidents",status:(incidentsResult.data||[]).some(x=>x.severity==="critical")?"blocker":incidentsResult.count?"warning":"pass",detail:`${incidentsResult.count||0} unresolved critical or high-severity incidents.`,href:"/office/incidents",action:"Open Incident Center"},
   ];
   const blockers=gates.filter(x=>x.status==="blocker").length,warnings=gates.filter(x=>x.status==="warning").length;
+  const certBlocking=!cert||cert.status!=="passed";
+  const preLaunchBlockers=[
+    ...gates.filter(x=>x.status==="blocker").map(x=>x.title),
+    ...(certBlocking?[`Final pre-launch certification ${cert?`is ${cert.status.replaceAll("_"," ")}`:"has not been started"}`]:[]),
+    ...((watchlistResult.data?.status==="blocked")?["Automatic watchlist reports blocked readiness"]:[])
+  ];
+  const outboundState=[
+    ["Launch phase",launchState?.phase?.replaceAll("_"," ")||"unknown"],
+    ["Master automation",config?.master_enabled],
+    ["Prospecting",config?.prospecting_enabled&&!config?.outbound_auto_paused],
+    ["Outbound mode",config?.outbound_mode||"off"],
+    ["Sequence follow-ups",config?.sequence_followups_enabled],
+    ["Daily prospecting cap",config?.daily_prospecting_cap??0]
+  ];
   const overall=blockers?{title:"Not ready to launch",copy:`Resolve ${blockers} blocker${blockers===1?"":"s"} before turning on sales activity.`,classes:"border-red-400/30 bg-red-500/10 text-red-200"}:{title:warnings?"Ready for a controlled launch":"Ready to launch",copy:warnings?`Core systems are healthy. Complete or consciously accept ${warnings} remaining action${warnings===1?"":"s"}.`:"All core launch gates are healthy.",classes:"border-emerald-400/30 bg-emerald-500/10 text-emerald-200"};
   const switches=[
     ["Master automation",config?.master_enabled],
@@ -52,13 +69,19 @@ export default async function LaunchPage(){
     ["Sequence follow-ups",config?.sequence_followups_enabled],
     ["Gmail ingestion",config?.gmail_ingestion_enabled],
   ];
+  const phaseOrder=["off","inbound_pilot","proposal_pilot","live","controlled_scale"];
   return <div className="space-y-8">
     <div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-3xl font-bold">B2B launch control</h2><p className="mt-2 text-slate-400">A live, read-only preflight check. This page never sends email, posts content, or changes a switch.</p></div><p className="text-sm text-slate-500">Checked {formatDate(new Date().toISOString())}</p></div>
     <section className={`rounded-2xl border p-6 ${overall.classes}`}><p className="text-sm font-bold uppercase tracking-[0.2em]">Launch decision</p><h3 className="mt-2 text-3xl font-bold text-white">{overall.title}</h3><p className="mt-2">{overall.copy}</p></section>
     {watchlistResult.data&&<p className="rounded-xl bg-white/5 p-4 text-sm text-slate-300">Automatic watchlist: <strong className="text-white">{watchlistResult.data.status}</strong> · {watchlistResult.data.blocker_count} blockers · {watchlistResult.data.warning_count} warnings · checked {formatDate(watchlistResult.data.created_at)}</p>}
     <Card title="Core launch gates" count={blockers} tone={blockers?"red":"green"}><div className="grid gap-3 lg:grid-cols-2">{gates.map(g=><Gate key={g.title} gate={g}/>)}</div></Card>
+    <div className="grid gap-6 lg:grid-cols-3">
+      <Card title={`Pre-launch blockers (${preLaunchBlockers.length})`} tone={preLaunchBlockers.length?"red":"green"}>{preLaunchBlockers.length?<ul className="list-disc space-y-2 pl-5 text-sm text-red-200">{preLaunchBlockers.map((b,i)=><li key={i}>{b}</li>)}</ul>:<p className="text-sm text-emerald-200">No pre-launch blockers. Genuine safety and operational gates are clear.</p>}</Card>
+      <Card title="Post-launch milestones"><div className="space-y-2">{milestones.map(m=><div key={m.milestone_key} className={`rounded-lg border p-3 ${m.invalidated?"border-red-400/20 bg-red-500/10":m.validated?"border-emerald-400/20 bg-emerald-500/10":"border-sky-400/20 bg-sky-500/10"}`}><p className="font-semibold text-white">{m.label}</p><p className="text-xs uppercase tracking-wide">{m.invalidated?"Invalidated":m.validated?"Validated":"Pending"}</p><p className="mt-1 text-xs text-slate-400">{m.gates_controlled_scale?"Gates CONTROLLED SCALE.":"Progress marker."}</p></div>)}</div><p className="mt-2 text-xs text-slate-500">Post-launch milestones are visible progress, never pre-launch technical failures.</p></Card>
+      <Card title="Outbound state"><div className="space-y-3">{outboundState.map(([name,value])=><div key={name} className="flex items-center justify-between rounded-lg bg-white/5 p-3 text-sm"><span>{name}</span>{typeof value==="boolean"?<span className={value?"text-emerald-300":"text-amber-300"}>{value?"On":"Off"}</span>:<span className="text-slate-300">{String(value).replaceAll("_"," ")}</span>}</div>)}</div><p className="mt-2 text-xs text-slate-500">Phase order: {phaseOrder.map(p=>p.replaceAll("_"," ")).join(" → ")}.</p></Card>
+    </div>
     <div className="grid gap-6 lg:grid-cols-2"><Card title="Activation switches"><div className="space-y-3">{switches.map(([name,on])=><div key={name} className="flex items-center justify-between rounded-lg bg-white/5 p-3 text-sm"><span>{name}</span><span className={on?"text-emerald-300":"text-amber-300"}>{on?"On":"Off"}</span></div>)}<p className="text-xs text-slate-500">Daily prospecting cap: {config?.daily_prospecting_cap??0}. Switches that are off are activation choices, not broken systems.</p><Link className="inline-block text-sm font-semibold text-purple-300 hover:text-purple-200" href="/office/settings">Review settings →</Link></div></Card>
     <Card title="Growth channels"><div className="space-y-3"><p className="text-sm"><strong>{distributionResult.count||0}</strong> distribution drafts await review.</p><p className="text-sm">Audience snapshot: <span className="text-slate-400">{audienceResult.data?.snapshot_date||"waiting"}</span></p><p className="text-sm">Growth brief: <span className="text-slate-400">{briefResult.data?.brief_date||"waiting"}</span></p><Gate gate={{title:"Reddit research",status:config?.organic_reddit_commercial_approval_confirmed?"pass":"optional",detail:config?.organic_reddit_commercial_approval_confirmed?"Commercial data-use approval is recorded.":"Waiting for written commercial approval. This does not block the core B2B launch."}}/></div></Card></div>
-    <Card title="Controlled activation order"><ol className="list-decimal space-y-3 pl-5 text-sm text-slate-300"><li>Clear every red blocker above and complete Phase 1 certification.</li><li>Begin the inbound pilot with Gmail ingestion and reporting.</li><li>Enable human-approved proposal email after observing inbound operations.</li><li>Enable prospecting last with a low daily cap.</li><li>Leave Reddit research off until written commercial approval is recorded.</li></ol><Link className="mt-4 inline-block text-sm font-semibold text-purple-300" href="/office/activation">Open guided activation →</Link></Card>
+    <Card title="Controlled activation order"><ol className="list-decimal space-y-3 pl-5 text-sm text-slate-300"><li>Clear every red pre-launch blocker and complete the final pre-launch certification with a named sign-off.</li><li>Begin the inbound pilot with Gmail ingestion and reporting.</li><li>Enable human-approved proposal email after observing inbound operations.</li><li>Start the controlled outbound pilot last, capped at five individually approved messages per weekday.</li><li>Validate the first real customer journey (post-launch milestone) before enabling CONTROLLED SCALE.</li><li>Leave Reddit research off until written commercial approval is recorded.</li></ol><Link className="mt-4 inline-block text-sm font-semibold text-purple-300" href="/office/activation">Open guided activation →</Link></Card>
   </div>;
 }

@@ -76,6 +76,7 @@ MIGRATIONS=(
   "$TESTS_DIR/../migrations/20260823192406_enforce_complete_launch_readiness.sql"
   "$TESTS_DIR/../migrations/20260824140000_manual_certification_operator_controls.sql"
   "$TESTS_DIR/../migrations/20260824150000_classification_aware_launch_readiness.sql"
+  "$TESTS_DIR/../migrations/20260825120000_launch_certification_policy_v62.sql"
 )
 echo "==> applying forward migrations (${#MIGRATIONS[@]})"
 for m in "${MIGRATIONS[@]}"; do
@@ -86,6 +87,12 @@ for m in "${MIGRATIONS[@]}"; do
   psql_exec -q -v ON_ERROR_STOP=1 < "$m" >/dev/null
 done
 echo "    idempotent"
+
+echo "==> running regression suite: launch_phase_policy"
+if ! PHASE_OUT="$(psql_exec -v ON_ERROR_STOP=1 < "$TESTS_DIR/launch_phase_policy.sql" 2>&1)"; then
+  echo "$PHASE_OUT"; exit 1
+fi
+echo "$PHASE_OUT" | tail -3
 
 echo "==> running regression suite: manual_certification_operator_controls"
 if ! SUITE_OUT="$(psql_exec -v ON_ERROR_STOP=1 < "$TESTS_DIR/manual_certification_operator_controls.sql" 2>&1)"; then
@@ -152,7 +159,7 @@ DUP_OUT="$(psql_q "select public.sign_off_final_production_certification('$CERT_
 echo "$DUP_OUT" | grep -q "already signed off" || { echo "race 2 failed: duplicate not rejected: $DUP_OUT"; exit 1; }
 echo "    duplicate sign-off rejected cleanly"
 
-echo "==> race 3: live lineage invalidation reflects immediately in gate status"
+echo "==> race 3: live lineage invalidation reflects immediately in milestone state"
 docker exec -i "$CONTAINER" psql -U postgres -d postgres >/dev/null 2>&1 <<SQL &
 begin;
 select automation.lock_final_certification_state('$CERT_RACE');
@@ -161,23 +168,20 @@ rollback;
 SQL
 S3_PID=$!
 sleep 2
+CANON_PROSPECT="$(psql_q "select coalesce(prospect_id::text,'') from automation.first_production_customer_journey()")"
+if [ -z "$CANON_PROSPECT" ]; then
+  echo "race 3 failed: no canonical production journey available to invalidate"; exit 1
+fi
 docker exec -i "$CONTAINER" psql -U postgres -d postgres <<SQL || echo "race3 insert FAILED"
 \set ON_ERROR_STOP on
-with ins as (
-  insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
-  select 'lead', l.id, 'test_qa', 'Race scenario: operator confirmed fixture journey invalidation mid-flight.', 'operator@teamtastic.test',
-         jsonb_build_object('owner_confirmed_test', true)
-  from public.leads l where l.email_normalized='ryan.race@example.test'
-  returning id
-)
-select 'race3-inserted', count(*) from ins;
+insert into public.production_record_classifications(record_type, record_id, classification, reason, actor, evidence)
+values ('prospect', '$CANON_PROSPECT', 'test_qa', 'Race scenario: operator confirmed fixture journey invalidation mid-flight.', 'operator@teamtastic.test',
+        jsonb_build_object('owner_confirmed_test', true));
 SQL
-psql_q "select 'race3-debug leadcls=' || coalesce(classification,'none') from public.production_record_classification_status where record_type='lead' and record_id in (select id from public.leads where email_normalized='ryan.race@example.test')" || true
-psql_q "select 'race3-debug resolver=' || lineage_valid || '/' || coalesce(invalid_reason,'-') from automation.final_certification_journey_lineage('$CERT_RACE')" || true
-SATISFIED="$(psql_q "select coalesce(bool_and(satisfied), false) from public.final_certification_gate_status where certification_id='$CERT_RACE' and check_name='client_portal_access'")"
+VALIDATED="$(psql_q "select coalesce(validated::text,'none') from public.launch_phase_milestone_state where milestone_key='first_real_customer_journey_validation'")"
 wait "$S3_PID" || true
-[ "$SATISFIED" = "f" ] || { echo "race 3 failed: portal gate stayed satisfied after journey invalidation"; exit 1; }
-echo "    stale portal evidence stopped satisfying the gate immediately"
+[ "$VALIDATED" = "false" ] || { echo "race 3 failed: journey milestone stayed validated after lineage invalidation (validated=$VALIDATED)"; exit 1; }
+echo "    stale journey milestone stopped reporting validated immediately"
 
 rm -f "$RACE_S2_LOG" "$TESTS_DIR/.roles.txt" "$TESTS_DIR/.roles_bootstrap.sql"
 echo
