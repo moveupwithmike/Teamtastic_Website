@@ -293,7 +293,15 @@ Full audited order, hard-stops first (unchanged from the original certification)
 
 ## Production Deployment State
 
-`supabase/functions/_shared/gmail-classification.ts` (containing the unsubscribe fix, the `not_now`/`booking_request`/`referral` remediation, and the `classifyReply`/`classifyWithLLM` extraction from the original certification pass) and `supabase/functions/ingest-gmail-replies/index.ts` (updated import only, zero logic change) were deployed to the live `ingest-gmail-replies` edge function as a single, clean, git-committed change — see commit and deployment verification below. `gmail_llm_classification_enabled` remains `false` in production; no LLM capability was enabled. See the Final Truth Table and commit/push/deploy details that follow.
+`supabase/functions/_shared/gmail-classification.ts` (containing the unsubscribe fix, the `not_now`/`booking_request`/`referral` remediation, and the `classifyReply`/`classifyWithLLM` extraction from the original certification pass) and `supabase/functions/ingest-gmail-replies/index.ts` were deployed to the live `ingest-gmail-replies` edge function.
+
+**Two commits, both pushed to `origin/main`**:
+- `88ae443767a37bd61f313eff7aee87c7856c7682` — "fix: certify inbound deterministic classification" (the remediation itself)
+- `e540ff2c507cf3d47886ecbff54a1f8560641728` — "fix: restore authorizeServiceRole alignment with deployed source" — a genuinely unrelated finding surfaced while preparing this deploy: the live edge function already had an `authorizeServiceRole` fallback in `_shared/runtime.ts` that the local repo was missing entirely (a pre-existing drift, not introduced this session). Restored verbatim rather than silently dropped as an accidental side effect of the classifier deploy — see that commit for detail. Production's cron trigger (`automation.trigger_gmail_reply_ingestion`) always supplies the correct webhook-secret header regardless, so scheduled ingestion was never at risk either way.
+
+**Deployment**: `ingest-gmail-replies` version 21, `status: ACTIVE`, deployed via the Supabase MCP `deploy_edge_function` tool. Deployed source verified byte-for-byte identical to the committed `index.ts`, `_shared/runtime.ts`, and `_shared/gmail-classification.ts` via a direct post-deploy source fetch.
+
+**Production config, re-verified post-deploy**: `master_enabled=true`, `gmail_ingestion_enabled=true`, `gmail_llm_classification_enabled=false` — unchanged. No LLM capability was enabled.
 
 ## Fresh Gates (this remediation pass)
 
