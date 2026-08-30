@@ -27,7 +27,20 @@ export default async function ProspectList({ searchParams }) {
     const safe = search.replace(/[,()%]/g, " ");
     query = query.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%,job_title.ilike.%${safe}%`);
   }
-  const { data: prospects = [], count, error } = await query;
+  const { data: rawProspects = [], error } = await query;
+  // Canonical test/QA exclusion boundary, matching office/(private)/page.js: a
+  // prospect is synthetic if its linked lead carries context.synthetic_test — the
+  // same signal automation.classify_lead_provenance() uses to classify it as
+  // test_qa/certification. This list is an operational browsing view, not a
+  // commercial-success metric, but it should still default to real records only
+  // rather than mixing in rehearsal/certification data indistinguishably.
+  const prospectIds = rawProspects.map((p) => p.id);
+  const { data: linkedLeads = [] } = prospectIds.length
+    ? await db.from("leads").select("prospect_id,context").in("prospect_id", prospectIds)
+    : { data: [] };
+  const syntheticProspectIds = new Set(linkedLeads.filter((lead) => lead.context?.synthetic_test === true).map((lead) => lead.prospect_id));
+  const prospects = source === "test" ? rawProspects : rawProspects.filter((p) => !syntheticProspectIds.has(p.id));
+  const count = source === "test" ? rawProspects.length : prospects.length;
   const companyIds = [...new Set(prospects.map((p) => p.company_id).filter(Boolean))];
   const { data: companies = [] } = companyIds.length ? await db.from("companies").select("id,name").in("id", companyIds) : { data: [] };
   const companyNames = new Map(companies.map((c) => [c.id, c.name]));
