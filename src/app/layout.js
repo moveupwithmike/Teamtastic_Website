@@ -63,6 +63,20 @@ export default function RootLayout({ children }) {
         <AdPixels />
         <FunnelIntentTracker />
         <Toaster richColors position="bottom-right" theme="dark" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "@id": "https://teamtastic.events/#organization",
+              name: "Teamtastic",
+              url: "https://teamtastic.events",
+              logo: "https://teamtastic.events/teamtastic-og.png",
+              knowsAbout: ["virtual team building", "remote team building", "online games", "corporate game shows", "virtual holiday parties"],
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
         <Navbar />
         <div className="flex-grow flex flex-col">
           {children}

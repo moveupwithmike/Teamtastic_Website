@@ -6,6 +6,39 @@ import { classifyStripeSession, PRODUCTS, PRODUCT_KEYS } from "@/lib/products";
 
 export const runtime = "nodejs";
 
+const REFUND_EVENT_TYPES = new Set(["refund.created", "refund.updated", "refund.failed"]);
+
+async function handleRefundEvent(supabase, event) {
+  const refund = event.data.object;
+  const paymentIntentId = typeof refund.payment_intent === "string"
+    ? refund.payment_intent
+    : refund.payment_intent?.id || null;
+  const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id || null;
+
+  const { data, error } = await supabase.rpc("reconcile_stripe_refund", {
+    p_stripe_refund_id: refund.id,
+    p_stripe_payment_intent_id: paymentIntentId,
+    p_stripe_charge_id: chargeId,
+    p_amount_cents: refund.amount || 0,
+    p_currency: (refund.currency || "usd").toLowerCase(),
+    p_status: refund.status || "pending",
+    p_reason: refund.reason || null,
+    p_failure_reason: refund.failure_reason || null,
+    p_stripe_refund_created_at: new Date(refund.created * 1000).toISOString(),
+    p_stripe_event_created_at: new Date(event.created * 1000).toISOString(),
+    p_stripe_event_id: event.id,
+  });
+  if (error) {
+    console.error("Refund reconciliation failed", { code: error.code, event: event.id, refund: refund.id });
+    return new Response("Refund reconciliation failed", { status: 503 });
+  }
+  if (!data?.reconciled) {
+    console.error("Refund reconciliation rejected", { event: event.id, refund: refund.id, reason: data?.reason });
+    return new Response("Refund reconciliation rejected", { status: 200 });
+  }
+  return new Response("Processed", { status: 200 });
+}
+
 async function notifyMichael(payment, lead) {
   const product = PRODUCTS[payment.product_key] || PRODUCTS[PRODUCT_KEYS.UNCLASSIFIED];
   const subject = lead
@@ -91,12 +124,13 @@ export async function POST(request) {
   } catch {
     return new Response("Invalid signature", { status: 400 });
   }
+  const supabase = getSupabaseAdmin();
+  if (REFUND_EVENT_TYPES.has(event.type)) return handleRefundEvent(supabase, event);
   if (event.type !== "checkout.session.completed") return new Response("Ignored", { status: 200 });
 
   const session = event.data.object;
   const productKey = classifyStripeSession(session);
   const product = PRODUCTS[productKey];
-  const supabase = getSupabaseAdmin();
   const email = session.customer_details?.email?.trim().toLowerCase() || null;
   const submissionId = session.metadata?.submission_id || session.client_reference_id || null;
   const paymentRequestId = session.metadata?.payment_request_id || null;
@@ -164,6 +198,9 @@ export async function POST(request) {
     payment_status: session.payment_status || "paid",
     checkout_mode: session.mode || null,
     payment_link_id: typeof session.payment_link === "string" ? session.payment_link : session.payment_link?.id || null,
+    stripe_payment_intent_id: typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id || null,
     payment_request_id: paymentRequest?.id || null,
     payment_kind: paymentRequest?.payment_kind || session.metadata?.payment_kind || null,
     product_key: productKey,

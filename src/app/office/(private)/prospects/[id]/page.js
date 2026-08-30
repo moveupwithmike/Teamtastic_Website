@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOfficeDb } from "@/lib/server/office-auth";
-import { Card, formatDate, formatMoney } from "../../../office-ui";
+import { Card, formatDate, formatMoney, inputClass, buttonClass } from "../../../office-ui";
+import { cancelHostedEvent, markEventNoShow } from "@/lib/server/office/deal-events";
+import { computeCancellationPolicy } from "@/lib/cancellation-policy";
 
 function TimelineItem({ date, label, title, detail, tone = "purple" }) {
   const colors = { purple: "bg-purple-400", green: "bg-emerald-400", gold: "bg-amber-400", red: "bg-red-400", blue: "bg-sky-400" };
@@ -28,7 +30,7 @@ export default async function ProspectDetail({ params }) {
     db.from("messages").select("id,direction,message_type,from_address,to_addresses,subject,body_text,status,classification,sent_at,received_at,created_at").eq("prospect_id", id).order("created_at", { ascending: false }),
     db.from("bookings").select("id,name,email,company,starts_at,ends_at,status,zoom_join_url,source,created_at").eq("prospect_id", id).order("created_at", { ascending: false }),
     db.from("tasks").select("id,title,description,status,priority,due_at,source,created_at").eq("prospect_id", id).order("created_at", { ascending: false }),
-    db.from("deals").select("id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date,lost_reason,package_name,budget_amount,call_outcome,call_notes,created_at,updated_at").eq("prospect_id", id).order("created_at", { ascending: false }),
+    db.from("deals").select("id,event_id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date,lost_reason,package_name,budget_amount,call_outcome,call_notes,cancelled_at,cancellation_reason,no_show,refund_status,amount_refunded,net_revenue,refund_eligible_percent,refund_eligible_amount,created_at,updated_at").eq("prospect_id", id).order("created_at", { ascending: false }),
     db.from("agent_log").select("id,agent_name,action,outcome,decision,error,created_at").eq("prospect_id", id).order("created_at", { ascending: false }).limit(100),
     db.from("outreach_drafts").select("id,subject,body_text,status,approval_notes,created_at,updated_at").eq("prospect_id", id).order("created_at", { ascending: false }),
     db.from("proposals").select("id,package_name,price,currency,expires_on,subject,status,sent_at,last_error,metadata,created_at").eq("prospect_id", id).order("created_at", { ascending: false }),
@@ -41,13 +43,25 @@ export default async function ProspectDetail({ params }) {
   ]) : [{ data: [] }, { data: [] }];
   const payments = paymentsResult.data || [];
   const stageHistory = stageHistoryResult.data || [];
+  const eventIds = [...new Set(deals.map((d) => d.event_id).filter(Boolean))];
+  const eventsResult = eventIds.length
+    ? await db.from("events").select("id,scheduled_start_time,status").in("id", eventIds)
+    : { data: [] };
+  const eventsById = new Map((eventsResult.data || []).map((e) => [e.id, e]));
+  const paymentsByDeal = new Map();
+  for (const payment of payments) {
+    const cents = Math.round(Number(payment.amount || 0) * 100);
+    paymentsByDeal.set(payment.deal_id, (paymentsByDeal.get(payment.deal_id) || 0) + cents);
+  }
+  const TERMINAL_DEAL_STAGES = new Set(["cancelled", "closed_lost"]);
+  const cancellableDeals = deals.filter((d) => !TERMINAL_DEAL_STAGES.has(d.stage) && paymentsByDeal.get(d.id) > 0);
   const dealNames = new Map(deals.map((deal) => [deal.id, deal.title]));
   const timeline = [
     ...(leadsResult.data || []).map((x) => ({ date: x.created_at, label: "Lead form", title: `${x.lead_source || "Website"} lead`, detail: [x.team_size && `Team: ${x.team_size}`, x.preferred_event_date && `Date: ${x.preferred_event_date}`, x.alternate_event_date && `Alternate: ${x.alternate_event_date}`, x.event_timezone && `Zone: ${x.event_timezone}`, x.preferred_time && `Time: ${x.preferred_time}`, x.budget_range && `Budget: ${x.budget_range}`, x.package_interest && `Package: ${x.package_interest}`, x.decision_timeline && `Decision: ${x.decision_timeline}`, x.vibe && `Vibe: ${x.vibe}`, x.occasion && `Occasion: ${x.occasion}`, x.recommendation_key && `Recommendation: ${x.recommendation_key}`].filter(Boolean).join(" · "), tone: "blue" })),
     ...(messagesResult.data || []).map((x) => ({ date: x.received_at || x.sent_at || x.created_at, label: x.direction === "inbound" ? `Inbound email${x.classification ? ` — ${x.classification}` : ""}` : `Outbound email — ${x.status}`, title: x.subject || "No subject", detail: x.body_text, tone: x.direction === "inbound" ? "green" : "purple" })),
     ...(bookingsResult.data || []).map((x) => ({ date: x.starts_at, label: `Booking — ${x.status}`, title: `${formatDate(x.starts_at)} call`, detail: x.company, tone: "gold" })),
     ...(tasksResult.data || []).map((x) => ({ date: x.due_at || x.created_at, label: `Task — ${x.status}`, title: x.title, detail: x.description, tone: x.priority === "urgent" ? "red" : "gold" })),
-    ...deals.map((x) => ({ date: x.updated_at, label: `Deal — ${x.stage.replaceAll("_", " ")}`, title: `${x.title} · ${formatMoney(x.expected_value, x.currency)}`, detail: [x.next_action, x.call_outcome && `Call: ${x.call_outcome}`, x.call_notes].filter(Boolean).join("\n"), tone: x.outcome === "lost" ? "red" : "purple" })),
+    ...deals.map((x) => ({ date: x.updated_at, label: `Deal — ${x.stage.replaceAll("_", " ")}`, title: `${x.title} · ${formatMoney(x.expected_value, x.currency)}`, detail: [x.next_action, x.call_outcome && `Call: ${x.call_outcome}`, x.call_notes, x.refund_status !== "none" && `Refunded ${formatMoney(x.amount_refunded, x.currency)} (${x.refund_status}) · net revenue ${formatMoney(x.net_revenue, x.currency)}`, x.cancelled_at && `Cancelled: ${x.cancellation_reason || "no reason given"}${x.no_show ? " (no-show)" : ""}`].filter(Boolean).join("\n"), tone: x.outcome === "lost" || x.stage === "cancelled" ? "red" : "purple" })),
     ...payments.map((x) => ({ date: x.paid_at, label: "Payment", title: `${formatMoney(x.amount, x.currency)} ${x.payment_kind}`, detail: "Stripe payment matched to this deal", tone: "green" })),
     ...(draftsResult.data || []).map((x) => ({ date: x.updated_at, label: `Outreach draft — ${x.status}`, title: x.subject, detail: x.approval_notes, tone: "blue" })),
     ...(proposalsResult.data || []).map((x) => ({ date: x.sent_at || x.created_at, label: `Proposal — ${x.status}`, title: `${x.package_name} · ${formatMoney(x.price, x.currency)}`, detail: [x.subject, x.metadata?.template_version && `Template: ${x.metadata.template_version}`].filter(Boolean).join("\n"), tone: "gold" })),
@@ -76,6 +90,49 @@ export default async function ProspectDetail({ params }) {
           })}
         </ol>
       )}
+    </Card>
+    <Card title="Hosted event cancellation" count={cancellableDeals.length}>
+      {!cancellableDeals.length
+        ? <p className="text-slate-400">No paid, active deals to cancel or mark no-show for.</p>
+        : <div className="space-y-4">
+          {cancellableDeals.map((deal) => {
+            const event = deal.event_id ? eventsById.get(deal.event_id) : null;
+            const paidCents = paymentsByDeal.get(deal.id) || 0;
+            const preview = event?.scheduled_start_time
+              ? computeCancellationPolicy({ eventStartsAt: event.scheduled_start_time })
+              : null;
+            const previewAmount = preview ? Math.round((paidCents * preview.refundPercent) / 100) / 100 : null;
+            return <div key={deal.id} className="rounded-xl bg-white/[0.03] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">{deal.title} · paid {formatMoney(paidCents / 100, deal.currency)}</p>
+                <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs text-purple-300">{deal.stage.replaceAll("_", " ")}</span>
+              </div>
+              {event?.scheduled_start_time
+                ? <p className="mt-1 text-sm text-slate-400">
+                    Event scheduled {formatDate(event.scheduled_start_time)}. Cancelling right now is eligible for
+                    {" "}<strong>{preview.refundPercent}% ({formatMoney(previewAmount, deal.currency)})</strong> under
+                    the standard policy — recalculated at the moment you submit, not this page load.
+                  </p>
+                : <p className="mt-1 text-sm text-slate-400">No linked event date yet — cancelling records 0% eligibility until a date is confirmed.</p>}
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <form action={cancelHostedEvent} className="space-y-2">
+                  <input type="hidden" name="deal_id" value={deal.id} />
+                  <input type="hidden" name="prospect_id" value={id} />
+                  <label className="block text-sm">Cancellation reason<textarea name="reason" required rows={2} className={inputClass} placeholder="Client rescheduling internally, budget cut, etc." /></label>
+                  <button className={`${buttonClass} bg-red-600 hover:bg-red-500`}>Cancel event — establish refund eligibility</button>
+                  <p className="text-xs text-slate-500">This does not call Stripe. It creates an urgent task with the exact refund amount for you to issue manually.</p>
+                </form>
+                <form action={markEventNoShow} className="space-y-2">
+                  <input type="hidden" name="deal_id" value={deal.id} />
+                  <input type="hidden" name="prospect_id" value={id} />
+                  <label className="block text-sm">No-show notes (optional)<textarea name="reason" rows={2} className={inputClass} placeholder="Customer did not join at the scheduled time." /></label>
+                  <button className="rounded-lg border border-amber-400/30 px-4 py-2 text-sm text-amber-300 hover:bg-amber-500/10">Mark no-show (0% refund)</button>
+                  <p className="text-xs text-slate-500">Only use this after the event start time has passed with no customer.</p>
+                </form>
+              </div>
+            </div>;
+          })}
+        </div>}
     </Card>
     <Card title="Complete timeline" count={timeline.length}>{!timeline.length ? <p className="text-slate-400">No activity has been recorded yet.</p> : <ol className="relative space-y-6 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-white/10">{timeline.map((item, index) => <TimelineItem key={`${item.label}-${item.date}-${index}`} {...item} />)}</ol>}</Card>
   </div>;

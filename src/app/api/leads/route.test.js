@@ -137,6 +137,32 @@ describe("lead capture", () => {
     }));
   });
 
+  it("persists theme-page attribution for CRM follow-up", async () => {
+    const supabase = createSupabaseAdminMock({
+      tables: { leads: ({ calls }) => calls.some((c) => c.method === "insert") ? { data: null, error: null } : { data: null, error: null } },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+
+    const response = await postLead(leadPayload({
+      source: "theme_halloween",
+      occasion: "social-hour",
+      teamSize: "15-50",
+      landingPage: "/themes/halloween/",
+      context: { entry_point: "theme_halloween_inline" },
+    }));
+
+    expect(response.status).toBe(200);
+    const insertCall = supabase.from.mock.results.map((r) => r.value).find((builder) => builder.insert.mock.calls.length > 0);
+    expect(insertCall.insert).toHaveBeenCalledWith(expect.objectContaining({
+      lead_source: "theme_halloween",
+      occasion: "social-hour",
+      team_size: "15-50",
+      landing_page: "/themes/halloween/",
+    }));
+    const inserted = insertCall.insert.mock.calls[0][0];
+    expect(inserted.context).toMatchObject({ entry_point: "theme_halloween_inline" });
+  });
+
   it("treats a resubmitted submissionId as a no-op duplicate instead of erroring", async () => {
     const supabase = createSupabaseAdminMock({
       tables: {

@@ -44,7 +44,7 @@ const categories = [
       { q: "Is there a truly free option?", a: "Yes. You can launch a free lobby for up to 10 players at any time with no credit card required." },
       { q: "How do custom packages work?", a: "We quote based on your team size, event frequency, and level of emcee facilitation. Complete our Event Quiz to get a tailored quote in minutes." },
       { q: "Do you support purchase orders and corporate invoicing?", a: "Yes. All paid packages support PO numbers, formal invoicing, and structured corporate billing." },
-      { q: "Is there a refund policy?", a: "Yes. We offer full refunds for cancellations made more than 48 hours before a booked hosted event. Self-service subscriptions can be cancelled anytime." },
+      { q: "Is there a refund policy?", a: "Yes, based on when you cancel relative to your event's start time: 7+ days before, 100% refund. 48 hours to 7 days before, 50% refund. Less than 48 hours before, 25% refund. At or after the event start time, or a no-show, no refund. Rescheduling is available subject to availability, and may carry a transfer fee depending on timing and prep already completed. Full details and examples: https://teamtastic.events/cancellation-policy" },
     ],
   },
 ];

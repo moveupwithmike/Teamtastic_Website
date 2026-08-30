@@ -306,6 +306,13 @@ export default function SoloDemo() {
                 >
                   {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Claim Free Starter Lobby 🎁"}
                 </button>
+                <p className="text-[10px] leading-relaxed text-slate-500">
+                  By submitting you agree to our{" "}
+                  <a href="/privacy" className="text-slate-400 underline underline-offset-2 hover:text-white">privacy policy</a>{" "}
+                  and{" "}
+                  <a href="/terms" className="text-slate-400 underline underline-offset-2 hover:text-white">terms</a>. We may
+                  email you about your inquiry and occasionally share event ideas — you can opt out anytime.
+                </p>
               </form>
             </div>
           </motion.div>

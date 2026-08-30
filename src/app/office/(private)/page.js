@@ -3,6 +3,7 @@ import { getOfficeDb } from "@/lib/server/office-auth";
 import { officeErrorMessage } from "@/lib/server/office-errors";
 import { dateInTimeZone, zonedDayRangeUtc } from "@/lib/server/booking-time";
 import { Card, Empty, ProspectLink, formatDate, formatMoney, inputClass, buttonClass } from "../office-ui";
+import { HOT_INTENTS, HOT_MIN_CONFIDENCE, ageBucketForDate } from "@/lib/server/office/hot-lead";
 import { approveAndSendProposal, createProposal, reconcileProposalSend, recordCallOutcome, reviewOutreachDraft } from "../actions";
 
 export default async function OfficeDashboard({ searchParams }) {
@@ -16,7 +17,7 @@ export default async function OfficeDashboard({ searchParams }) {
   const [todayStart, todayEnd] = zonedDayRangeUtc(easternDate, "America/New_York").map((date) => date.toISOString());
 
   const [repliesResult, overdueResult, callsResult, failuresResult, postCallsResult, draftsResult, proposalDealsResult, proposalsResult, proposalConfigResult, proposalCounterResult] = await Promise.all([
-    db.from("messages").select("id,prospect_id,subject,body_text,received_at,from_address").eq("direction", "inbound").eq("classification", "interested").gte("received_at", sevenDaysAgo).order("received_at", { ascending: false }).limit(20),
+    db.from("messages").select("id,prospect_id,subject,body_text,received_at,from_address,classification,classification_confidence").eq("direction", "inbound").in("classification", HOT_INTENTS).gte("classification_confidence", HOT_MIN_CONFIDENCE).gte("received_at", sevenDaysAgo).order("received_at", { ascending: false }).limit(20),
     db.from("deals").select("id,prospect_id,title,stage,expected_value,currency,next_action,next_action_due_at").eq("outcome", "open").lt("next_action_due_at", now).order("next_action_due_at").limit(30),
     db.from("bookings").select("id,prospect_id,name,email,company,starts_at,ends_at,zoom_join_url,status").eq("status", "confirmed").gte("starts_at", todayStart).lt("starts_at", todayEnd).order("starts_at"),
     db.from("agent_log").select("id,agent_name,action,outcome,error,decision,created_at,prospect_id").in("outcome", ["failed", "blocked", "escalated"]).gte("created_at", sevenDaysAgo).order("created_at", { ascending: false }).limit(30),
@@ -41,7 +42,8 @@ export default async function OfficeDashboard({ searchParams }) {
   const people = new Map(prospects.map((p) => [p.id, p]));
   const syntheticProspectIds = new Set(linkedLeads.filter((lead) => lead.context?.synthetic_test === true).map((lead) => lead.prospect_id));
   const isRealInbound = (prospectId) => people.get(prospectId)?.source === "inbound" && !syntheticProspectIds.has(prospectId);
-  const replies = (repliesResult.data || []).filter((reply) => isRealInbound(reply.prospect_id));
+  const bucketTone = { NEW: "bg-emerald-500/15 text-emerald-300", WAITING: "bg-amber-500/15 text-amber-300", OVERDUE: "bg-orange-500/15 text-orange-300", STALE: "bg-red-500/15 text-red-300" };
+  const replies = (repliesResult.data || []).filter((reply) => isRealInbound(reply.prospect_id) && ageBucketForDate(reply.received_at, nowDate) !== "STALE").map((reply) => ({ ...reply, bucket: ageBucketForDate(reply.received_at, nowDate) }));
   const overdue = (overdueResult.data || []).filter((deal) => isRealInbound(deal.prospect_id));
   const calls = callsResult.data || [];
   const failures = failuresResult.data || [];
@@ -63,8 +65,8 @@ export default async function OfficeDashboard({ searchParams }) {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="Interested replies" count={replies.length} tone="green">
-          {!replies.length ? <Empty /> : <ul className="space-y-3">{replies.map((reply) => { const person = people.get(reply.prospect_id); return <li key={reply.id} className="rounded-xl bg-white/[0.03] p-4"><ProspectLink id={reply.prospect_id} name={person?.full_name} email={reply.from_address} /><p className="mt-1 font-medium">{reply.subject || "No subject"}</p><p className="mt-1 line-clamp-3 text-sm text-slate-400">{reply.body_text}</p><p className="mt-2 text-xs text-slate-500">{formatDate(reply.received_at)}</p></li>; })}</ul>}
+        <Card title="Hot replies" count={replies.length} tone="green">
+          {!replies.length ? <Empty /> : <ul className="space-y-3">{replies.map((reply) => { const person = people.get(reply.prospect_id); return <li key={reply.id} className="rounded-xl bg-white/[0.03] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><ProspectLink id={reply.prospect_id} name={person?.full_name} email={reply.from_address} /><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${bucketTone[reply.bucket]}`}>{reply.bucket}</span></div><p className="mt-1 font-medium">{reply.subject || "No subject"}</p><p className="mt-1 line-clamp-3 text-sm text-slate-400">{reply.body_text}</p><p className="mt-2 text-xs text-slate-500">{formatDate(reply.received_at)} · {reply.classification.replaceAll("_", " ")} {reply.classification_confidence != null ? `(${Math.round(reply.classification_confidence * 100)}%)` : ""}</p></li>; })}</ul>}
         </Card>
 
         <Card title="Overdue deal actions" count={overdue.length} tone="red">

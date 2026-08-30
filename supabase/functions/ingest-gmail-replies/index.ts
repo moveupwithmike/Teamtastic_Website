@@ -1,5 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
+import {
+  classifyFuzzyRegex,
+  classifyHardStop,
+  FUZZY_CLASSIFICATIONS,
+  LLM_SYSTEM_PROMPT,
+  LLM_TOOL_SCHEMA,
+  type Classification,
+} from "../_shared/gmail-classification.ts";
 
 type GmailHeader = { name?: string; value?: string };
 type GmailPart = {
@@ -86,78 +94,6 @@ function isAutomatedSystemMessage(sender: string, subject: string, headers: Reco
     /^(?:security alert|delivery status notification|undeliverable|mail delivery failed)\b/.test(normalizedSubject)
   );
 }
-
-type Classification = { classification: string; confidence: number; reason: string; method: "regex" | "llm" };
-
-const FUZZY_CLASSIFICATIONS = ["interested", "not_interested", "referral", "question", "unknown"] as const;
-
-// These four are compliance/reputation-sensitive (opt-out law, abuse complaints) and are
-// simple enough that the regex is already near-certain. They are never routed to the LLM,
-// regardless of the gmail_llm_classification_enabled flag.
-function classifyHardStop(text: string): Classification | null {
-  const has = (pattern: RegExp) => pattern.test(text);
-
-  if (has(/\b(unsubscribe|remove me|stop emailing|do not (?:email|contact)|opt[ -]?out)\b/)) {
-    return { classification: "unsubscribe", confidence: 0.99, reason: "explicit opt-out language", method: "regex" };
-  }
-  if (has(/\b(attorney|legal counsel|cease and desist|lawsuit|litigation|legal action)\b/)) {
-    return { classification: "legal", confidence: 0.97, reason: "legal escalation language", method: "regex" };
-  }
-  if (has(/\b(spam|reported you|harassment|complaint|never contact)\b/)) {
-    return { classification: "complaint", confidence: 0.95, reason: "complaint or spam language", method: "regex" };
-  }
-  if (has(/\b(out of (?:the )?office|automatic reply|auto(?:matic)? response|away from (?:my )?email|on (?:vacation|leave))\b/)) {
-    return { classification: "out_of_office", confidence: 0.96, reason: "automatic absence language", method: "regex" };
-  }
-  return null;
-}
-
-// Fallback used when the LLM is disabled, fails, or returns something outside the
-// expected shape. Also the only path when gmail_llm_classification_enabled is false.
-function classifyFuzzyRegex(text: string, body: string): Classification {
-  const has = (pattern: RegExp) => pattern.test(text);
-
-  if (has(/\b(not interested|no thank(?:s| you)|not a fit|please pass|we(?:'re| are) all set|do not need)\b/)) {
-    return { classification: "not_interested", confidence: 0.94, reason: "explicit negative response", method: "regex" };
-  }
-  if (has(/\b(reach out to|contact|speak with|forwarded (?:this|your email) to|looping in|better person)\b.{0,80}\b(colleague|manager|team|hr|people|events?|them|her|him)\b/)) {
-    return { classification: "referral", confidence: 0.86, reason: "referral language", method: "regex" };
-  }
-  if (has(/\b(interested|sounds (?:good|great)|let(?:'s| us) (?:talk|chat|meet)|book (?:a )?(?:call|demo)|available (?:to|for)|tell me more|send (?:me )?(?:details|pricing))\b/)) {
-    return { classification: "interested", confidence: 0.90, reason: "positive buying language", method: "regex" };
-  }
-  if (body.includes("?") || has(/\b(question(?:s)?|wondering|how|what|when|where|who|can you|could you|would you|pricing|cost|programs?|services?|more information)\b/)) {
-    return { classification: "question", confidence: 0.82, reason: "question language", method: "regex" };
-  }
-  return { classification: "unknown", confidence: 0.35, reason: "no high-confidence rule matched", method: "regex" };
-}
-
-const LLM_SYSTEM_PROMPT = `You classify inbound email replies to cold B2B sales outreach for Teamtastic, a
-corporate team-building/event-experiences company. You only ever see messages that already failed
-to match unsubscribe/legal/complaint/out-of-office detection, so classify among exactly these five:
-
-- interested: wants to move forward, hear more, book a call/demo, or get pricing/details.
-- not_interested: a soft or implicit decline that isn't a hard opt-out (e.g. "not the right time", "we're set for this year").
-- referral: redirects you to a colleague, department (HR/People/Events), or other point of contact.
-- question: asks something (pricing, logistics, program details) without a clear buy/no-buy signal yet.
-- unknown: doesn't clearly fit any of the above, or you're genuinely unsure.
-
-Call the classify_reply tool exactly once with your answer. Be conservative: prefer "unknown" with a
-low confidence over guessing when the message is ambiguous, sarcastic, or mostly quoted prior thread text.`;
-
-const LLM_TOOL_SCHEMA = {
-  name: "classify_reply",
-  description: "Classify an inbound sales-reply email into one fuzzy category.",
-  input_schema: {
-    type: "object",
-    properties: {
-      classification: { type: "string", enum: FUZZY_CLASSIFICATIONS as unknown as string[] },
-      confidence: { type: "number", minimum: 0, maximum: 1 },
-      reason: { type: "string", description: "One short sentence on why." },
-    },
-    required: ["classification", "confidence", "reason"],
-  },
-};
 
 async function classifyWithLLM(subject: string, body: string): Promise<Classification> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");

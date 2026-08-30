@@ -311,6 +311,13 @@ export default function GameQuiz() {
                         Generate My Recommendation
                         <ArrowRight className="h-4 w-4" />
                       </button>
+                      <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+                        By submitting you agree to our{" "}
+                        <a href="/privacy" className="text-zinc-400 underline underline-offset-2 hover:text-white">privacy policy</a>{" "}
+                        and{" "}
+                        <a href="/terms" className="text-zinc-400 underline underline-offset-2 hover:text-white">terms</a>. We may
+                        email you about your inquiry and occasionally share event ideas — you can opt out anytime.
+                      </p>
                     </div>
                   </form>
                 )}
@@ -433,6 +440,11 @@ export default function GameQuiz() {
                     Book a 15-Minute Call
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
+
+                  <p className="text-[11px] leading-relaxed text-zinc-500">
+                    Deposits reserve your date and are applied to your total. See our{" "}
+                    <a href="/cancellation-policy" className="text-zinc-400 underline underline-offset-2 hover:text-white">cancellation &amp; refund policy</a>.
+                  </p>
 
                   {/* Free Sandbox Trial */}
                   <div className="flex items-center justify-between gap-4 pt-2">

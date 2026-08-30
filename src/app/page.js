@@ -111,14 +111,9 @@ const useCases = [
 ];
 
 export default function Home() {
+  // Organization is declared once, site-wide, in src/app/layout.js — do not
+  // duplicate it here with a different logo URL.
   const structuredData = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "Teamtastic",
-      url: "https://teamtastic.events",
-      logo: "https://teamtastic.events/logo.png",
-    },
     {
       "@context": "https://schema.org",
       "@type": "Service",

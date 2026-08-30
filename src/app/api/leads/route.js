@@ -17,6 +17,10 @@ const SOURCES = new Set([
   "year_end_celebration_page",
   "large_holiday_event_page",
   "holiday_planning_checklist",
+  "theme_fall_team_building",
+  "theme_halloween",
+  "theme_holiday_team_building",
+  "theme_black_history_month",
 ]);
 function response(status, code, message, retryable = false) {
   return NextResponse.json({ success: false, code, message, retryable }, { status });

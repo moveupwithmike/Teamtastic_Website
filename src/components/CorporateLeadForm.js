@@ -142,6 +142,10 @@ export default function CorporateLeadForm({
             <Calendar className="h-4 w-4" /> Book a 15-minute call
           </a>
         </div>
+        <p className="mt-4 text-xs text-zinc-500">
+          Deposits reserve your date and are applied to your total. See our{" "}
+          <a href="/cancellation-policy" className="text-zinc-400 underline underline-offset-2 hover:text-white">cancellation &amp; refund policy</a>.
+        </p>
       </div>
     );
   }
@@ -252,7 +256,13 @@ export default function CorporateLeadForm({
       <button disabled={status === "submitting" || !turnstileToken} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#D81B60] px-5 text-sm font-bold text-white hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-40">
         {status === "submitting" ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving securely…</> : <>{submitLabel} <ArrowRight className="h-4 w-4" /></>}
       </button>
-      <p className="mt-3 text-center text-xs text-zinc-500">No obligation. We’ll reply within one business day.</p>
+      <p className="mt-3 text-center text-xs text-zinc-500">
+          No obligation. We’ll reply within one business day. By submitting you agree to our{" "}
+          <a href="/privacy" className="text-zinc-400 underline underline-offset-2 hover:text-white">privacy policy</a>{" "}
+          and{" "}
+          <a href="/terms" className="text-zinc-400 underline underline-offset-2 hover:text-white">terms</a>. We may
+          email you about your inquiry and occasionally share event ideas — you can opt out anytime.
+        </p>
     </form>
   );
 }

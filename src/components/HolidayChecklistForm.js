@@ -62,7 +62,13 @@ export default function HolidayChecklistForm() {
       <button disabled={status === "submitting" || !token} className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#D81B60] px-5 text-sm font-bold text-white disabled:opacity-40">
         {status === "submitting" ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</> : <><Download className="h-4 w-4" /> Get the free checklist</>}
       </button>
-      <p className="mt-3 text-xs text-zinc-500">Planning help only. No obligation.</p>
+      <p className="mt-3 text-xs text-zinc-500">
+        Planning help only. No obligation. By submitting you agree to our{" "}
+        <a href="/privacy" className="text-zinc-400 underline underline-offset-2 hover:text-white">privacy policy</a>{" "}
+        and{" "}
+        <a href="/terms" className="text-zinc-400 underline underline-offset-2 hover:text-white">terms</a>. We may
+        email you about your inquiry and occasionally share event ideas — you can opt out anytime.
+      </p>
     </form>
   );
 }
