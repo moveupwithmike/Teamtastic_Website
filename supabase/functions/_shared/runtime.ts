@@ -36,6 +36,12 @@ export async function authorizeWebhook(request: Request, secretName: string) {
   return null;
 }
 
+export async function authorizeServiceRole(request: Request) {
+  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  return Boolean(expected && provided && await timingSafeEqual(provided, expected));
+}
+
 export function errorText(error: unknown) {
   if (error instanceof Error) return error.message;
   if (error && typeof error === "object" && "message" in error) {

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
+import { authorizeServiceRole, authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 import { classifyReply } from "../_shared/gmail-classification.ts";
 
 type GmailHeader = { name?: string; value?: string };
@@ -99,7 +99,7 @@ async function gmailFetch(path: string, accessToken: string) {
 
 Deno.serve(async (request) => {
   const unauthorized = await authorizeWebhook(request, "GMAIL_INGESTION_WEBHOOK_SECRET");
-  if (unauthorized) return unauthorized;
+  if (unauthorized && !(await authorizeServiceRole(request))) return unauthorized;
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase
     .from("system_config")
