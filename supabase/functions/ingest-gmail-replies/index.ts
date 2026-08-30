@@ -1,13 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
-import {
-  classifyFuzzyRegex,
-  classifyHardStop,
-  FUZZY_CLASSIFICATIONS,
-  LLM_SYSTEM_PROMPT,
-  LLM_TOOL_SCHEMA,
-  type Classification,
-} from "../_shared/gmail-classification.ts";
+import { classifyReply } from "../_shared/gmail-classification.ts";
 
 type GmailHeader = { name?: string; value?: string };
 type GmailPart = {
@@ -95,69 +88,6 @@ function isAutomatedSystemMessage(sender: string, subject: string, headers: Reco
   );
 }
 
-async function classifyWithLLM(subject: string, body: string): Promise<Classification> {
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 256,
-      system: LLM_SYSTEM_PROMPT,
-      tools: [LLM_TOOL_SCHEMA],
-      tool_choice: { type: "tool", name: "classify_reply" },
-      messages: [
-        { role: "user", content: `Subject: ${subject}\n\nBody:\n${body.slice(0, 6000)}` },
-      ],
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error(`Anthropic ${response.status}: ${(await response.text()).slice(0, 500)}`);
-
-  const data = await response.json();
-  const toolUse = (data.content || []).find((block: { type?: string }) => block.type === "tool_use");
-  const input = toolUse?.input as { classification?: string; confidence?: number; reason?: string } | undefined;
-  const classification = input?.classification;
-  const isValidClassification = FUZZY_CLASSIFICATIONS.includes(classification as (typeof FUZZY_CLASSIFICATIONS)[number]);
-  if (
-    !input ||
-    !classification ||
-    !isValidClassification ||
-    typeof input.confidence !== "number" ||
-    input.confidence < 0 ||
-    input.confidence > 1
-  ) {
-    throw new Error(`Anthropic returned an unusable classification: ${JSON.stringify(input).slice(0, 300)}`);
-  }
-  return {
-    classification,
-    confidence: input.confidence,
-    reason: (input.reason || "llm classification").slice(0, 300),
-    method: "llm",
-  };
-}
-
-async function classifyReply(subject: string, body: string, llmEnabled: boolean): Promise<Classification> {
-  const text = `${subject}\n${body}`.toLowerCase().slice(0, 30_000);
-  const hardStop = classifyHardStop(text);
-  if (hardStop) return hardStop;
-
-  if (llmEnabled) {
-    try {
-      return await classifyWithLLM(subject, body);
-    } catch (error) {
-      console.error("gmail-reply LLM classification failed, falling back to regex:", errorText(error));
-    }
-  }
-  return classifyFuzzyRegex(text, body);
-}
-
 async function gmailFetch(path: string, accessToken: string) {
   const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -241,7 +171,7 @@ Deno.serve(async (request) => {
         skippedAutomated++;
         continue;
       }
-      const classification = await classifyReply(subject, body, llmClassificationEnabled);
+      const classification = await classifyReply(subject, body, llmClassificationEnabled, errorText);
 
       let { data: prospect } = await supabase
         .from("prospects")
