@@ -275,3 +275,60 @@ All four conditional-go findings from the prior rehearsal are closed with direct
 The `phase4_lifecycle_enabled` finding was investigated in full (see Payment Lifecycle Clarification above) rather than accepted at face value. The `"skipped"`/`"phase4_lifecycle_disabled"` status only means automatic `clients`/`events` record creation and status-label flips are gated — it does **not** mean a paid customer goes untracked. Direct inspection of the actual trigger code, the live database's `pg_trigger` and `cron.job` state, and real (non-synthetic) production data all confirm that deal creation, revenue/conversion dashboards, and nurture-email suppression already run through a separate, unconditional path, and that a real-time payment alert email is already configured and live. The gated portion was deliberately built, deliberately tested (a passed, 12/12-checkpoint certification run on 2026-08-09 including client/event creation), and deliberately double-disabled (config flag plus an inactive cron job) — consistent with this codebase's broader pattern of holding automation behind an explicit, undocumented owner-activation decision rather than defaulting it on. Because "clearly intended for launch" and "adequate automated regression coverage" are not established, this closure does **not** enable the flag; it documents, instead, that the current disabled state has a real, working, evidenced manual substitute, and that no paid customer is silently dropped by it. The Turnstile loading-state UX polish remains open, unrelated, and non-blocking, exactly as before.
 
 **COMMERCIAL GO CONFIRMED — LIFECYCLE INTENTIONALLY MANUAL**
+
+---
+
+## Stripe Certification Environment Cleanup
+
+With commercial GO confirmed, the temporary infrastructure created solely for the isolated Stripe test-mode certification was inventoried, classified, and removed. Production was verified unchanged both before and after.
+
+### Inventory and classification
+
+| Resource | Classification | Disposition |
+|---|---|---|
+| `stripe-test-certification` git branch | TEMPORARY — DELETE | Deleted (local + `origin`) |
+| Preview deployment `teamtastic-website-kkica831l-accendo.vercel.app` | TEMPORARY — DELETE | Removed via `vercel rm` |
+| Preview deployment `teamtastic-website-gnys9f8uj-accendo.vercel.app` | TEMPORARY — DELETE | Removed via `vercel rm` |
+| `STRIPE_SECRET_KEY` (Preview, branch `stripe-test-certification`) | TEMPORARY — DELETE | Removed |
+| `STRIPE_WEBHOOK_SECRET` (Preview, branch `stripe-test-certification`) | TEMPORARY — DELETE | Removed |
+| `NEXT_PUBLIC_SUPABASE_URL` (Preview, branch `stripe-test-certification` override) | TEMPORARY — DELETE | Removed |
+| `SUPABASE_SERVICE_ROLE_KEY` (Preview, branch `stripe-test-certification` override) | TEMPORARY — DELETE | Removed |
+| Stripe test-mode webhook endpoint/listener | TEMPORARY — DELETE | Nothing to delete: `stripe listen` never registers a persistent `webhook_endpoint` object (confirmed via `stripe webhook_endpoints list`, test mode returns 0 results). The local `stripe listen` CLI process was already stopped at the end of the certification work. |
+| Vercel "Protection Bypass for Automation" secret | UNKNOWN — VERIFY FIRST → **manual action required** | Not removable through any tool available to this session — it is a project-level dashboard-only toggle (same reason it had to be *enabled* manually earlier). See Remaining Manual Action below. |
+| Generic `Preview` environment vars (`OFFICE_ALLOWED_EMAILS`, `RESEND_*`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, the non-branch-scoped `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, 14–15 days old) | SHARED — KEEP | Untouched; these predate the certification by two weeks and serve all preview deployments generally, not just this one. |
+| All `Production` and `Development`-scoped environment variables | PRODUCTION — DO NOT TOUCH | Untouched, verified unchanged (see below). |
+| Local `.env`, `.env.local`, `.env.example` | SHARED / PRE-EXISTING — KEEP | Inspected; last modified May 30 / Jul 20 / Aug 9 respectively, all predating this week's certification work. No test key was ever written into any of these. All are gitignored. |
+| `TEAMTASTIC_FINAL_COMMERCIAL_MYSTERY_SHOPPER_REHEARSAL.md`, `TEAMTASTIC_COMMERCIAL_GO_CLOSURE.md` | SHARED — KEEP | Evidence/report files, intentionally retained per instruction. |
+| Local scratch replay script used once for webhook idempotency testing | TEMPORARY | Was already outside the repository (session scratchpad, not a tracked or even repo-local file); nothing to remove from the repo. |
+
+### Production verification (before and after removal)
+
+- **Stripe**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_DEPOSIT_PAYMENT_LINK_ID`, `NEXT_PUBLIC_STRIPE_DEPOSIT_URL` in Production all still show **57 days** since last modification, identical before and after this cleanup — no value was ever changed, let alone by this cleanup.
+- **Supabase**: `SUPABASE_SERVICE_ROLE_KEY` (58d), `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` (92d) in Production — unchanged.
+- **Live Stripe webhook**: `stripe webhook_endpoints list --live` confirms the real production endpoint `we_1TpETwAIY3vQCSaziQEeZvlb` → `https://www.teamtastic.events/api/stripe/webhook` remains `"status": "enabled"`, `"livemode": true`, exactly as before. (A second, unrelated live endpoint for the separate Teamtastic Games app's in-app purchases is also unchanged and untouched — it was never part of this website's certification.)
+- **Production deployment**: current production deployment matches `main` HEAD; `www.teamtastic.events` returns `200`.
+- No real payment was created, initiated, or completed to perform any of this verification — all checks used read-only `vercel env ls` timestamp comparisons and the Stripe CLI's read-only `webhook_endpoints list`.
+
+### Git state
+
+- Current branch: `main`.
+- `main` HEAD: `d269c84` (unchanged by this cleanup until the commit below).
+- `stripe-test-certification`: confirmed to contain **zero unique commits** relative to `main` (`git log main..stripe-test-certification` was empty; `git branch -d`, which refuses to delete an unmerged branch, succeeded without needing `-D`) — safely deleted both locally and on `origin`.
+- Tracked changes prior to this report: none (working tree was clean aside from two pre-existing, unrelated untracked files noted below).
+- Untracked files: `supabase/tests/prod_query.sh` and `supabase/tests/register_migration_once.mjs` — pre-existing from earlier in this engagement, unrelated to Stripe certification, intentionally left untouched (out of scope for this cleanup).
+
+### Remaining manual action
+
+The Vercel "Protection Bypass for Automation" secret generated for this project to unblock signed webhook delivery to the certification preview cannot be revoked or rotated through any CLI or MCP tool available to this session — Vercel does not expose this as an API-managed resource, only a dashboard toggle (Project Settings → Deployment Protection → Protection Bypass for Automation). It poses limited risk on its own (it only bypasses SSO on preview URLs; it does not grant access to Stripe, Supabase, or any production secret), but since it is no longer needed, the account owner should rotate or disable it directly in the Vercel dashboard when convenient.
+
+### Commit and deploy determination
+
+No tracked repository file required a change to perform the cleanup itself — every removed resource (git branch, Vercel preview deployments, branch-scoped environment variables) lives outside the repository's tracked files. Per instruction, no meaningless cleanup commit was created for that part of the work.
+
+This report section, appended to `TEAMTASTIC_COMMERCIAL_GO_CLOSURE.md`, is itself a tracked documentation change and is committed below. Because this repository's Vercel project auto-deploys on every push to `main` (observed twice already earlier in this engagement for doc-only commits), pushing this commit will trigger a new production deployment — of documentation only, with no application code change and no behavioral difference from the currently running production deployment.
+
+Every temporary resource this session had tool access to remove — the git branch, both preview deployments, and all four branch-scoped environment variables — is confirmed removed and production is confirmed unchanged. One item, the Vercel Protection Bypass for Automation secret, cannot be revoked through any available tool (dashboard-only, same constraint that applied when it was created) and is left for the account owner.
+
+**CLEANUP INCOMPLETE — MANUAL ACTION REMAINS**
+
+(Every tool-actionable item is fully removed and production-verified; the sole remaining item is the dashboard-only Protection Bypass secret rotation described above.)
