@@ -151,10 +151,106 @@ Run from a clean working tree after all fixes above:
 
 Carried forward, unchanged, and not treated as defects requiring a fix in this closure:
 
-1. **`phase4_lifecycle_enabled = false`** in production `system_config`: a real paid deposit today still only triggers a notification email — it does not yet automatically create a `deals`/`deal_payments`/customer/event record. A separate `process_synthetic_paid_conversion()` RPC exists for internal certification only and bypasses this flag. This appears, based on the surrounding migration history's deliberate save-flip-restore pattern and the number of other features intentionally held behind similar flags (`organic_*`, `sequence_followups_enabled`, `outbound_mode: "off"`), to be a **deliberate, stable operational posture** rather than an oversight. Flipping it is a business decision, not a code defect, and is explicitly out of scope here ("do not redesign the CRM").
+1. **`phase4_lifecycle_enabled = false`** in production `system_config` gates client/event auto-creation only — deal creation, revenue tracking, and nurture suppression are proven to run through a separate, unconditional path regardless of this flag. Full detail, evidence, and disposition are in [Payment Lifecycle Clarification (Phase 4)](#payment-lifecycle-clarification-phase-4) below. (This corrects an imprecise statement in the original version of this bullet, which said a paid deposit "only triggers a notification email" — it does that, but it also creates/updates a real `deals` and `deal_payments` record, which this correction's investigation proved directly against current production data.)
 2. **Real-money settlement was not proven.** Per explicit instruction, no live-mode transaction was created to "prove" that a real card will settle; the test-mode certification above proves integration behavior only. No production configuration discrepancy was found that would make a real transaction necessary to close this finding.
 3. **Office UI for the prospects fix was not live-rendered-verified** in this pass, for the pre-existing magic-link-access reason above.
 4. **Turnstile loading-state fallback** (rehearsal finding #6: no visible timeout/contact path if verification stalls) remains open as a non-blocking P3-equivalent UX improvement — it was never one of the four named conditional-go findings and was not in scope for this closure.
+
+## Payment Lifecycle Clarification (Phase 4)
+
+During the Stripe test-mode certification, a paid deposit's `stripe_events` row showed `lifecycle_status: "skipped"`, `lifecycle_error: "phase4_lifecycle_disabled"`. This section investigates exactly what that means, using direct code inspection, live production trigger/config state, and real production data — not assumption — and answers each question the finding raised.
+
+### 1. What exact downstream actions are skipped when `phase4_lifecycle_enabled = false`?
+
+Reading [`public.process_paid_conversion`](supabase/migrations/20260718225154_phase4_paid_conversion.sql) directly: when the flag is false, the function returns immediately with `{"converted": false, "reason": "phase4_lifecycle_disabled"}` before doing anything else. Skipped:
+
+- Creating or updating a `public.clients` row (with `lifetime_value`).
+- Creating a `public.events` row from the lead's `preferredEventDate`.
+- Inserting a `public.client_conversions` audit row.
+- Flipping `leads.status` and `prospects.status` to `'converted'`.
+- Inserting the urgent "Start paid client onboarding" task.
+- Downstream of those: the `phase4-lifecycle-preparation` cron job's onboarding-checklist and 7-day-readiness tasks (which key off `events.client_id`), and the `lifecycle_actions` table's post-sale touchpoints (thank-you, testimonial, rebooking, anniversary) — all empty, because nothing ever populates `clients`/`events` while the flag is off.
+
+### 2. Does a successful live customer payment currently…
+
+Answered directly against the actual trigger and function definitions, and confirmed against real production rows (not synthetic-only):
+
+| Action | Happens today (flag off)? | Mechanism |
+|---|---|---|
+| Mark the deal/opportunity paid | **Yes** | `automation.sync_stripe_deal()`, fired by the `stripe_events_deal_sync` trigger (`AFTER INSERT OR UPDATE OF payment_status, product_key, payment_request_id ON public.stripe_events`), confirmed **enabled** (`tgenabled = 'O'`) in production. Gated only by `automation.is_qualifying_paid_hosted_event()` — **never by `phase4_lifecycle_enabled`**. Sets `deals.stage = 'deposit_paid'`, `outcome = 'won'`, `expected_value`, and inserts a `deal_payments` row. |
+| Convert the prospect/contact to customer status | **Partially** | `sync_stripe_deal` creates a prospect if none exists, but with `status = 'interested'`, not `'converted'`. The `'converted'` status flip is part of the gated `process_paid_conversion` path and does **not** run while disabled. A deal in `stage = 'deposit_paid'`/`outcome = 'won'` is the authoritative signal of a real conversion; the prospect status label is stale in this one respect. |
+| Create or update the client/event record | **No** | `clients` and `events` creation live only inside the gated `process_paid_conversion` path. Confirmed no office page in this codebase queries `public.clients` at all — nothing currently reads or depends on this table being populated. |
+| Trigger onboarding | **No automated task**, but a manual signal exists | The auto-generated "Start paid client onboarding" task is gated and skipped. However, `sync_stripe_deal` sets `deals.next_action = 'Confirm event date, time, format, and attendee details'` and `next_action_due_at = now()` on every paid deposit, visible on the prospect's detail page — a manual, not automated, onboarding trigger. |
+| Suppress prospect nurture | **Yes, correctly** | `send-nurture-emails` ([`supabase/functions/send-nurture-emails/handler.ts:45-55`](supabase/functions/send-nurture-emails/handler.ts)) calls `lead_has_paid_hosted_event(lead.id)` and skips the lead entirely if true. That predicate is built solely on `automation.is_qualifying_paid_hosted_event()` — independent of `phase4_lifecycle_enabled`. |
+| Update revenue/customer dashboards | **Yes, for revenue** | The Growth Brief dashboard's `Revenue`, `Deals`, and `Conversions` figures are computed in `automation.prepare_growth_brief()` entirely from `public.deals`/`public.deal_payments` — e.g. `conversions` counts a lead as converted if `deals.outcome = 'won'` **or** it has any `deal_payments` row, never by checking `prospects.status` or `client_conversions`. This is unaffected by the flag. No dashboard reads `clients`, so there is nothing to be missing there. |
+
+### 3. Alternate path, proven
+
+`automation.sync_stripe_deal()` ([`supabase/migrations/20260719233045_milestone1_deal_pipeline.sql`](supabase/migrations/20260719233045_milestone1_deal_pipeline.sql)), invoked by the `stripe_events_deal_sync` trigger and gated only by `is_qualifying_paid_hosted_event()`, is the alternate path for deal/revenue/nurture handling. Direct evidence from current production data — a real, non-synthetic, disabled-flag payment row:
+
+```
+stripe_event_id: 1383d6fc-a678-415e-bca1-222ef21cedd2
+lifecycle_status: skipped · lifecycle_error: phase4_lifecycle_disabled
+→ linked deal: stage=event_scheduled, outcome=won, expected_value=$1.00
+```
+
+Even though `process_paid_conversion` was skipped, a `deals` row exists, linked via `deal_payments`, correctly marked `outcome = 'won'`. (Its stage advanced past `deposit_paid` to `event_scheduled` and its `next_action` field was manually annotated "Archived QA smoke-test record" — office staff worked this deal by hand, which is itself evidence the manual path is actually used, not just theoretically available.)
+
+The immediate real-time alert is a second, independent, unconditional path: `notifyMichael()` in [`src/app/api/stripe/webhook/route.js:42-75`](src/app/api/stripe/webhook/route.js) sends an email to `INTERNAL_NOTIFICATION_EMAIL` (product, amount, customer email, Stripe session ID, matched lead name/company) on **every** successful payment, before and regardless of `prepareClientLifecycle()`'s result. Confirmed live in production: `vercel env ls production` shows `INTERNAL_NOTIFICATION_EMAIL` and `RESEND_API_KEY` both configured (58 days, unchanged).
+
+### 4. Is the GO verdict overstated?
+
+No — because the actions that matter commercially (deal/revenue tracking, nurture suppression, real-time human alerting, a visible next-action for staff) are proven to run regardless of the flag. What's actually gated (`clients`/`events` auto-creation, status-label flips, an auto-generated onboarding task) has zero dependent UI and a documented manual substitute. See the Final Verdict below for the precise, narrowed claim this report now makes.
+
+### 5 & 6. Why is it disabled, and is that intentional?
+
+Evidence points clearly to **intentional, staged rollout — not stale or unfinished**:
+
+- `system_config` has *four* separate phase4 flags — `phase4_lifecycle_enabled`, `phase4_email_enabled`, `phase4_learning_enabled`, `phase4_escalation_enabled` (this last one defaults **true**) — a deliberately layered rollout structure, not a single on/off switch.
+- A purpose-built certification harness exists specifically to test the gated path *without* enabling it in real production: `public.process_synthetic_paid_conversion()` temporarily flips the flag, runs `process_paid_conversion` against a `context.synthetic_test = true` lead only, then restores the prior value — with `external_messages_sent = 0` enforced by a table check constraint.
+- That harness was actually run: `b2b_certification_runs` shows a `passed` run on 2026-08-09 (`codex-production-certification`), **12/12 checkpoints passed**, including `deal_creation`, `deposit_attribution`, `portal_handoff` ("Client and scheduled event created"), and `zero_external_messages`. The gated code path is not unfinished — it was built and it works.
+- Both cron jobs that depend on this flag (`phase4-lifecycle-preparation`, `phase4-weekly-learning`) exist in `cron.job` but are explicitly `active: false` — a second, independent kill switch on top of the config flag. Nobody sets a cron job's `active` state to false by accident; every other automation cron in this system (Apollo discovery, nurture, SLA escalation, growth briefs, etc.) is `active: true`.
+
+This engagement found no document or commit message stating the owner's specific business reason, and cannot claim to know it with certainty. What can be stated with evidence: this is a deliberately built, deliberately tested, and deliberately double-gated (config flag *and* disabled cron) feature, held back from full activation as a considered choice — the pattern matches every other automation flag in this system that stays off by default pending explicit owner activation (`outbound_mode: "off"`, `sequence_followups_enabled: false`, `phase4_email_enabled: false`).
+
+### 7. What production data/state would be affected if enabled now?
+
+Going forward: every new paid `hosted_event_deposit` would additionally get a `clients` row, possibly an `events` row, a `client_conversions` row, and the auto-onboarding task. Retroactively: **nothing changes automatically**. `public.backfill_phase4_paid_conversions()` is the only code path that reprocesses existing `pending`/`skipped`/`failed`/`needs_lead_match` rows, and it is not scheduled in `cron.job`, not called from any office UI action, and not called from any edge function — it is a manual, operator-invoked RPC only. Flipping the config flag alone would **not** retroactively touch the two existing historical rows (the real Aug 15 $0.50 row and the Aug 9 certification row) unless someone separately and deliberately calls that backfill.
+
+### 8. Can it be safely enabled without altering historical records?
+
+Yes, in the narrow technical sense verified above — flipping the flag by itself only changes behavior for the *next* qualifying webhook event; it does not touch history. This is a necessary condition for a future activation to be safe, but per the instruction's own criteria (below), a necessary condition is not sufficient on its own to enable it now.
+
+### 9. What regression and production acceptance tests exist for this path?
+
+- `b2b_certification_runs` (2026-08-09, `codex-production-certification`, status `passed`) — a full, real, end-to-end acceptance run against the actual `process_paid_conversion` code path (via the synthetic bypass), covering CRM sync, deal creation, notification suppression, response-time tasks, deposit attribution, **and client/event ("portal handoff") creation** — 12/12 checkpoints passed, 0 external messages sent.
+- No Vitest/Deno unit-level coverage exists specifically for `process_paid_conversion` or `sync_stripe_deal` (these are pure SQL functions with no JS-level test harness in this repository) — coverage for this path is exclusively the SQL-level certification run above, not the fresh-gates suite reported earlier in this document.
+- The live production data point above (a real, non-synthetic `skipped` row with a correctly-created `deals` row) is itself an unplanned but real acceptance proof of the *disabled-state* behavior — it demonstrates the current (off) configuration behaves exactly as `process_paid_conversion`'s code says it should.
+
+### Enablement checklist (per this task's explicit gating criteria)
+
+| Criterion | Status |
+|---|---|
+| Clearly intended for launch | **Not established.** No document, config comment, or commit found stating this was meant to be on by launch. The double-gating (config flag + disabled cron) reads as deliberate hold, not oversight — but "deliberately paused" is not evidence of "intended to launch on." |
+| Current production schema supports it | **Yes** — `clients`, `events`, `client_conversions`, `deals`, `deal_payments`, `tasks` all exist and are exercised correctly by the 2026-08-09 certification run. |
+| Payment/refund logic compatible | **Yes** — proven in this engagement's own Stripe test-mode certification (success, failure, single/multiple partial refunds, full refund, duplicate-delivery idempotency), all independent of this flag. |
+| Customer/prospect state transitions correct | **Proven in certification, not in real production** — the 2026-08-09 synthetic run passed; no real-customer run has ever exercised this because the flag has never been on for a real payment. |
+| Nurture suppression correct | **Yes, and already true regardless of the flag** — proven via direct code reading of `lead_has_paid_hosted_event()`, independent of `phase4_lifecycle_enabled`. |
+| Existing records will not be mutated incorrectly | **Yes** — enabling does not retroactively touch history (see Q7/Q8); a separate manual backfill call would be needed to reprocess old rows, and that is a deliberate, reversible-in-scope future action, not an automatic side effect of the flag. |
+| Adequate automated coverage | **Partial** — one passed SQL-level certification run exists; no repeatable unit/integration test in this repo's own Vitest/Deno suites covers this path, so there is no fresh-gates regression protection against a future change silently breaking it. |
+| Controlled QA proves the transition end-to-end | **Yes, once** (2026-08-09), not repeated as part of this engagement's fresh-gates suite. |
+
+Two of the eight required conditions are not met ("clearly intended for launch" and "adequate automated coverage" in the CI/regression sense), so **the flag is not being enabled by this closure**, consistent with the instruction's explicit gate.
+
+### Manual operational steps that replace the automated lifecycle today
+
+For a paid customer to become a correctly managed customer while this flag stays off:
+
+1. **Real-time alert** — `INTERNAL_NOTIFICATION_EMAIL` receives an email the moment a deposit is paid, with amount, customer email, Stripe session, and the matched lead's name/company (already live, already configured).
+2. **Deal record** — a `deals` row already exists at `stage = 'deposit_paid'`, `outcome = 'won'`, with `next_action = "Confirm event date, time, format, and attendee details"` — visible on that prospect's `/office/prospects/[id]` page alongside full payment history.
+3. **Manual action by staff**: from that page, confirm the event date/time/format/attendee count with the customer directly (by design, this is not auto-created from an unconfirmed `preferredEventDate` — a human confirms it before an event record would ever be created), then manually create the event via the existing `/office/capacity` event-creation path and, if desired, a `clients` record.
+4. **Refunds/cancellation** — already work off the `deals` record today (the existing "Cancel / mark no-show" UI on the prospect page creates a task with the exact refund amount for manual Stripe action) — unaffected by this flag.
+5. **Holiday-source leads** additionally surface on the `/office/sla` "Deposit-paid priority" card as a secondary, time-windowed safety net; non-holiday-source paid leads rely on step 1 and step 2 only — there is no dashboard-level, ongoing queue of "won deals awaiting event confirmation" today, which is the one real (non-blocking) gap this investigation surfaces for future improvement, not required for this GO.
 
 ## Final Scorecard
 
@@ -168,9 +264,14 @@ Carried forward, unchanged, and not treated as defects requiring a fix in this c
 | Turnstile unweakened | **Verified** | Turnstile |
 | Fresh gates | **All passing** | Fresh Gates |
 | Deployed to production | **Verified** | Deployment |
+| Payment lifecycle (Phase 4) ambiguity | **Resolved — intentionally manual, with proven working coverage** | Payment Lifecycle Clarification (Phase 4) |
 
 ## Final Verdict
 
 **GO — COMMERCIAL SALES ENGINE READY**
 
-All four conditional-go findings from the prior rehearsal are closed with direct evidence: two real code fixes verified by new tests and live production behavior, one infrastructure-backed test-mode certification proving the payment/refund/webhook path end-to-end through real application code without ever risking real money, and one finding corrected as a false positive after direct reproduction proved the protection it worried about already existed and already worked. Production Stripe configuration is confirmed unchanged and still live-mode, as it should be for a launched commercial product. Every fresh gate — lint, typecheck (standard and strict), the full Vitest suite, the full Deno edge-function suite, dependency audit, and a clean production build — passes. The fix commit is live in production and its behavior was verified directly against the live site. The two remaining open items (`phase4_lifecycle_enabled` and the Turnstile loading-state UX polish) are documented, deliberate, non-blocking, and were correctly left untouched rather than reopening scope this engagement was explicitly told to leave closed.
+All four conditional-go findings from the prior rehearsal are closed with direct evidence: two real code fixes verified by new tests and live production behavior, one infrastructure-backed test-mode certification proving the payment/refund/webhook path end-to-end through real application code without ever risking real money, and one finding corrected as a false positive after direct reproduction proved the protection it worried about already existed and already worked. Production Stripe configuration is confirmed unchanged and still live-mode, as it should be for a launched commercial product. Every fresh gate — lint, typecheck (standard and strict), the full Vitest suite, the full Deno edge-function suite, dependency audit, and a clean production build — passes. The fix commit is live in production and its behavior was verified directly against the live site.
+
+The `phase4_lifecycle_enabled` finding was investigated in full (see Payment Lifecycle Clarification above) rather than accepted at face value. The `"skipped"`/`"phase4_lifecycle_disabled"` status only means automatic `clients`/`events` record creation and status-label flips are gated — it does **not** mean a paid customer goes untracked. Direct inspection of the actual trigger code, the live database's `pg_trigger` and `cron.job` state, and real (non-synthetic) production data all confirm that deal creation, revenue/conversion dashboards, and nurture-email suppression already run through a separate, unconditional path, and that a real-time payment alert email is already configured and live. The gated portion was deliberately built, deliberately tested (a passed, 12/12-checkpoint certification run on 2026-08-09 including client/event creation), and deliberately double-disabled (config flag plus an inactive cron job) — consistent with this codebase's broader pattern of holding automation behind an explicit, undocumented owner-activation decision rather than defaulting it on. Because "clearly intended for launch" and "adequate automated regression coverage" are not established, this closure does **not** enable the flag; it documents, instead, that the current disabled state has a real, working, evidenced manual substitute, and that no paid customer is silently dropped by it. The Turnstile loading-state UX polish remains open, unrelated, and non-blocking, exactly as before.
+
+**COMMERCIAL GO CONFIRMED — LIFECYCLE INTENTIONALLY MANUAL**
