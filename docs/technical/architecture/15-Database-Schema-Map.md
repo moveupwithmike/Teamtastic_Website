@@ -24,6 +24,7 @@ Single shared Supabase Postgres project (also used by the separate `teamtastic.g
 
 **Lifecycle/reporting**
 - `resend_webhook_events`, `system_config.outbound_auto_paused` — `milestone3_resend_webhook`.
+- `marketing_performance_snapshots` — `20260905204000_marketing_performance_sync.sql`. One row per platform (`google_analytics`/`google_search_console`/`google_ads`/`meta_ads`) per day, written by the `sync-marketing-performance` Edge Function (read-only reporting only — no code path here can write to any ad platform). Read by `collectEddieContext()` (`src/lib/server/office/eddie.js`) and by both `send-daily-sales-report`/`generate-daily-voice-brief`. Existed as a boolean-only placeholder (`marketing_connections` in Eddie's context) before this migration; the connection flags are unchanged, this just makes them capable of turning true.
 - `daily_reports` — daily sales report idempotency. Gains `audio_url`/`transcript`/`voice_brief_status`/`voice_brief_error` from `20260905143400_daily_voice_brief.sql`, written by the separate `generate-daily-voice-brief` function, never by `send-daily-sales-report` itself. Same migration creates a private Supabase Storage bucket (`daily-report-audio`) — the first and only Storage usage in this repo; no `storage.objects` policy is added since RLS-with-no-policy already denies anon/authenticated by default and service_role bypasses RLS.
 - `lifecycle_actions`, `escalation_rules`, `client_conversions`, `clients`, `events` — phase4 client-lifecycle/paid-conversion migrations.
 - `learning_recommendations` — phase4 operational completion.
@@ -46,6 +47,7 @@ Singleton row (`id = true`). Flags found across all migrations, grouped by what 
 | `gmail_ingestion_enabled` | `ingest-gmail-replies` | No |
 | `daily_report_enabled`, `daily_report_recipient` | `send-daily-sales-report` | No |
 | `daily_report_voice_brief_enabled` | `generate-daily-voice-brief` — ships `false`, pending real cost/quality validation (same posture as `gmail_llm_classification_enabled`) | No |
+| `marketing_reporting_sync_enabled` | `sync-marketing-performance` — ships `false`; also requires per-platform env vars to be set before any given platform actually syncs (see [14](14-Lifecycle-Emails-and-Deliverability.md)) | No |
 
 Most of the "No" column above isn't a bug — these are mostly one-time/rarely-touched ops toggles — but `proposal_email_enabled`/`daily_proposal_cap` stand out because the dashboard actively surfaces a proposal-approval workflow that can be silently blocked by them with no UI explanation.
 
@@ -57,6 +59,7 @@ Most of the "No" column above isn't a bug — these are mostly one-time/rarely-t
 | `quiz-abandoner-nurture` | `0 * * * *` | Yes | Nurture drip |
 | `teamtastic-daily-report` | `30 12 * * *` | Yes | Daily report |
 | `daily-voice-brief` | `35 12 * * *` | No | Daily report — decoupled voice-brief follow-on, reads the row `teamtastic-daily-report` just wrote |
+| `sync-marketing-performance` | `0 12 * * *` | No | Marketing reporting — runs before the daily report so that day's report/voice-brief can include yesterday's numbers |
 | `phase3-apollo-enrichment` | `15 12 * * 1-5` | **Yes** | Outbound pipeline — the only pipeline stage active |
 | `office-post-call-tasks` | `*/15 * * * *` | Yes | Office |
 | `phase3-apollo-discovery` | `0 12 * * 1-5` | No | Outbound pipeline |

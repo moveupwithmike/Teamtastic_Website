@@ -53,7 +53,7 @@ Deno.serve(async (request) => {
   const siteUrl = (Deno.env.get("NEXT_PUBLIC_SITE_URL") || "https://www.teamtastic.events").replace(/\/$/, "");
   const [
     leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult,
-    incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult,
+    incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult, marketingSnapshotsResult,
   ] = await Promise.all([
     supabase.from("leads").select("audience_type").gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
@@ -72,10 +72,13 @@ Deno.serve(async (request) => {
     supabase.from("deal_payments").select("amount,currency,paid_at").gte("paid_at", since),
     supabase.from("outreach_drafts").select("id,prospect_id,subject,created_at")
       .eq("status", "review").order("created_at", { ascending: false }).limit(20),
+    supabase.from("marketing_performance_snapshots").select("platform,snapshot_date,metrics,error")
+      .order("snapshot_date", { ascending: false }).limit(12),
   ]);
   const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error
     || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error
-    || incidentsResult.error || hotLeadDraftsResult.error || revenueResult.error || outreachDraftsResult.error;
+    || incidentsResult.error || hotLeadDraftsResult.error || revenueResult.error || outreachDraftsResult.error
+    || marketingSnapshotsResult.error;
   if (queryError) return functionError("report_query_failed");
 
   const replies = repliesResult.data || [];
@@ -89,6 +92,12 @@ Deno.serve(async (request) => {
   const hotLeadDrafts = hotLeadDraftsResult.data || [];
   const revenuePayments = revenueResult.data || [];
   const outreachDrafts = outreachDraftsResult.data || [];
+  const seenMarketingPlatforms = new Set<string>();
+  const marketingSnapshots = (marketingSnapshotsResult.data || []).filter((row) => {
+    if (seenMarketingPlatforms.has(row.platform)) return false;
+    seenMarketingPlatforms.add(row.platform);
+    return true;
+  });
   const replyCounts = countBy(replies, (row) => row.classification || "unknown");
   const sentCounts = countBy(outbound.filter((row) => row.status === "sent"), (row) => row.message_type);
   const leadAudienceCounts = countBy(leads, (row) => row.audience_type || "corporate");
@@ -170,6 +179,9 @@ Deno.serve(async (request) => {
     ${list(hotLeadDrafts.map((draft) => `${escapeHtml(draft.response_type)}: ${escapeHtml(draft.recipient_email)} — drafted ${escapeHtml(draft.created_at)}`), "No drafts waiting.")}
     <h2>Outreach drafts awaiting approval</h2>
     ${list(outreachDrafts.map((draft) => `<a href="${siteUrl}/office/prospects/${escapeHtml(draft.prospect_id)}">${escapeHtml(draft.subject || "(no subject)")}</a> — drafted ${escapeHtml(draft.created_at)}`), "No drafts awaiting approval.")}
+    <h2>Marketing platforms</h2>
+    <p><a href="${siteUrl}/office/command-center">Review Command Center →</a></p>
+    ${list(marketingSnapshots.map((row) => `<strong>${escapeHtml(row.platform.replaceAll("_", " "))}</strong>: ${row.error ? `last sync failed — ${escapeHtml(row.error)}` : `synced ${escapeHtml(row.snapshot_date)}`}`), "No marketing platform (Google Analytics, Search Console, Google Ads, Meta Ads) is connected yet — read-only reporting only, no spend or campaign control.")}
     <h2>What needs Michael</h2>
     ${list(tasks.map((task) => `<strong>${escapeHtml(task.priority)}</strong>: ${escapeHtml(task.title)}${task.due_at ? ` — due ${escapeHtml(task.due_at)}` : ""}`), "No open tasks.")}
     <h2>What the system chose not to do</h2>
@@ -193,6 +205,7 @@ Deno.serve(async (request) => {
     hot_lead_drafts: hotLeadDrafts.length,
     revenue_24h: revenueByCurrency,
     pending_outreach_drafts: outreachDrafts.length,
+    marketing_platforms_connected: marketingSnapshots.filter((row) => !row.error).map((row) => row.platform),
   };
 
   await supabase.from("daily_reports").upsert({

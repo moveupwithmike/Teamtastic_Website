@@ -12,7 +12,7 @@ const SUMMARY_MODEL = "anthropic/claude-haiku-4.5";
 const SPEECH_MODEL = "openai/tts-1";
 const AUDIO_BUCKET = "daily-report-audio";
 
-const SUMMARY_SYSTEM_PROMPT = `You are Eddie, narrating a 60-90 second spoken morning brief for a small business owner, built entirely from their sales report data below. Open with exactly "Good morning, this is Eddie." as your first sentence, then continue in plain, warm, direct English, second person ("you have..."), as continuous spoken sentences -- no markdown, no headers, no bullet points. State only what is in the data. If a section is empty, missing, or the data looks stale, say so plainly (e.g. "no incidents today") rather than inventing anything. End with one clear recommended first action if the data suggests one.`;
+const SUMMARY_SYSTEM_PROMPT = `You are Eddie, narrating a 60-90 second spoken morning brief for a small business owner, built entirely from their sales report data below. Open with exactly "Good morning, this is Eddie." as your first sentence, then continue in plain, warm, direct English, second person ("you have..."), as continuous spoken sentences -- no markdown, no headers, no bullet points. State only what is in the data. If a section is empty, missing, or the data looks stale, say so plainly (e.g. "no incidents today") rather than inventing anything. If marketing platform data is provided, briefly mention anything notable (e.g. a campaign spending without results); if no marketing platforms are connected yet, say so plainly rather than skipping the topic silently. End with one clear recommended first action if the data suggests one.`;
 
 function reportDate() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -27,7 +27,10 @@ function stripHtml(html: string): string {
   return String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-async function generateSummary(gatewayKey: string, summary: unknown, bodyHtml: string): Promise<string> {
+async function generateSummary(gatewayKey: string, summary: unknown, bodyHtml: string, marketingSnapshots: unknown[]): Promise<string> {
+  const marketingSection = marketingSnapshots.length
+    ? `Marketing platform snapshots (most recent per platform; only present when connected):\n${JSON.stringify(marketingSnapshots).slice(0, 3000)}`
+    : "No marketing platform data is connected yet.";
   const response = await fetch("https://ai-gateway.vercel.sh/v1/messages", {
     method: "POST",
     headers: {
@@ -42,7 +45,7 @@ async function generateSummary(gatewayKey: string, summary: unknown, bodyHtml: s
       messages: [
         {
           role: "user",
-          content: `Report summary (structured):\n${JSON.stringify(summary ?? {}).slice(0, 4000)}\n\nFull report data (HTML, for extra context only):\n${stripHtml(bodyHtml).slice(0, 6000)}`,
+          content: `Report summary (structured):\n${JSON.stringify(summary ?? {}).slice(0, 4000)}\n\n${marketingSection}\n\nFull report data (HTML, for extra context only):\n${stripHtml(bodyHtml).slice(0, 6000)}`,
         },
       ],
     }),
@@ -112,9 +115,21 @@ Deno.serve(async (request) => {
   // marks this day's voice brief unavailable, it can never touch the
   // columns send-daily-sales-report owns (status/body_html/sent_at), and
   // that function's reliable email path never depends on this one running.
+  const { data: marketingSnapshotsRaw } = await supabase
+    .from("marketing_performance_snapshots")
+    .select("platform,snapshot_date,metrics,error")
+    .order("snapshot_date", { ascending: false })
+    .limit(12);
+  const seenPlatforms = new Set<string>();
+  const marketingSnapshots = (marketingSnapshotsRaw || []).filter((row) => {
+    if (seenPlatforms.has(row.platform)) return false;
+    seenPlatforms.add(row.platform);
+    return true;
+  });
+
   let transcript: string;
   try {
-    transcript = await generateSummary(gatewayKey, report.summary, report.body_html);
+    transcript = await generateSummary(gatewayKey, report.summary, report.body_html, marketingSnapshots);
   } catch (error) {
     const message = errorText(error);
     console.error("daily-voice-brief summary generation failed:", message);
