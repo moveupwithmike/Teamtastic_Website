@@ -10,6 +10,7 @@ This directory contains the authenticated server-side actions behind the interna
 | `configuration.js` | System-wide operating switches, limits, source approvals, and outbound controls. |
 | `deliverability.js` | Safety review required before resuming automatically paused outbound email. |
 | `distribution.js` | Human review, scheduling, and queue preparation for distribution content. |
+| `eddie.js` | Live sales context, conversational answers, signed confirmations, and a closed set of replay-safe owner actions. |
 | `growth-actions.js` | Thin Server Action adapters for growth workflows and ROI/score updates. |
 | `growth-experiments.js` | Growth brief refresh/review and experiment lifecycle logic. |
 | `incidents.js` | Production incident collection, acknowledgement, monitoring, and resolution. |

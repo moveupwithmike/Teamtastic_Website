@@ -1,5 +1,6 @@
 import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card, Empty, formatDate } from "../../office-ui";
+import EddieChat from "./eddie-chat";
 
 const AUDIO_BUCKET = "daily-report-audio";
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
@@ -24,10 +25,10 @@ export default async function MorningBriefPage() {
       <div>
         <h2 className="text-3xl font-bold">Eddie&apos;s morning brief</h2>
         <p className="mt-2 text-slate-400">
-          A spoken, 60-90 second version of the daily sales report, generated after it sends. Optional and
-          off by default — see <code>daily_report_voice_brief_enabled</code> in Settings.
+          Listen to your daily briefing, then ask follow-up questions or give Eddie a task.
         </p>
       </div>
+      <EddieChat />
       <Card title="Recent briefs from Eddie" count={withSignedUrls.length} tone={withSignedUrls.length ? "purple" : "green"}>
         <div className="space-y-4">
           {withSignedUrls.map((row) => (

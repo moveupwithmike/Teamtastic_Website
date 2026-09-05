@@ -30,6 +30,14 @@ A separate Edge Function, cron-triggered ~5 minutes after `teamtastic-daily-repo
 
 Every step is independently caught; any failure (missing `AI_GATEWAY_API_KEY`, a non-2xx/timeout from either Gateway call, an upload error) sets `voice_brief_status: 'unavailable'` + `voice_brief_error` and returns cleanly — it never throws, and never touches the columns `send-daily-sales-report` owns. Requires `AI_GATEWAY_API_KEY` as a Supabase Edge Function secret and Vercel AI Gateway speech-model access, which is in beta. Played back and read via `/office/morning-brief` (server-generated signed URL from the private bucket, never a public URL).
 
+### Conversational Eddie and confirmed actions
+
+`/office/morning-brief` also contains an authenticated conversational interface. The browser supports typed questions, browser speech recognition, and optional spoken replies; all sales-data access and AI calls remain server-side in `POST /api/office/eddie`. The route revalidates the Office user on every request, restricts browser origins, rate-limits chat and execution separately, loads a bounded live snapshot (latest report, prospects, leads, tasks, drafts, deals, message activity, and incidents), and authenticates to Vercel AI Gateway with `AI_GATEWAY_API_KEY` or Vercel's automatically supplied `VERCEL_OIDC_TOKEN`.
+
+The model receives no general database or code-execution tool. Its forced structured response can either answer read-only or propose exactly one of four allow-listed actions: create a task, change a prospect status, create a response draft, or send an existing response draft. A proposal never executes immediately. The server resolves the target against live data, builds the human-readable confirmation itself, and returns a five-minute HMAC-signed token bound to the authenticated email and exact action. Only a separate **Confirm action** request can execute it. Email confirmations are bound to a fingerprint of the recipient, subject, body, status, and update time, so a draft changed after review is stopped instead of sent.
+
+Confirmed actions claim a unique row in `eddie_action_receipts` before execution. The primary key prevents double-clicks or replay from duplicating a task or send, while the existing `agent_log`, sales-response revisions, suppression rules, daily caps, and idempotent email reservation remain authoritative. `eddie_action_receipts` has RLS enabled and all `anon`/`authenticated` privileges revoked; it is reachable only through the authenticated server route using the service role.
+
 ## The Resend webhook (`/api/resend/webhook`) and the auto-pause circuit breaker
 
 Verifies Svix signatures, logs every event to `resend_webhook_events` (deduped by `svix_id`) regardless of type, but only actually **acts** on `email.delivered`/`email.bounced`/`email.complained` — any other event type (e.g. opens/clicks, if Resend is configured to send them) is logged but doesn't update `messages.status`.
