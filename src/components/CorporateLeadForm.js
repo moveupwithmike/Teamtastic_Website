@@ -236,14 +236,20 @@ export default function CorporateLeadForm({
             </select>
             <select required name="budgetRange" value={form.budgetRange} onChange={update} aria-label="Estimated event budget" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
               <option value="">Estimated budget</option>
-              <option value="under-1000">Under $1,000</option><option value="1000-2500">$1,000–$2,500</option>
-              <option value="2500-5000">$2,500–$5,000</option><option value="5000-plus">$5,000+</option>
+              {isFamily ? (
+                <><option value="under-500">Under $500</option><option value="500-1000">$500–$1,000</option><option value="1000-2500">$1,000–$2,500</option><option value="2500-plus">$2,500+</option></>
+              ) : (
+                <><option value="under-1000">Under $1,000</option><option value="1000-2500">$1,000–$2,500</option><option value="2500-5000">$2,500–$5,000</option><option value="5000-plus">$5,000+</option></>
+              )}
               <option value="not-sure">Not sure yet</option>
             </select>
             <select required name="packageInterest" value={form.packageInterest} onChange={update} aria-label="Package interest" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
               <option value="">Package interest</option>
-              <option value="hosted-game-show">Hosted game show</option><option value="custom-year-in-review">Custom year-in-review show</option>
-              <option value="large-event-production">Large-event production</option><option value="help-me-choose">Help me choose</option>
+              {isFamily ? (
+                <><option value="hosted-family-game-show">Hosted family game show</option><option value="custom-family-trivia">Custom family trivia</option><option value="multigenerational-games">Games for mixed ages</option><option value="help-me-choose">Help me choose</option></>
+              ) : (
+                <><option value="hosted-game-show">Hosted game show</option><option value="custom-year-in-review">Custom year-in-review show</option><option value="large-event-production">Large-event production</option><option value="help-me-choose">Help me choose</option></>
+              )}
             </select>
             <input type="tel" name="phone" value={form.phone} onChange={update} placeholder="Phone (optional)" aria-label="Phone number (optional)" autoComplete="tel" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
             <select required name="decisionTimeline" value={form.decisionTimeline} onChange={update} aria-label="Decision timeline" className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">

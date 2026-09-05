@@ -12,6 +12,7 @@ const SOURCES = new Set([
   "playable_demo",
   "michael_event_concierge",
   "michael_family_concierge",
+  "family_trivia_starter",
   "holiday_party_money_page",
   "virtual_team_building_money_page",
   "year_end_celebration_page",
@@ -22,6 +23,7 @@ const SOURCES = new Set([
   "theme_holiday_team_building",
   "theme_black_history_month",
 ]);
+const FAMILY_SOURCES = new Set(["michael_family_concierge", "family_trivia_starter"]);
 function response(status, code, message, retryable = false) {
   return NextResponse.json({ success: false, code, message, retryable }, { status });
 }
@@ -71,7 +73,7 @@ export async function POST(request) {
   }
 
   const recommendation = getRecommendation(clean(body.vibe, 80));
-  const audienceType = source === "michael_family_concierge" ? "family" : "corporate";
+  const audienceType = FAMILY_SOURCES.has(source) ? "family" : "corporate";
   // Provenance is server-authoritative. Callers may attach their own analytics
   // context, but certification/synthetic markers are stripped so public form
   // submissions always inherit production provenance at creation time.

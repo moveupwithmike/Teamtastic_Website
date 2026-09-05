@@ -1,6 +1,6 @@
 # 03 — Lead Funnel (Interactive Flows & `/api/leads`)
 
-Four interactive experiences feed one intake endpoint. Each sends a distinct `source` (allow-listed server-side):
+Multiple interactive experiences feed one intake endpoint. Each sends a distinct `source` (allow-listed server-side):
 
 | Source | Component | Where it appears |
 |---|---|---|
@@ -8,6 +8,7 @@ Four interactive experiences feed one intake endpoint. Each sends a distinct `so
 | `playable_demo` | [SoloDemo.js](../../../src/components/SoloDemo.js) | Home |
 | `michael_event_concierge` | [TalkToMichaelModal.js](../../../src/components/TalkToMichaelModal.js) | CTA banners on team-experiences (+ FAQ chat button) |
 | `michael_family_concierge` | same modal, `isFamily` | virtual-family-game-night |
+| `family_trivia_starter` | [FamilyTriviaStarter.jsx](../../../src/components/FamilyTriviaStarter.jsx) | family-trivia-starter |
 
 Shared client plumbing: [lead-client.js](../../../src/lib/lead-client.js) (`createSubmissionId()` UUID for idempotency; `getAttribution()` grabs landing page, referrer, UTM params; `captureLead()` POSTs and normalizes errors with `code`/`retryable`) and [TurnstileWidget.js](../../../src/components/TurnstileWidget.js) (lazy-loads Cloudflare script, dark theme, expiry/error states, dev-mode `development-bypass` token when no site key).
 
@@ -55,6 +56,26 @@ Step 1 eventType → 2 groupSize → 3 vibe → 4 preferences
 - **Second recommendation engine** duplicated in-component, including a family variant, recommending titles that mostly don't exist in the catalog (details in doc 02, gap #4/#5).
 - **Stale state on close.** `X`/backdrop call `onClose` without reset; only the step-6 "Done" button resets. Reopening mid-flow resumes — arguably a feature — but reopening *after* step 6 shows the old success screen with the previous lead's data. `handleReset` should also run when closing from step 6.
 - Submitted `context.recommendations` stores the recommendation titles — fine, but they're the fictional titles from the previous point.
+
+## Family demand release — occasion pages and Trivia Starter
+
+Three static, occasion-specific search pages now share the server-rendered
+[FamilyOccasionPage.jsx](../../../src/components/FamilyOccasionPage.jsx):
+`/virtual-family-reunion-game-show`, `/virtual-birthday-game-show`, and
+`/long-distance-family-game-night`. Their unique copy, FAQ structured data,
+canonical metadata, internal links, existing occasion photography, clear
+pricing, and detailed family concierge forms come from
+[family-demand.js](../../../src/lib/family-demand.js). They intentionally do
+not render customer reviews until a real, authorized testimonial source exists.
+
+`/family-trivia-starter` is a client-side lead magnet. A visitor supplies an
+occasion, age range, player count, interests, and an optional light family
+memory. Twelve prompts are generated locally; three appear before capture and
+the full printable set unlocks after the existing Turnstile-protected lead
+flow succeeds. The optional memory is never sent to `/api/leads`; only a
+boolean that one was supplied is retained. The server treats
+`family_trivia_starter` as a family audience from its own allow-list rather
+than trusting the browser's `context.audience_type` value.
 
 ## The intake endpoint — [/api/leads](../../../src/app/api/leads/route.js)
 

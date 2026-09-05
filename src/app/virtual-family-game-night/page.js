@@ -13,7 +13,7 @@ import {
   Cake, 
   PartyPopper, 
   Check, 
-  Star, 
+  Star,
   ArrowRight, 
   ChevronDown, 
   Sparkles,
@@ -66,34 +66,12 @@ const experiences = [
 
 // 6 Occasions Cards for Families
 const occasions = [
-  { label: "Birthdays", img: "/family-occasion-birthday.png", icon: Cake },
-  { label: "Reunions", img: "/family-occasion-reunion.png", icon: Users },
+  { label: "Birthdays", img: "/family-occasion-birthday.png", icon: Cake, href: "/virtual-birthday-game-show" },
+  { label: "Reunions", img: "/family-occasion-reunion.png", icon: Users, href: "/virtual-family-reunion-game-show" },
   { label: "Holidays", img: "/family-occasion-holiday.png", icon: Sparkles },
   { label: "Anniversaries", img: "/family-occasion-anniversary.png", icon: Heart },
   { label: "Graduations", img: "/family-occasion-graduation.png", icon: Trophy },
-  { label: "Long-Distance Family", img: "/family-occasion-distance.png", icon: Globe }
-];
-
-// Family Testimonials
-const testimonials = [
-  {
-    quote: "Michael was incredible! He had our entire family laughing the whole time. Best night of the year!",
-    family: "The Johnson Family",
-    initials: "JF",
-    color: "from-purple-500 to-indigo-500"
-  },
-  {
-    quote: "So organized, so fun, so worth it. Our reunion has a new tradition!",
-    family: "The Martinez Family",
-    initials: "MF",
-    color: "from-pink-500 to-rose-500"
-  },
-  {
-    quote: "Everyone, from age 8 to 80, was engaged and smiling. Absolutely perfect!",
-    family: "The Anderson Family",
-    initials: "AF",
-    color: "from-amber-500 to-orange-500"
-  }
+  { label: "Long-Distance Family", img: "/family-occasion-distance.png", icon: Globe, href: "/long-distance-family-game-night" }
 ];
 
 // Family-focused FAQs
@@ -126,7 +104,6 @@ const familyFaqs = [
 
 export default function FamilyGameNightPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [activeFaq, setActiveFaq] = useState(null);
 
   // Listen for Navbar CTA button custom events
@@ -134,14 +111,6 @@ export default function FamilyGameNightPage() {
     const handleOpenModal = () => setIsModalOpen(true);
     window.addEventListener("open-family-concierge", handleOpenModal);
     return () => window.removeEventListener("open-family-concierge", handleOpenModal);
-  }, []);
-
-  // Auto-rotate testimonials
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 7000);
-    return () => clearInterval(interval);
   }, []);
 
   const structuredData = [
@@ -153,12 +122,6 @@ export default function FamilyGameNightPage() {
       provider: { "@type": "Organization", name: "Teamtastic", url: "https://teamtastic.events" },
       areaServed: "Worldwide",
       offers: { "@type": "Offer", price: "35", priceCurrency: "USD", description: "$35 per person with a $250 minimum and a $100 reservation deposit" },
-      review: testimonials.map((item) => ({
-        "@type": "Review",
-        author: { "@type": "Organization", name: item.family },
-        reviewBody: item.quote,
-        reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" },
-      })),
     },
     {
       "@context": "https://schema.org",
@@ -519,8 +482,9 @@ export default function FamilyGameNightPage() {
               {occasions.map((occ) => {
                 const Icon = occ.icon;
                 return (
-                  <div
+                  <Link
                     key={occ.label}
+                    href={occ.href || "#availability"}
                     className="group flex flex-col rounded-2xl overflow-hidden border border-zinc-150 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 bg-white"
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100 relative">
@@ -540,7 +504,7 @@ export default function FamilyGameNightPage() {
                         {occ.label}
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -621,56 +585,25 @@ export default function FamilyGameNightPage() {
 
               </div>
 
-              {/* Right Column: Family Testimonials Carousel */}
+              {/* Right Column: factual experience promises; customer quotes are only added with permission. */}
               <div className="lg:col-span-6 w-full lg:sticky lg:top-28 space-y-8 bg-white border border-zinc-150 p-8 sm:p-12 rounded-3xl shadow-sm text-left">
                 
                 <div className="space-y-4">
-                  <span className="text-xs font-black uppercase tracking-widest text-pink-500 font-mono">HEARD FROM FAMILIES</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-pink-500 font-mono">DESIGNED FOR CONNECTION</span>
                   <h2 className="text-3xl sm:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
-                    What <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-brand-orange">Families</span> Are Saying
+                    What Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-brand-orange">Family</span> Can Expect
                   </h2>
                 </div>
-
-                <div className="relative min-h-[160px] flex items-center">
-                  {testimonials.map((test, idx) => (
-                    <div
-                      key={idx}
-                      className={`transition-all duration-500 absolute inset-0 flex flex-col justify-between gap-6 ${
-                        idx === currentTestimonial ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"
-                      }`}
-                    >
-                      <blockquote className="text-base sm:text-lg lg:text-xl font-semibold text-zinc-700 italic leading-relaxed">
-                        &ldquo;{test.quote}&rdquo;
-                      </blockquote>
-                      
-                      <div className="flex items-center gap-4.5">
-                        <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${test.color} flex items-center justify-center text-white font-black text-sm shadow-md`}>
-                          {test.initials}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-zinc-900 leading-tight">{test.family}</h4>
-                          <div className="flex gap-0.5 text-amber-500 mt-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="h-3.5 w-3.5 fill-current" />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                <div className="space-y-4">
+                  {[
+                    ["A host who keeps things moving", "Michael or a Teamtastic emcee explains the games, manages the energy, and handles the scoreboard."],
+                    ["A format that respects different ages", "We adjust the pace, difficulty, and team structure so one generation does not dominate the room."],
+                    ["Personalization you control", "Family stories, photos, and inside jokes are optional. Nothing personal is included unless you approve it."],
+                  ].map(([title, copy]) => (
+                    <div key={title} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+                      <h3 className="font-extrabold text-zinc-950">{title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-zinc-600">{copy}</p>
                     </div>
-                  ))}
-                </div>
-
-                {/* Dot selectors */}
-                <div className="flex items-center gap-2 pt-4">
-                  {testimonials.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentTestimonial(idx)}
-                      className={`h-2.5 rounded-full transition-all duration-300 ${
-                        idx === currentTestimonial ? "w-8 bg-purple-600" : "w-2.5 bg-zinc-200"
-                      }`}
-                      aria-label={`Testimonial ${idx + 1}`}
-                    />
                   ))}
                 </div>
 

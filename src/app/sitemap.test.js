@@ -4,6 +4,7 @@ import sitemap from "@/app/sitemap";
 import { THEMES } from "@/lib/themes";
 import { POSTS } from "@/lib/blog-posts";
 import gamesPool from "@/lib/gamesData.json";
+import { FAMILY_DEMAND_ROUTES } from "@/lib/family-demand";
 
 describe("sitemap", () => {
   it("includes the themes hub and every live theme route", () => {
@@ -27,6 +28,13 @@ describe("sitemap", () => {
   it("emits no duplicate routes", () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(new Set(urls).size).toBe(urls.length);
+  });
+
+  it("includes the family-demand landing pages and trivia starter", () => {
+    const urls = sitemap().map((entry) => entry.url);
+    for (const route of [...FAMILY_DEMAND_ROUTES, "/family-trivia-starter"]) {
+      expect(urls).toContain(`https://teamtastic.events${route}`);
+    }
   });
 
   it("includes the legal policy pages with honest last-modified dates", () => {

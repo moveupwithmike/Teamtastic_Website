@@ -87,6 +87,12 @@ function customerEmail(lead: Record<string, unknown>) {
       html: `<h1>Thanks, ${name}!</h1><p>Michael received your family event details and will follow up with personalized ideas within one business day.</p>`,
     };
   }
+  if (source === "family_trivia_starter") {
+    return {
+      subject: "Your Teamtastic family trivia starter is ready",
+      html: `<h1>Your starter is ready, ${name}!</h1><p>Thanks for creating a Family Trivia Starter. Your complete set appeared on the results screen and can be printed or saved from there.</p><p>If you would rather play than host, Michael can turn your ideas into a complete live Teamtastic family game show.</p><p><a href="https://teamtastic.events/virtual-family-game-night">Explore hosted family game nights</a></p>`,
+    };
+  }
   if (source === "michael_event_concierge") {
     return {
       subject: "We received your Teamtastic event brief",

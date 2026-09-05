@@ -159,6 +159,38 @@ describe("lead capture", () => {
     }));
   });
 
+  it("stores a trivia-starter signup as a private-family lead without the submitted memory", async () => {
+    const supabase = createSupabaseAdminMock({
+      tables: { leads: ({ calls }) => calls.some((c) => c.method === "insert") ? { data: null, error: null } : { data: null, error: null } },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+
+    const response = await postLead(leadPayload({
+      source: "family_trivia_starter",
+      occasion: "reunion",
+      teamSize: "10-25",
+      company: "Must Not Persist",
+      context: {
+        entry_point: "family_trivia_starter",
+        age_range: "three or more generations",
+        memory_provided: true,
+        private_memory_stored: false,
+      },
+    }));
+
+    expect(response.status).toBe(200);
+    const insertCall = supabase.from.mock.results.map((result) => result.value).find((builder) => builder.insert.mock.calls.length > 0);
+    const inserted = insertCall.insert.mock.calls[0][0];
+    expect(inserted).toMatchObject({
+      audience_type: "family",
+      lead_source: "family_trivia_starter",
+      company: null,
+      occasion: "reunion",
+      team_size: "10-25",
+    });
+    expect(JSON.stringify(inserted.context)).not.toContain("Must Not Persist");
+  });
+
   it("persists theme-page attribution for CRM follow-up", async () => {
     const supabase = createSupabaseAdminMock({
       tables: { leads: ({ calls }) => calls.some((c) => c.method === "insert") ? { data: null, error: null } : { data: null, error: null } },
