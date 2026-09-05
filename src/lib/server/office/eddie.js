@@ -3,6 +3,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { audit, clean } from "./shared";
 import * as salesResponse from "./sales-response";
+import { buildFamilyDemandReport } from "@/lib/family-demand-report";
 
 const MODEL = "anthropic/claude-haiku-4.5";
 const GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/messages";
@@ -89,10 +90,11 @@ export function sanitizeConversation(messages) {
 }
 
 export async function collectEddieContext(db) {
-  const [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult] = await Promise.all([
+  const familySince = new Date(Date.now() - 30 * 86400000).toISOString();
+  const [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult] = await Promise.all([
     db.from("daily_reports").select("report_date,summary,transcript,status,sent_at").order("report_date", { ascending: false }).limit(1).maybeSingle(),
     db.from("prospects").select("id,full_name,email,job_title,source,status,audience_type,score,last_inbound_at,last_outbound_at,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(25),
-    db.from("leads").select("id,prospect_id,name,email,company,lead_source,audience_type,status,team_size,occasion,preferred_event_date,budget_range,package_interest,decision_timeline,lead_score,context,created_at").order("created_at", { ascending: false }).limit(30),
+    db.from("leads").select("id,prospect_id,name,email,company,lead_source,audience_type,status,team_size,occasion,preferred_event_date,budget_range,package_interest,decision_timeline,lead_score,landing_page,utm_source,utm_medium,utm_campaign,context,created_at").order("created_at", { ascending: false }).limit(30),
     db.from("tasks").select("id,prospect_id,title,description,status,priority,due_at,source,created_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(30),
     db.from("sales_response_drafts").select("id,lead_id,prospect_id,recipient_email,response_type,subject,body_text,status,updated_at,created_at").in("status", ["draft", "send_failed"]).order("created_at", { ascending: false }).limit(20),
     db.from("deals").select("id,prospect_id,title,stage,outcome,expected_value,next_action,next_action_due_at,package_name,updated_at").eq("outcome", "open").order("updated_at", { ascending: false }).limit(25),
@@ -101,9 +103,12 @@ export async function collectEddieContext(db) {
     db.from("marketing_recommendations").select("id,recommendation_type,title,target_customer,occasion,platform,suggested_daily_budget_cents,test_days,proposed_keywords,proposed_audience,advertisement_text,creative_brief,landing_page,expected_result,reason,evidence,status,updated_at").neq("status", "archived").order("created_at", { ascending: false }).limit(20),
     db.from("growth_experiments").select("id,title,status,target_page,primary_metric,proposed_action,review_due_at").neq("status", "rejected").order("updated_at", { ascending: false }).limit(15),
     db.from("marketing_asset_drafts").select("id,draft_type,recommendation_id,deal_id,title,status,created_at").order("created_at", { ascending: false }).limit(15),
+    db.rpc("get_lead_source_roi", { p_days: 30 }),
+    db.from("leads").select("id,audience_type,occasion,preferred_event_date,lead_score,landing_page,context,created_at").gte("created_at", familySince).order("created_at", { ascending: false }).limit(500),
+    db.from("bookings").select("id,lead_id,status,created_at").gte("created_at", familySince).limit(500),
   ]);
 
-  const failures = [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult]
+  const failures = [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult]
     .filter((result) => result.error).map((result) => result.error.code || "query_failed");
   if (failures.length) throw new EddieError("sales_data_unavailable", 503);
 
@@ -120,6 +125,12 @@ export async function collectEddieContext(db) {
     marketing_recommendations: recommendationsResult.data || [],
     marketing_experiments: experimentsResult.data || [],
     marketing_asset_drafts: marketingDraftsResult.data || [],
+    family_demand: buildFamilyDemandReport({
+      campaigns: familyRoiResult.data?.campaigns || [],
+      leads: (familyLeadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true),
+      bookings: familyBookingsResult.data || [],
+      days: 30,
+    }),
     advertising_permissions: { can_prepare: true, can_launch: false, can_pause: false, can_change_budget: false, can_spend: false },
   };
 }

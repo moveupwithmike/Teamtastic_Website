@@ -8,6 +8,7 @@ const icons = [Users, Sparkles, Gamepad2];
 
 export default function FamilyOccasionPage({ occasion }) {
   const related = Object.values(FAMILY_OCCASIONS).filter((item) => item.slug !== occasion.slug);
+  /** @type {Record<string, unknown>[]} */
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -33,6 +34,15 @@ export default function FamilyOccasionPage({ occasion }) {
       })),
     },
   ];
+  if (occasion.planningSteps) {
+    structuredData.push({
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: occasion.title,
+      description: occasion.description,
+      step: occasion.planningSteps.map(([name, text], index) => ({ "@type": "HowToStep", position: index + 1, name, text })),
+    });
+  }
 
   return (
     <main className="bg-white text-zinc-900">
@@ -65,6 +75,20 @@ export default function FamilyOccasionPage({ occasion }) {
           </div>
         </div>
       </section>
+
+      {occasion.planningSteps && <section className="border-y border-zinc-200 bg-violet-50 py-16 sm:py-20">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-purple-700">Virtual reunion checklist</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Six steps from idea to reunion day</h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {occasion.planningSteps.map(([title, copy], index) => <article key={title} className="rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
+              <p className="text-sm font-black text-pink-600">STEP {index + 1}</p>
+              <h3 className="mt-2 text-xl font-extrabold">{title}</h3>
+              <p className="mt-2 leading-relaxed text-zinc-600">{copy}</p>
+            </article>)}
+          </div>
+        </div>
+      </section>}
 
       <section className="py-16 sm:py-20">
         <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
@@ -152,7 +176,7 @@ export default function FamilyOccasionPage({ occasion }) {
             defaultOccasion={occasion.occasion}
             holidayQualification
             eyebrow="Family date check"
-            title={`Check availability for your ${occasion.occasion === "long-distance" ? "family game night" : occasion.occasion}`}
+            title={occasion.formTitle || `Check availability for your ${occasion.occasion === "long-distance" ? "family game night" : occasion.occasion}`}
           />
         </div>
       </section>
