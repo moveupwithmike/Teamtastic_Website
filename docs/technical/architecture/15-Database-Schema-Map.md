@@ -24,7 +24,7 @@ Single shared Supabase Postgres project (also used by the separate `teamtastic.g
 
 **Lifecycle/reporting**
 - `resend_webhook_events`, `system_config.outbound_auto_paused` — `milestone3_resend_webhook`.
-- `daily_reports` — daily sales report idempotency.
+- `daily_reports` — daily sales report idempotency. Gains `audio_url`/`transcript`/`voice_brief_status`/`voice_brief_error` from `20260905143400_daily_voice_brief.sql`, written by the separate `generate-daily-voice-brief` function, never by `send-daily-sales-report` itself. Same migration creates a private Supabase Storage bucket (`daily-report-audio`) — the first and only Storage usage in this repo; no `storage.objects` policy is added since RLS-with-no-policy already denies anon/authenticated by default and service_role bypasses RLS.
 - `lifecycle_actions`, `escalation_rules`, `client_conversions`, `clients`, `events` — phase4 client-lifecycle/paid-conversion migrations.
 - `learning_recommendations` — phase4 operational completion.
 
@@ -45,6 +45,7 @@ Singleton row (`id = true`). Flags found across all migrations, grouped by what 
 | `outbound_auto_paused` | `draft-sequence-followups`, `send-approved-outreach` only (not nurture/lead-confirmation) | **Yes** (a "Resume sending" checkbox, shown only while paused) |
 | `gmail_ingestion_enabled` | `ingest-gmail-replies` | No |
 | `daily_report_enabled`, `daily_report_recipient` | `send-daily-sales-report` | No |
+| `daily_report_voice_brief_enabled` | `generate-daily-voice-brief` — ships `false`, pending real cost/quality validation (same posture as `gmail_llm_classification_enabled`) | No |
 
 Most of the "No" column above isn't a bug — these are mostly one-time/rarely-touched ops toggles — but `proposal_email_enabled`/`daily_proposal_cap` stand out because the dashboard actively surfaces a proposal-approval workflow that can be silently blocked by them with no UI explanation.
 
@@ -55,6 +56,7 @@ Most of the "No" column above isn't a bug — these are mostly one-time/rarely-t
 | `retry-pending-lead-notifications` | `*/5 * * * *` | Yes | Lead notify retry |
 | `quiz-abandoner-nurture` | `0 * * * *` | Yes | Nurture drip |
 | `teamtastic-daily-report` | `30 12 * * *` | Yes | Daily report |
+| `daily-voice-brief` | `35 12 * * *` | No | Daily report — decoupled voice-brief follow-on, reads the row `teamtastic-daily-report` just wrote |
 | `phase3-apollo-enrichment` | `15 12 * * 1-5` | **Yes** | Outbound pipeline — the only pipeline stage active |
 | `office-post-call-tasks` | `*/15 * * * *` | Yes | Office |
 | `phase3-apollo-discovery` | `0 12 * * 1-5` | No | Outbound pipeline |

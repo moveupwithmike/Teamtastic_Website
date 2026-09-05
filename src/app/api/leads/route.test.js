@@ -137,6 +137,28 @@ describe("lead capture", () => {
     }));
   });
 
+  it("stores a family inquiry as a private audience without inventing a company", async () => {
+    const supabase = createSupabaseAdminMock({
+      tables: { leads: ({ calls }) => calls.some((c) => c.method === "insert") ? { data: null, error: null } : { data: null, error: null } },
+    });
+    getSupabaseAdmin.mockReturnValue(supabase);
+
+    const response = await postLead(leadPayload({
+      source: "michael_family_concierge",
+      company: "Fake Incorporated",
+      groupName: "The Rivera Family",
+      email: "jordan-family@example.com",
+    }));
+
+    expect(response.status).toBe(200);
+    const insertCall = supabase.from.mock.results.map((r) => r.value).find((builder) => builder.insert.mock.calls.length > 0);
+    expect(insertCall.insert).toHaveBeenCalledWith(expect.objectContaining({
+      audience_type: "family",
+      group_name: "The Rivera Family",
+      company: null,
+    }));
+  });
+
   it("persists theme-page attribution for CRM follow-up", async () => {
     const supabase = createSupabaseAdminMock({
       tables: { leads: ({ calls }) => calls.some((c) => c.method === "insert") ? { data: null, error: null } : { data: null, error: null } },

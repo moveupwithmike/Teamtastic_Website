@@ -13,9 +13,12 @@ const escapeHtml = (value: unknown) => String(value ?? "")
 // of extracting a typed helper, which avoids the issue entirely.
 async function syncLeadToCrm(supabase: any, lead: Record<string, unknown>) {
   const email = String(lead.email ?? "").trim().toLowerCase();
+  const leadAudience = ["family", "friends", "other_private_event"].includes(String(lead.audience_type))
+    ? String(lead.audience_type)
+    : "corporate";
   let { data: prospect } = await supabase
     .from("prospects")
-    .select("id")
+    .select("id,audience_type")
     .eq("email_normalized", email)
     .maybeSingle();
 
@@ -26,19 +29,24 @@ async function syncLeadToCrm(supabase: any, lead: Record<string, unknown>) {
       phone: lead.phone || null,
       source: "inbound",
       status: "new",
+      audience_type: leadAudience,
       last_inbound_at: lead.created_at,
       metadata: { first_lead_source: lead.lead_source },
-    }).select("id").single();
+    }).select("id,audience_type").single();
     prospect = inserted.data;
     if (!prospect && inserted.error?.code === "23505") {
-      const raced = await supabase.from("prospects").select("id").eq("email_normalized", email).single();
+      const raced = await supabase.from("prospects").select("id,audience_type").eq("email_normalized", email).single();
       prospect = raced.data;
     }
   } else {
+    const currentAudience = String(prospect.audience_type || "corporate");
     await supabase.from("prospects").update({
       full_name: lead.name,
       phone: lead.phone || null,
       last_inbound_at: lead.created_at,
+      audience_type: currentAudience === leadAudience || currentAudience === "mixed"
+        ? currentAudience
+        : "mixed",
     }).eq("id", prospect.id);
   }
 
@@ -52,7 +60,9 @@ async function syncLeadToCrm(supabase: any, lead: Record<string, unknown>) {
     await supabase.from("tasks").insert({
       prospect_id: prospect.id,
       title: `Review inbound lead: ${lead.name}`,
-      description: `Source: ${lead.lead_source}. Company: ${lead.company || "Not provided"}.`,
+      description: leadAudience === "corporate"
+        ? `Source: ${lead.lead_source}. Company: ${lead.company || "Not provided"}.`
+        : `Source: ${lead.lead_source}. Private group: ${lead.group_name || "Not provided"}.`,
       priority: "high",
       due_at: new Date(Date.now() + 15 * 60_000).toISOString(),
       source: taskSource,
@@ -120,9 +130,11 @@ Deno.serve(async (request) => {
 
   const summary = [
     `Source: ${lead.lead_source}`,
+    `Audience: ${lead.audience_type || "corporate"}`,
     `Name: ${lead.name}`,
     `Email: ${lead.email}`,
     `Company: ${lead.company || "Not provided"}`,
+    `Family / group name: ${lead.group_name || "Not provided"}`,
     `Team size: ${lead.team_size || "Not provided"}`,
     `Vibe: ${lead.vibe || "Not provided"}`,
     `Occasion: ${lead.occasion || "Not provided"}`,

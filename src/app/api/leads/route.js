@@ -71,6 +71,7 @@ export async function POST(request) {
   }
 
   const recommendation = getRecommendation(clean(body.vibe, 80));
+  const audienceType = source === "michael_family_concierge" ? "family" : "corporate";
   // Provenance is server-authoritative. Callers may attach their own analytics
   // context, but certification/synthetic markers are stripped so public form
   // submissions always inherit production provenance at creation time.
@@ -91,7 +92,9 @@ export async function POST(request) {
     name,
     email,
     email_normalized: email,
-    company: clean(body.company, 160) || null,
+    company: audienceType === "corporate" ? clean(body.company, 160) || null : null,
+    group_name: audienceType === "family" ? clean(body.groupName || body.company, 160) || null : null,
+    audience_type: audienceType,
     phone: clean(body.phone, 40) || null,
     team_size: clean(body.teamSize, 80) || null,
     vibe: clean(body.vibe, 80) || null,
@@ -138,6 +141,7 @@ export async function POST(request) {
       await captureServerEvent("lead_persisted", submissionId, {
         submission_id: submissionId,
         source,
+        audience_type: audienceType,
         team_size: row.team_size,
         vibe: row.vibe,
         occasion: row.occasion,

@@ -1,6 +1,13 @@
 import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
 import { sendViaResend } from "../_shared/email.ts";
-import { buildNurtureEmail, nextNurtureStep, NURTURE_STEPS as STEPS } from "../_shared/nurture.ts";
+import {
+  buildFamilyNurtureEmail,
+  buildNurtureEmail,
+  FAMILY_NURTURE_STEPS,
+  nextFamilyNurtureStep,
+  nextNurtureStep,
+  NURTURE_STEPS,
+} from "../_shared/nurture.ts";
 
 // Don't resurrect leads with a multi-week-old sequence if a run was missed.
 const MAX_AGE_HOURS = 30 * 24;
@@ -31,8 +38,8 @@ export async function handleNurtureRequest(
   const { data: leads, error } = await supabase
     .from("leads")
     .select("*")
-    .eq("lead_source", "event_quiz")
-    .lte("created_at", new Date(now - STEPS[0].minAgeHours * 3600_000).toISOString())
+    .in("lead_source", ["event_quiz", "michael_family_concierge"])
+    .lte("created_at", new Date(now - NURTURE_STEPS[0].minAgeHours * 3600_000).toISOString())
     .gte("created_at", new Date(now - MAX_AGE_HOURS * 3600_000).toISOString());
 
   if (error) return functionError("nurture_lead_query_failed");
@@ -41,6 +48,20 @@ export async function handleNurtureRequest(
   let sent = 0;
   for (const lead of leads) {
     const ageHours = (now - new Date(lead.created_at as string).getTime()) / 3600_000;
+    const isFamily = lead.audience_type === "family" || lead.lead_source === "michael_family_concierge";
+    const steps = isFamily ? FAMILY_NURTURE_STEPS : NURTURE_STEPS;
+
+    const { data: stopReason, error: stopError } = await supabase
+      .rpc("lead_nurture_stop_reason", { p_lead_id: lead.id });
+    if (stopError) {
+      await supabase.from("agent_log").insert({
+        agent_name: "inbound-nurture", action: "check_stop_conditions", outcome: "failed",
+        prospect_id: lead.prospect_id || null, error: stopError.message,
+        decision: { lead_id: lead.id },
+      });
+      continue;
+    }
+    if (stopReason) continue;
 
     const { data: paid, error: paidError } = await supabase
       .rpc("lead_has_paid_hosted_event", { p_lead_id: lead.id });
@@ -58,14 +79,22 @@ export async function handleNurtureRequest(
       .from("notification_deliveries")
       .select("notification_type,status,attempts")
       .eq("lead_id", lead.id)
-      .in("notification_type", STEPS.map((s) => s.type));
+      .in("notification_type", steps.map((s) => s.type));
     const byType = new Map((deliveries || []).map((d) => [d.notification_type, d]));
     const sentTypes = new Set((deliveries || []).filter((d) => d.status === "sent").map((d) => d.notification_type));
 
-    const step = nextNurtureStep(ageHours, sentTypes);
+    const step = isFamily
+      ? nextFamilyNurtureStep(ageHours, sentTypes)
+      : nextNurtureStep(ageHours, sentTypes);
     if (!step) continue;
 
-    const email = buildNurtureEmail(step.type, lead, Deno.env.get("STRIPE_DEPOSIT_URL"));
+    const email = isFamily
+      ? buildFamilyNurtureEmail(
+        step.type,
+        lead,
+        Deno.env.get("STRIPE_FAMILY_DEPOSIT_URL") || Deno.env.get("NEXT_PUBLIC_STRIPE_FAMILY_DEPOSIT_URL"),
+      )
+      : buildNurtureEmail(step.type, lead, Deno.env.get("STRIPE_DEPOSIT_URL"));
     const existing = byType.get(step.type);
     const result = await dependencies.sendEmail(supabase, {
         messageType: "nurture",

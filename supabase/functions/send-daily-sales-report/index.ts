@@ -55,7 +55,7 @@ Deno.serve(async (request) => {
     leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult,
     incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult,
   ] = await Promise.all([
-    supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", since),
+    supabase.from("leads").select("audience_type").gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
     supabase.from("messages").select("message_type,status").eq("direction", "outbound").gte("created_at", since),
     supabase.from("tasks").select("title,priority,due_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(20),
@@ -79,6 +79,7 @@ Deno.serve(async (request) => {
   if (queryError) return functionError("report_query_failed");
 
   const replies = repliesResult.data || [];
+  const leads = leadsResult.data || [];
   const outbound = outboundResult.data || [];
   const tasks = tasksResult.data || [];
   const decisions = decisionsResult.data || [];
@@ -90,6 +91,8 @@ Deno.serve(async (request) => {
   const outreachDrafts = outreachDraftsResult.data || [];
   const replyCounts = countBy(replies, (row) => row.classification || "unknown");
   const sentCounts = countBy(outbound.filter((row) => row.status === "sent"), (row) => row.message_type);
+  const leadAudienceCounts = countBy(leads, (row) => row.audience_type || "corporate");
+  const privateLeadCount = (leadAudienceCounts.family || 0) + (leadAudienceCounts.friends || 0) + (leadAudienceCounts.other_private_event || 0);
   const now = Date.now();
   const pipelineValue = deals.reduce((sum, deal) => sum + Number(deal.expected_value || 0), 0);
   const revenueByCurrency = revenuePayments.reduce<Record<string, number>>((totals, payment) => {
@@ -135,7 +138,9 @@ Deno.serve(async (request) => {
     <p><strong>Reporting window:</strong> previous 24 hours</p>
     <h2>Activity</h2>
     <ul>
-      <li>New inbound leads: ${leadsResult.count || 0}</li>
+      <li>New inbound leads: ${leads.length}</li>
+      <li>Corporate leads: ${leadAudienceCounts.corporate || 0}</li>
+      <li>Family / private-event leads: ${privateLeadCount}</li>
       <li>Inbound replies: ${replies.length}</li>
       <li>Messages sent: ${outbound.filter((row) => row.status === "sent").length}</li>
     </ul>
@@ -175,7 +180,8 @@ Deno.serve(async (request) => {
     ${deliverabilityHtml}
   `;
   const summary = {
-    new_leads: leadsResult.count || 0,
+    new_leads: leads.length,
+    new_leads_by_audience: leadAudienceCounts,
     replies: replyCounts,
     sent: sentCounts,
     open_tasks: tasks.length,

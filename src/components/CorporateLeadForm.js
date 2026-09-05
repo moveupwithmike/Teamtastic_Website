@@ -57,7 +57,7 @@ export default function CorporateLeadForm({
   const bookingUrl = `/book?${new URLSearchParams({
     name: form.name,
     email: form.email,
-    company: form.company,
+    ...(isFamily ? {} : { company: form.company }),
     submission_id: submissionId,
   })}`;
 
@@ -80,9 +80,12 @@ export default function CorporateLeadForm({
         submissionId,
         source,
         ...form,
+        company: isFamily ? "" : form.company,
+        groupName: isFamily ? form.company : "",
         turnstileToken,
         context: {
           entry_point: entryPoint,
+          audience_type: isFamily ? "family" : "corporate",
           preferredEventDate: form.preferredEventDate || null,
           alternateEventDate: form.alternateEventDate || null,
           timeZone: form.timeZone || null,
@@ -159,7 +162,7 @@ export default function CorporateLeadForm({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <input required name="name" value={form.name} onChange={update} placeholder="Your name" aria-label="Your name" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
-        <input required type="email" name="email" value={form.email} onChange={update} placeholder="Work email" aria-label="Work email" className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
+        <input required type="email" name="email" value={form.email} onChange={update} placeholder={isFamily ? "Email address" : "Work email"} aria-label={isFamily ? "Email address" : "Work email"} className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
         <input required={!isFamily} name="company" value={form.company} onChange={update} placeholder={isFamily ? "Family / group name (optional)" : "Company"} aria-label={isFamily ? "Family or group name" : "Company"} className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-zinc-500" />
         <select required name="teamSize" value={form.teamSize} onChange={update} aria-label={isFamily ? "Group size" : "Team size"} className="h-12 rounded-xl border border-white/10 bg-zinc-900 px-4 text-white">
           {isFamily ? (

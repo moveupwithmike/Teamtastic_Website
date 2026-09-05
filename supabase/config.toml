@@ -21,6 +21,12 @@ entrypoint = "./functions/send-daily-sales-report/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/send-daily-sales-report/*.html" ]
 
+[functions.generate-daily-voice-brief]
+enabled = true
+verify_jwt = false
+import_map = "./functions/generate-daily-voice-brief/deno.json"
+entrypoint = "./functions/generate-daily-voice-brief/index.ts"
+
 [functions.process-phase3-pipeline]
 enabled = true
 verify_jwt = false

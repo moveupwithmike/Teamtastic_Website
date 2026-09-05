@@ -6,7 +6,11 @@ function assert(condition: unknown, message: string): asserts condition {
 
 type Call = { method: string; args: unknown[] };
 
-function fakeQuery(table: string, writes: Array<{ table: string; value: unknown }>) {
+function fakeQuery(
+  table: string,
+  writes: Array<{ table: string; value: unknown }>,
+  leadOverrides: Record<string, unknown> = {},
+) {
   const calls: Call[] = [];
   const query: Record<string, unknown> = {};
   for (const method of ["select", "eq", "lte", "gte", "in"]) {
@@ -32,7 +36,10 @@ function fakeQuery(table: string, writes: Array<{ table: string; value: unknown 
           name: "Jordan",
           submission_id: "submission_1",
           recommendation_key: "social",
+          lead_source: "event_quiz",
+          audience_type: "corporate",
           created_at: "2026-08-14T12:00:00.000Z",
+          ...leadOverrides,
         }],
         error: null,
       }));
@@ -53,6 +60,7 @@ Deno.test("send-nurture-emails handles an authenticated due lead end to end", as
       return fakeQuery(table, writes);
     },
     rpc(name: string) {
+      if (name === "lead_nurture_stop_reason") return Promise.resolve({ data: null, error: null });
       if (name === "lead_has_paid_hosted_event") return Promise.resolve({ data: false, error: null });
       throw new Error(`unexpected rpc: ${name}`);
     },
@@ -77,4 +85,45 @@ Deno.test("send-nurture-emails handles an authenticated due lead end to end", as
   assert(sends[0].idempotencyKey === "nurture/lead_1/nurture_day1", "expected a stable idempotency key");
   assert(writes.some((write) => write.table === "notification_deliveries"), "expected delivery state to be persisted");
   assert(writes.some((write) => write.table === "messages"), "expected the outbound message to be logged");
+});
+
+Deno.test("send-nurture-emails routes a family lead into the private-event sequence", async () => {
+  const writes: Array<{ table: string; value: unknown }> = [];
+  const sends: Array<Record<string, unknown>> = [];
+  const familyLead = {
+    id: "family_lead_1",
+    email: "family@example.com",
+    submission_id: "family_submission_1",
+    lead_source: "michael_family_concierge",
+    audience_type: "family",
+    group_name: "Rivera Family",
+    occasion: "reunion",
+  };
+  const client = {
+    from(table: string) {
+      return fakeQuery(table, writes, familyLead);
+    },
+    rpc(name: string) {
+      if (name === "lead_nurture_stop_reason") return Promise.resolve({ data: null, error: null });
+      if (name === "lead_has_paid_hosted_event") return Promise.resolve({ data: false, error: null });
+      throw new Error(`unexpected rpc: ${name}`);
+    },
+  };
+
+  const response = await handleNurtureRequest(new Request("https://example.test/functions/v1/send-nurture-emails", {
+    method: "POST",
+  }), {
+    authorize: () => Promise.resolve(null),
+    createClient: () => client,
+    sendEmail: (_client: unknown, options: Record<string, unknown>) => {
+      sends.push(options);
+      return Promise.resolve({ sent: true, reserved: true, providerMessageId: "email_family_1", reason: null, status: 200 });
+    },
+    now: () => Date.parse("2026-08-16T12:00:00.000Z"),
+  } as never);
+
+  assert(response.status === 200, "expected a successful handler response");
+  assert(sends.length === 1, "expected one family email delivery");
+  assert(sends[0].idempotencyKey === "nurture/family_lead_1/family_nurture_day2", "expected the family sequence idempotency key");
+  assert(String(sends[0].subject).includes("Rivera Family"), "expected family-specific copy");
 });

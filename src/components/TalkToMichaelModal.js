@@ -61,13 +61,15 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
         source,
         name: answers.name,
         email: answers.email,
-        company: answers.company || (isFamily ? `${answers.name}'s Family` : ""),
+        company: isFamily ? "" : answers.company,
+        groupName: isFamily ? answers.company : "",
         phone: answers.phone,
         teamSize: answers.groupSize,
         vibe: answers.vibe,
         occasion: answers.eventType,
         turnstileToken,
         context: {
+          audience_type: isFamily ? "family" : "corporate",
           preferences: answers.preferences,
           preferredEventDate: answers.eventDate,
           recommendations: getRecommendations().map((item) => item.title),
@@ -122,7 +124,7 @@ export default function TalkToMichaelModal({ isOpen, onClose, isFamily = false }
   const bookingUrl = `/book?${new URLSearchParams({
     name: answers.name,
     email: answers.email,
-    company: answers.company || "",
+    ...(isFamily ? {} : { company: answers.company || "" }),
     submission_id: submissionId,
   })}`;
 
