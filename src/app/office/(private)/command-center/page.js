@@ -1,0 +1,117 @@
+import Link from "next/link";
+import { getOfficeDb } from "@/lib/server/office-auth";
+import { Card, Empty, ProspectLink, buttonClass, formatDate, formatMoney, inputClass } from "../../office-ui";
+import { refreshMarketingRecommendations, reviewMarketingRecommendation } from "../../actions";
+import CommandCenterControls from "./command-center-controls";
+
+const AUDIO_BUCKET = "daily-report-audio";
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
+const HOT_MESSAGE_TYPES = ["interested", "availability", "pricing", "proposal_request", "booking_request", "positive_reply"];
+
+function Metric({ label, value, detail = null, tone = "text-white" }) {
+  return <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><p className={`mt-2 text-3xl font-bold ${tone}`}>{value}</p>{detail && <p className="mt-1 text-xs text-slate-400">{detail}</p>}</div>;
+}
+
+function StatusPill({ children, tone = "purple" }) {
+  const tones = { purple: "bg-purple-500/15 text-purple-200", green: "bg-emerald-500/15 text-emerald-200", gold: "bg-amber-500/15 text-amber-200", red: "bg-red-500/15 text-red-200", slate: "bg-white/5 text-slate-300" };
+  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${tones[tone] || tones.slate}`}>{children}</span>;
+}
+
+function Recommendation({ item, compact = false }) {
+  const maxCost = Number(item.suggested_daily_budget_cents || 0) * Number(item.test_days || 0);
+  return <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+    <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-semibold">{item.title}</p><p className="mt-1 text-xs text-slate-400">{item.platform} · {item.occasion || "General"}</p></div><StatusPill tone={item.status === "approved" ? "green" : item.status === "rejected" ? "red" : item.status === "prepared" ? "gold" : "purple"}>{item.status}</StatusPill></div>
+    <p className="mt-3 text-sm text-slate-300">{item.reason}</p>
+    {!compact && <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+      <p><span className="text-slate-500">Customer:</span> {item.target_customer}</p>
+      <p><span className="text-slate-500">Landing page:</span> {item.landing_page || "To be chosen"}</p>
+      <p><span className="text-slate-500">Suggested budget:</span> {item.suggested_daily_budget_cents ? `${formatMoney(item.suggested_daily_budget_cents / 100)} per day for ${item.test_days} days (${formatMoney(maxCost / 100)} maximum)` : "No advertising budget"}</p>
+      <p><span className="text-slate-500">Expected result:</span> {item.expected_result}</p>
+      {item.proposed_keywords?.length > 0 && <p className="sm:col-span-2"><span className="text-slate-500">Keywords:</span> {item.proposed_keywords.join(" · ")}</p>}
+      {item.advertisement_text && <p className="sm:col-span-2"><span className="text-slate-500">Advertisement:</span> {item.advertisement_text}</p>}
+      {item.creative_brief && <p className="sm:col-span-2"><span className="text-slate-500">Creative:</span> {item.creative_brief}</p>}
+    </div>}
+    {item.status === "proposed" && <form action={reviewMarketingRecommendation} className="mt-4 rounded-lg bg-black/20 p-3"><input type="hidden" name="id" value={item.id}/><input name="notes" placeholder="Optional decision note" className={inputClass}/><div className="mt-3 flex flex-wrap gap-2"><button name="decision" value="approve" className={buttonClass}>Approve recommendation</button><button name="decision" value="reject" className="rounded-lg border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/10">Reject</button></div><p className="mt-2 text-xs text-amber-200">Approval records your decision only. It does not create, launch, or fund an advertisement.</p></form>}
+  </div>;
+}
+
+export default async function CommandCenterPage({ searchParams }) {
+  const params = await searchParams;
+  const televisionMode = params?.view === "tv";
+  const db = (await getOfficeDb()).db;
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
+
+  const [reportResult, tasksResult, messagesResult, leadsResult, prospectsResult, bookingsResult, paymentsResult, roiResult, recommendationsResult, experimentsResult, audienceResult, agendaResult, organicResult, actionsResult, agentLogResult, incidentsResult, draftsResult] = await Promise.all([
+    db.from("daily_reports").select("report_date,summary,transcript,audio_url,voice_brief_status").order("report_date", { ascending: false }).limit(1).maybeSingle(),
+    db.from("tasks").select("id,prospect_id,title,description,status,priority,due_at,source,created_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(12),
+    db.from("messages").select("id,prospect_id,subject,classification,received_at,from_address").eq("direction", "inbound").gte("received_at", sevenDaysAgo).order("received_at", { ascending: false }).limit(12),
+    db.from("leads").select("id,prospect_id,name,email,company,audience_type,lead_source,lead_score,occasion,status,created_at,context").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(200),
+    db.from("prospects").select("id,full_name,email,score,status,audience_type,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(8),
+    db.from("bookings").select("id,status,starts_at,created_at").gte("created_at", thirtyDaysAgo),
+    db.from("deal_payments").select("id,amount,currency,payment_kind,paid_at").gte("paid_at", thirtyDaysAgo),
+    db.rpc("get_lead_source_roi", { p_days: 30 }),
+    db.from("marketing_recommendations").select("*").neq("status", "archived").order("created_at", { ascending: false }).limit(20),
+    db.from("growth_experiments").select("id,title,status,recommendation,proposed_action,review_due_at,updated_at").neq("status", "rejected").order("updated_at", { ascending: false }).limit(8),
+    db.from("audience_snapshots").select("snapshot_date,summary,recommendations,generated_at").order("snapshot_date", { ascending: false }).limit(1).maybeSingle(),
+    db.from("daily_growth_agendas").select("agenda_date,summary,items,generated_at").order("agenda_date", { ascending: false }).limit(1).maybeSingle(),
+    db.from("organic_opportunities").select("id,title,community,intent_score,status,source_url,discovered_at").in("status", ["new", "scored", "review", "drafted", "approved"]).order("intent_score", { ascending: false }).limit(8),
+    db.from("eddie_action_receipts").select("id,action_type,status,result,error,created_at,completed_at").order("created_at", { ascending: false }).limit(12),
+    db.from("agent_log").select("id,agent_name,action,outcome,error,decision,created_at").gte("created_at", sevenDaysAgo).order("created_at", { ascending: false }).limit(12),
+    db.from("production_incidents").select("id,title,severity,status,description,created_at").neq("status", "resolved").order("created_at", { ascending: false }).limit(8),
+    db.from("marketing_asset_drafts").select("id,draft_type,title,status,created_by,created_at").order("created_at", { ascending: false }).limit(8),
+  ]);
+
+  const report = reportResult.data;
+  let signedAudioUrl = null;
+  if (report?.voice_brief_status === "ready" && report.audio_url) {
+    const { data } = await db.storage.from(AUDIO_BUCKET).createSignedUrl(report.audio_url, SIGNED_URL_TTL_SECONDS);
+    signedAudioUrl = data?.signedUrl || null;
+  }
+  const leads = (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true);
+  const newLeads = leads.filter((lead) => new Date(lead.created_at) >= new Date(sevenDaysAgo));
+  const privateLeads = newLeads.filter((lead) => ["family", "friends", "other_private_event"].includes(lead.audience_type));
+  const corporateLeads = newLeads.filter((lead) => lead.audience_type === "corporate");
+  const payments = paymentsResult.data || [];
+  const deposits = payments.filter((payment) => payment.payment_kind === "deposit");
+  const revenue = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const roi = roiResult.data || {};
+  const roiSummary = roi.summary || {};
+  const campaigns = roi.campaigns || [];
+  const bestCampaign = campaigns.find((campaign) => campaign.qualified_leads > 0 || Number(campaign.revenue) > 0) || campaigns[0];
+  const worstCampaign = campaigns.find((campaign) => campaign.traffic_without_qualified_leads);
+  const recommendations = recommendationsResult.data || [];
+  const proposedRecommendations = recommendations.filter((item) => item.status === "proposed");
+  const messages = (messagesResult.data || []).filter((message) => HOT_MESSAGE_TYPES.includes(message.classification));
+  const approvalCount = proposedRecommendations.length + messages.length;
+  const agendaItems = Array.isArray(agendaResult.data?.items) ? agendaResult.data.items : [];
+  const audienceRecommendations = Array.isArray(audienceResult.data?.recommendations) ? audienceResult.data.recommendations : [];
+  const organicOpportunities = organicResult.data || [];
+  const failures = (agentLogResult.data || []).filter((item) => ["failed", "blocked", "escalated"].includes(item.outcome));
+
+  const content = <div className="space-y-8">
+    {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-200" : "bg-emerald-500/10 text-emerald-200"}`}>{params.error ? "That update could not be completed. Nothing was launched or spent." : "Saved. No advertisement was launched and no budget was spent."}</p>}
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-bold uppercase tracking-[0.2em] text-purple-300">Eddie Command Center</p><h2 className="mt-1 text-3xl font-bold sm:text-4xl">The business at a glance</h2><p className="mt-2 text-slate-400">Sales, marketing, market intelligence and Eddie&apos;s work in one place.</p></div><CommandCenterControls televisionMode={televisionMode}/></div>
+
+    <section><div className="mb-4 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-purple-300">Today</p><h3 className="text-2xl font-bold">What needs attention</h3></div><Link href="/office/morning-brief" className="text-sm text-purple-300">Talk with Eddie →</Link></div><div className="grid gap-5 xl:grid-cols-2">
+      <Card title="Eddie’s spoken morning briefing" tone="purple">{signedAudioUrl ? <><audio className="w-full" controls preload="none" src={signedAudioUrl}/><p className="mt-3 whitespace-pre-wrap text-sm text-slate-300">{report?.transcript}</p></> : report?.transcript ? <p className="whitespace-pre-wrap text-sm text-slate-300">{report.transcript}</p> : <Empty>No morning briefing is available yet.</Empty>}</Card>
+      <div className="grid gap-4 sm:grid-cols-3"><Metric label="Open tasks" value={(tasksResult.data || []).length} tone="text-amber-300"/><Metric label="Messages" value={messages.length} tone="text-sky-300"/><Metric label="Awaiting approval" value={approvalCount} tone="text-purple-300"/></div>
+      <Card title="Important tasks" count={(tasksResult.data || []).length} tone="gold">{(tasksResult.data || []).length ? <div className="space-y-2">{(tasksResult.data || []).slice(0, 6).map((task) => <div key={task.id} className="rounded-lg bg-white/5 p-3"><div className="flex justify-between gap-3"><p className="font-medium">{task.title}</p><StatusPill tone={task.priority === "urgent" ? "red" : task.priority === "high" ? "gold" : "slate"}>{task.priority}</StatusPill></div><p className="mt-1 text-xs text-slate-500">{task.due_at ? `Due ${formatDate(task.due_at)}` : "No due date"}</p></div>)}</div> : <Empty/>}</Card>
+      <Card title="Actions awaiting confirmation" count={approvalCount} tone="purple">{approvalCount ? <div className="space-y-2">{proposedRecommendations.slice(0, 4).map((item) => <Recommendation key={item.id} item={item} compact/>)}{messages.slice(0, 3).map((message) => <div key={message.id} className="rounded-lg bg-white/5 p-3 text-sm"><p className="font-medium">{message.subject || "Customer message"}</p><p className="mt-1 text-xs text-slate-500">{message.classification?.replaceAll("_", " ")} · {formatDate(message.received_at)}</p></div>)}</div> : <Empty/>}</Card>
+    </div></section>
+
+    <section><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300">Sales</p><h3 className="text-2xl font-bold">Leads, bookings and revenue</h3></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Corporate leads · 7d" value={corporateLeads.length}/><Metric label="Private-party leads · 7d" value={privateLeads.length} tone="text-purple-300"/><Metric label="Bookings · 30d" value={(bookingsResult.data || []).length}/><Metric label="Deposits · 30d" value={deposits.length} tone="text-amber-300"/><Metric label="Revenue · 30d" value={formatMoney(revenue)} tone="text-emerald-300"/></div><div className="mt-5 grid gap-5 lg:grid-cols-2"><Card title="Hottest prospects" count={(prospectsResult.data || []).length}>{(prospectsResult.data || []).length ? <div className="space-y-2">{(prospectsResult.data || []).map((prospect) => <div key={prospect.id} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 p-3"><ProspectLink id={prospect.id} name={prospect.full_name} email={prospect.email}/><span className="font-bold text-purple-300">{Math.round(Number(prospect.score || 0))}</span></div>)}</div> : <Empty/>}</Card><Card title="Sales funnel · 30 days"><div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Visitors" value={roiSummary.visitors || 0}/><Metric label="Leads" value={roiSummary.leads || 0}/><Metric label="Qualified" value={roiSummary.qualified_leads || 0}/><Metric label="Proposals" value={roiSummary.proposals_sent || 0}/></div></Card></div></section>
+
+    <section><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">Marketing</p><h3 className="text-2xl font-bold">Performance and recommendations</h3></div><form action={refreshMarketingRecommendations}><button className={buttonClass}>Refresh recommendations</button></form></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Visitors · 30d" value={roiSummary.visitors || 0}/><Metric label="Ad spending · 30d" value={formatMoney(Number(roiSummary.spend_cents || 0) / 100)}/><Metric label="Cost per lead" value={roiSummary.leads && roiSummary.spend_cents ? formatMoney(Number(roiSummary.spend_cents) / 100 / Number(roiSummary.leads)) : "—"}/><Metric label="Deposits" value={roiSummary.deposits || 0}/><Metric label="ROAS" value={roiSummary.roas == null ? "—" : `${Number(roiSummary.roas).toFixed(2)}×`} tone="text-emerald-300"/></div><div className="mt-5 grid gap-5 xl:grid-cols-2"><Card title="Best and weakest campaign evidence"><div className="space-y-3">{bestCampaign ? <div className="rounded-lg bg-emerald-500/10 p-3 text-sm"><p className="font-semibold text-emerald-200">Best available evidence</p><p className="mt-1">{bestCampaign.source} / {bestCampaign.campaign} · {bestCampaign.qualified_leads} qualified · {formatMoney(bestCampaign.revenue)}</p></div> : <Empty>No campaign evidence yet.</Empty>}{worstCampaign && <div className="rounded-lg bg-amber-500/10 p-3 text-sm"><p className="font-semibold text-amber-200">Needs review</p><p className="mt-1">{worstCampaign.source} / {worstCampaign.campaign} sent {worstCampaign.visitors} visitors but produced no qualified leads.</p></div>}<p className="rounded-lg border border-white/10 p-3 text-xs text-slate-400">Google Ads, Meta Ads, Google Analytics reporting and Search Console are not connected yet. Eddie is using Teamtastic&apos;s first-party website and sales data only.</p></div></Card><Card title="Eddie’s recommendations" count={recommendations.length}>{recommendations.length ? <div className="space-y-3">{recommendations.slice(0, 5).map((item) => <Recommendation key={item.id} item={item} compact/>)}</div> : <Empty>No recommendations prepared yet.</Empty>}</Card></div></section>
+
+    <section><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Market Intelligence</p><h3 className="text-2xl font-bold">Opportunities and outside signals</h3></div><div className="grid gap-5 xl:grid-cols-3"><Card title="Competitor changes"><p className="rounded-lg border border-dashed border-amber-400/30 bg-amber-500/5 p-4 text-sm text-amber-100">Not connected yet. No competitor claims will appear here until approved public sources and a weekly research service are connected.</p></Card><Card title="Search opportunities" count={organicOpportunities.length + recommendations.filter((item) => item.recommendation_type === "seo").length}>{recommendations.filter((item) => item.recommendation_type === "seo").length ? <div className="space-y-2">{recommendations.filter((item) => item.recommendation_type === "seo").slice(0, 4).map((item) => <Recommendation key={item.id} item={item} compact/>)}</div> : <p className="text-sm text-slate-400">The family SEO pages are collecting first-party evidence. Search Console is not connected yet.</p>}{organicOpportunities.slice(0, 3).map((item) => <a key={item.id} href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 block rounded-lg bg-white/5 p-3 text-sm hover:bg-white/10"><span className="font-medium">{item.title || item.community || "Public opportunity"}</span><span className="mt-1 block text-xs text-slate-500">Intent score {item.intent_score ?? "—"}</span></a>)}</Card><Card title="Customer trends">{audienceRecommendations.length ? <div className="space-y-2">{audienceRecommendations.slice(0, 5).map((item, index) => <p key={index} className="rounded-lg bg-white/5 p-3 text-sm">{typeof item === "string" ? item : item.action || item.recommendation || JSON.stringify(item)}</p>)}</div> : <Empty>No supported customer trend yet.</Empty>}</Card></div><div className="mt-5 grid gap-5 xl:grid-cols-2"><Card title="Recommended experiments" count={(experimentsResult.data || []).length}>{(experimentsResult.data || []).length ? <div className="space-y-2">{(experimentsResult.data || []).map((item) => <div key={item.id} className="rounded-lg bg-white/5 p-3"><div className="flex justify-between gap-3"><p className="font-medium">{item.title}</p><StatusPill tone={item.status === "running" ? "green" : "purple"}>{item.status.replaceAll("_", " ")}</StatusPill></div><p className="mt-1 text-xs text-slate-400">{item.proposed_action}</p></div>)}</div> : <Empty/>}</Card><Card title="Today’s growth agenda" count={agendaItems.length}>{agendaItems.length ? <div className="space-y-2">{agendaItems.slice(0, 6).map((item, index) => <p key={index} className="rounded-lg bg-white/5 p-3 text-sm">{typeof item === "string" ? item : item.action || item.title || item.reason || JSON.stringify(item)}</p>)}</div> : <Empty/>}</Card></div></section>
+
+    <section><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.2em] text-fuchsia-300">Eddie’s Work</p><h3 className="text-2xl font-bold">Completed work, failures and history</h3></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Confirmed actions" value={(actionsResult.data || []).filter((item) => item.status === "completed").length}/><Metric label="Prepared drafts" value={(draftsResult.data || []).length}/><Metric label="Open incidents" value={(incidentsResult.data || []).length} tone={(incidentsResult.data || []).length ? "text-red-300" : "text-emerald-300"}/><Metric label="Recent failures" value={failures.length} tone={failures.length ? "text-red-300" : "text-emerald-300"}/></div><div className="mt-5 grid gap-5 xl:grid-cols-2"><Card title="Complete Eddie action history" count={(actionsResult.data || []).length}>{(actionsResult.data || []).length ? <div className="space-y-2">{(actionsResult.data || []).map((item) => <div key={item.id} className="rounded-lg bg-white/5 p-3 text-sm"><div className="flex justify-between gap-3"><p className="font-medium">{item.action_type.replaceAll("_", " ")}</p><StatusPill tone={item.status === "completed" ? "green" : item.status === "failed" ? "red" : "gold"}>{item.status}</StatusPill></div><p className="mt-1 text-xs text-slate-500">{formatDate(item.completed_at || item.created_at)}</p></div>)}</div> : <Empty>No confirmed Eddie actions yet.</Empty>}</Card><Card title="What needs Michael" count={(incidentsResult.data || []).length + failures.length}>{(incidentsResult.data || []).length || failures.length ? <div className="space-y-2">{(incidentsResult.data || []).map((item) => <div key={item.id} className="rounded-lg bg-red-500/10 p-3 text-sm"><p className="font-medium text-red-200">{item.title}</p><p className="mt-1 text-xs text-slate-400">{item.severity} · {item.status}</p></div>)}{failures.slice(0, 6).map((item) => <div key={item.id} className="rounded-lg bg-amber-500/10 p-3 text-sm"><p className="font-medium text-amber-100">{item.agent_name}: {item.action}</p><p className="mt-1 text-xs text-slate-400">{item.error || item.decision?.reason || item.outcome}</p></div>)}</div> : <Empty/>}</Card></div></section>
+
+    <Card title="All marketing recommendations" count={recommendations.length}>{recommendations.length ? <div className="space-y-4">{recommendations.map((item) => <Recommendation key={item.id} item={item}/>)}</div> : <Empty/>}</Card>
+    <p className="text-center text-xs text-slate-500">No control on this screen can launch an advertisement or spend money. All figures use Teamtastic&apos;s stored data unless a connection is explicitly shown as active.</p>
+  </div>;
+
+  return televisionMode ? <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950 p-4 sm:p-8">{content}</div> : content;
+}

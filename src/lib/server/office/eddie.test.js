@@ -27,6 +27,9 @@ function baseTables(overrides = {}) {
     deals: { data: [], error: null },
     messages: { data: [], error: null },
     production_incidents: { data: [], error: null },
+    marketing_recommendations: { data: [], error: null },
+    growth_experiments: { data: [], error: null },
+    marketing_asset_drafts: { data: [], error: null },
     agent_log: { data: null, error: null },
     ...overrides,
   };
@@ -152,5 +155,51 @@ describe("Eddie conversation", () => {
       .rejects.toMatchObject({ code: "draft_changed_since_confirmation" });
     expect(approveAndSendSalesResponse).not.toHaveBeenCalled();
     expect(receiptUpdates).toContainEqual(expect.objectContaining({ status: "failed", error: "draft_changed_since_confirmation" }));
+  });
+
+  it("requires confirmation and never launches an approved advertising recommendation", async () => {
+    const recommendation = {
+      id: "r1", recommendation_type: "advertising", title: "Test family-reunion demand",
+      target_customer: "Family reunion planners", occasion: "Family reunion",
+      platform: "Google Ads — recommendation only", suggested_daily_budget_cents: 1500, test_days: 14,
+      proposed_keywords: ["virtual family reunion games"], proposed_audience: "Active searchers",
+      advertisement_text: "Bring the whole family together.", creative_brief: "A real family game moment.",
+      landing_page: "/virtual-family-reunion-game-show", expected_result: "Establish a baseline.",
+      reason: "The dedicated landing page is live.", evidence: {}, status: "approved", updated_at: "2026-09-05T12:00:00Z",
+    };
+    const assetInserts = [];
+    let receipt = null;
+    const db = createSupabaseAdminMock({ tables: baseTables({
+      marketing_recommendations: ({ calls }) => {
+        if (calls.some((call) => call.method === "update")) return { data: null, error: null };
+        if (calls.some((call) => call.method === "eq")) return { data: recommendation, error: null };
+        return { data: [recommendation], error: null };
+      },
+      marketing_asset_drafts: ({ calls }) => {
+        const insert = calls.find((call) => call.method === "insert");
+        if (!insert) return { data: [], error: null };
+        assetInserts.push(insert.args[0]);
+        return { data: { id: "a1", ...insert.args[0], status: "draft" }, error: null };
+      },
+      eddie_action_receipts: ({ calls }) => {
+        const insert = calls.find((call) => call.method === "insert");
+        if (insert) { receipt = insert.args[0]; return { data: null, error: null }; }
+        const update = calls.find((call) => call.method === "update");
+        if (update) receipt = { ...receipt, ...update.args[0] };
+        return { data: receipt, error: null };
+      },
+    }) });
+    getSupabaseAdmin.mockReturnValue(db);
+    const fetchImpl = vi.fn(() => modelResponse({ answer: "I can prepare that campaign for review.", action_type: "prepare_ad_campaign", target_id: "r1" }));
+    const { askEddie, executeEddieAction } = await import("./eddie");
+
+    const proposed = await askEddie({ db, user: USER, messages: [{ role: "user", content: "Prepare the approved family-reunion campaign." }], fetchImpl });
+    expect(proposed.pendingAction.details.join(" ")).toContain("$15.00 per day");
+    expect(assetInserts).toHaveLength(0);
+
+    const completed = await executeEddieAction({ db, user: USER, token: proposed.pendingAction.token });
+    expect(completed.message).toContain("Nothing was published, launched, or funded");
+    expect(assetInserts).toHaveLength(1);
+    expect(assetInserts[0]).toMatchObject({ draft_type: "advertising_campaign", recommendation_id: "r1" });
   });
 });

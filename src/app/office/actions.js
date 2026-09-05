@@ -42,6 +42,8 @@ export async function refreshLeadScores() { return growth.refreshLeadScores(); }
 export async function reviewGrowthBrief(v) { return growth.reviewGrowthBrief(v); }
 export async function prepareGrowthExperiments() { return growth.prepareGrowthExperiments(); }
 export async function updateGrowthExperiment(v) { return growth.updateGrowthExperiment(v); }
+export async function refreshMarketingRecommendations() { return growth.refreshMarketingRecommendations(); }
+export async function reviewMarketingRecommendation(v) { return growth.reviewMarketingRecommendation(v); }
 export async function createSalesResponseDraft(v) { return salesResponse.createSalesResponseDraft(v); }
 export async function approveAndSendSalesResponse(v) { return salesResponse.approveAndSendSalesResponse(v); }
 export async function configureWarmRelationshipSignals(v) { return signals.configureWarmRelationshipSignals(v); }

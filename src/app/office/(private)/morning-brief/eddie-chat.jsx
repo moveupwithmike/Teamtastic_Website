@@ -17,6 +17,8 @@ function friendlyError(reason) {
     confirmation_expired: "That confirmation expired. Ask Eddie to prepare the action again.",
     draft_changed_since_confirmation: "That draft changed after you reviewed it, so Eddie did not send it. Ask to review it again.",
     prospect_changed_since_confirmation: "That prospect changed after you reviewed the action, so Eddie stopped.",
+    recommendation_changed_since_confirmation: "That recommendation changed after you reviewed it, so Eddie stopped. Ask him to prepare the action again.",
+    deal_changed_since_confirmation: "That deal changed after you reviewed the proposal wording, so Eddie stopped. Ask him to prepare it again.",
     action_already_started: "That action is already being processed.",
     action_previously_failed: "That action previously failed. Ask Eddie to prepare a fresh confirmation.",
     slow_down: "Eddie is receiving requests too quickly. Wait a moment and try again.",
@@ -186,7 +188,7 @@ export default function EddieChat() {
           <button type="submit" disabled={busy || !input.trim()} className="flex-1 rounded-xl bg-purple-600 px-5 py-2 text-sm font-semibold hover:bg-purple-500 disabled:opacity-40 sm:flex-none">Ask Eddie</button>
         </div>
       </form>
-      <p className="mt-3 text-xs text-slate-500">Try: “Summarize my hottest leads,” “Create a task to call Jordan tomorrow,” or “Show me the email draft waiting for approval.”</p>
+      <p className="mt-3 text-xs text-slate-500">Try: “Summarize my hottest leads,” “Approve the family-reunion recommendation,” “Turn that finding into a task,” or “Prepare the approved advertising campaign.”</p>
     </section>
   );
 }

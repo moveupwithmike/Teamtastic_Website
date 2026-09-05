@@ -14,6 +14,7 @@ export default async function PrivateOfficeLayout({ children }) {
           <h1 className="text-2xl font-bold">Teamtastic Office</h1>
         </div>
         <nav className="flex flex-wrap items-center gap-3 text-sm">
+          <Link className="rounded-lg bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-500" href="/office/command-center">Command Center</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office">Needs Michael</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/roadmap">Today</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/prospects">Prospects</Link>

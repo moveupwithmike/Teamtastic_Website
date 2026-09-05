@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { requireOfficeUser } from "@/lib/server/office-auth";
 import * as growthExperiments from "@/lib/server/office/growth-experiments";
+import * as marketingRecommendations from "@/lib/server/office/marketing-recommendations";
 import { audit, clean, money } from "./shared";
 
 export async function refreshGrowthBrief() {
@@ -70,4 +71,18 @@ export async function updateGrowthExperiment(formData) {
   const result = await growthExperiments.updateGrowthExperiment(user, formData);
   revalidatePath("/office/growth");
   redirect(result.ok ? "/office/growth?success=experiment_updated" : `/office/growth?error=${result.errorCode}`);
+}
+
+export async function refreshMarketingRecommendations() {
+  const user = await requireOfficeUser();
+  const result = await marketingRecommendations.refreshMarketingRecommendations(user);
+  revalidatePath("/office/command-center");
+  redirect(result.ok ? `/office/command-center?success=recommendations_refreshed&created=${result.count}` : `/office/command-center?error=${result.errorCode}`);
+}
+
+export async function reviewMarketingRecommendation(formData) {
+  const user = await requireOfficeUser();
+  const result = await marketingRecommendations.reviewMarketingRecommendation(user, formData);
+  revalidatePath("/office/command-center");
+  redirect(result.ok ? "/office/command-center?success=recommendation_reviewed" : `/office/command-center?error=${result.errorCode}`);
 }
