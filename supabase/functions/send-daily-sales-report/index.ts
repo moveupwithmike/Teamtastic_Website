@@ -50,7 +50,11 @@ Deno.serve(async (request) => {
   if (existing?.status === "sent") return Response.json({ sent: false, skipped: true, reason: "already_sent" });
 
   const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const [leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult] = await Promise.all([
+  const siteUrl = (Deno.env.get("NEXT_PUBLIC_SITE_URL") || "https://www.teamtastic.events").replace(/\/$/, "");
+  const [
+    leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult,
+    incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult,
+  ] = await Promise.all([
     supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
     supabase.from("messages").select("message_type,status").eq("direction", "outbound").gte("created_at", since),
@@ -61,9 +65,17 @@ Deno.serve(async (request) => {
       .eq("outcome", "open").order("next_action_due_at", { ascending: true, nullsFirst: false }),
     supabase.from("sequence_enrollments").select("id,prospect_id,sequence_id,current_step,updated_at")
       .eq("status", "active").is("next_action_at", null).limit(20),
+    supabase.from("production_incidents").select("id,category,severity,status,title,occurrences,last_seen_at")
+      .neq("status", "resolved").in("severity", ["critical", "high"]).order("last_seen_at", { ascending: false }).limit(20),
+    supabase.from("sales_response_drafts").select("id,response_type,recipient_email,created_at")
+      .eq("status", "draft").order("created_at", { ascending: false }).limit(20),
+    supabase.from("deal_payments").select("amount,currency,paid_at").gte("paid_at", since),
+    supabase.from("outreach_drafts").select("id,prospect_id,subject,created_at")
+      .eq("status", "review").order("created_at", { ascending: false }).limit(20),
   ]);
   const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error
-    || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error;
+    || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error
+    || incidentsResult.error || hotLeadDraftsResult.error || revenueResult.error || outreachDraftsResult.error;
   if (queryError) return functionError("report_query_failed");
 
   const replies = repliesResult.data || [];
@@ -72,10 +84,19 @@ Deno.serve(async (request) => {
   const decisions = decisionsResult.data || [];
   const deals = dealsResult.data || [];
   const stuckEnrollments = stuckEnrollmentsResult.data || [];
+  const incidents = incidentsResult.data || [];
+  const hotLeadDrafts = hotLeadDraftsResult.data || [];
+  const revenuePayments = revenueResult.data || [];
+  const outreachDrafts = outreachDraftsResult.data || [];
   const replyCounts = countBy(replies, (row) => row.classification || "unknown");
   const sentCounts = countBy(outbound.filter((row) => row.status === "sent"), (row) => row.message_type);
   const now = Date.now();
   const pipelineValue = deals.reduce((sum, deal) => sum + Number(deal.expected_value || 0), 0);
+  const revenueByCurrency = revenuePayments.reduce<Record<string, number>>((totals, payment) => {
+    const currency = String(payment.currency || "usd").toUpperCase();
+    totals[currency] = (totals[currency] || 0) + Number(payment.amount || 0);
+    return totals;
+  }, {});
   const subject = `Teamtastic sales report — ${date}`;
 
   const list = (items: string[], empty: string) => items.length
@@ -105,7 +126,7 @@ Deno.serve(async (request) => {
         <li>Complained: ${deliverability?.complaint_count ?? 0} (${(((deliverability?.complaint_rate ?? 0) as number) * 100).toFixed(1)}%)</li>
         <li>Replies: ${replyCount}</li>
         <li>Daily cap: ${config.daily_prospecting_cap ?? "unknown"}</li>
-        <li><strong>${config.outbound_auto_paused ? "PAUSED — auto-paused after a bounce/complaint threshold breach. Review before resuming in /office/settings." : "Not paused."}</strong></li>
+        <li><strong>${config.outbound_auto_paused ? `PAUSED — auto-paused after a bounce/complaint threshold breach. Review before resuming in <a href="${siteUrl}/office/settings">/office/settings</a>.` : "Not paused."}</strong></li>
       </ul>
     `;
   }
@@ -134,6 +155,16 @@ Deno.serve(async (request) => {
         `${deal.next_action_due_at ? ` — ${overdue ? "<strong>OVERDUE</strong> " : ""}due ${escapeHtml(deal.next_action_due_at)}` : ""}` +
         `${deal.decision_date ? `<br>Decision date: ${escapeHtml(deal.decision_date)}` : ""}`;
     }), "No open deals.")}
+    <h2>Revenue (24h)</h2>
+    ${list(Object.entries(revenueByCurrency).map(([currency, amount]) => `${escapeHtml(currency)} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} across ${revenuePayments.filter((payment) => String(payment.currency || "usd").toUpperCase() === currency).length} payment(s)`), "No payments received.")}
+    <h2>Production incidents</h2>
+    <p><a href="${siteUrl}/office/incidents">Review incidents →</a></p>
+    ${list(incidents.map((incident) => `<strong>${escapeHtml(incident.severity)}</strong>: ${escapeHtml(incident.title || incident.category)} (${escapeHtml(incident.occurrences)}x, last seen ${escapeHtml(incident.last_seen_at)})`), "No open critical/high incidents.")}
+    <h2>Hot leads needing reply</h2>
+    <p><a href="${siteUrl}/office/respond">Review drafts →</a></p>
+    ${list(hotLeadDrafts.map((draft) => `${escapeHtml(draft.response_type)}: ${escapeHtml(draft.recipient_email)} — drafted ${escapeHtml(draft.created_at)}`), "No drafts waiting.")}
+    <h2>Outreach drafts awaiting approval</h2>
+    ${list(outreachDrafts.map((draft) => `<a href="${siteUrl}/office/prospects/${escapeHtml(draft.prospect_id)}">${escapeHtml(draft.subject || "(no subject)")}</a> — drafted ${escapeHtml(draft.created_at)}`), "No drafts awaiting approval.")}
     <h2>What needs Michael</h2>
     ${list(tasks.map((task) => `<strong>${escapeHtml(task.priority)}</strong>: ${escapeHtml(task.title)}${task.due_at ? ` — due ${escapeHtml(task.due_at)}` : ""}`), "No open tasks.")}
     <h2>What the system chose not to do</h2>
@@ -152,6 +183,10 @@ Deno.serve(async (request) => {
     stuck_sequence_enrollments: stuckEnrollments.length,
     open_deals: deals.length,
     pipeline_value: pipelineValue,
+    open_incidents: incidents.length,
+    hot_lead_drafts: hotLeadDrafts.length,
+    revenue_24h: revenueByCurrency,
+    pending_outreach_drafts: outreachDrafts.length,
   };
 
   await supabase.from("daily_reports").upsert({

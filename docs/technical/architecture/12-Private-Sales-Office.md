@@ -26,6 +26,10 @@ All actions redirect raw Postgres/Resend error text into the URL query string ra
 
 List page sanitizes free-text search input (strips `,()%`) before interpolating into a Supabase `.or(...ilike...)` filter string — a hand-rolled escape adequate for this specific filter syntax, not parameterized binding. Detail page fires ~9 parallel queries (company, leads, messages, bookings, tasks, deals, agent_log, outreach_drafts, proposals, deal_payments) and merges them into one chronological timeline — fully wired to real data, read-only (no forms live here; all mutations happen from the dashboard).
 
+## Activity feed (`(private)/activity/page.js`)
+
+Read-only page, no server actions/mutations. Queries `agent_log`, `source_runs`, and `prospect_score_history` for the trailing 24 hours and merges them into one timestamp-sorted timeline via the pure `mergeActivityTimeline()` helper in `src/lib/server/office/activity-feed.js` (unit-tested in isolation, no Supabase/auth calls — mirrors the `hot-lead.js` precedent rather than the `"use server"` mutation-module pattern used elsewhere in `src/lib/server/office/`). Exists so Michael can see what the automated research→scoring→drafting pipeline actually did overnight — every agent decision, pipeline run, and rescoring event — rather than only inferring it from the absence of an error in the daily report ([14](14-Lifecycle-Emails-and-Deliverability.md), which itself now surfaces a subset of this same window: open incidents, hot-lead drafts, revenue, and pending outreach drafts).
+
 ## Schema notes worth flagging
 
 - `deal_stage_history` and its populating trigger exist and run, but **no office page ever displays it** — pure unused audit trail today, likely reserved for a future "time in stage" report.
