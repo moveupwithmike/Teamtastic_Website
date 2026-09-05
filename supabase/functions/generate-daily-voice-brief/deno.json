@@ -1,3 +1,6 @@
 {
-  "imports": {}
+  "imports": {
+    "@ai-sdk/gateway": "npm:@ai-sdk/gateway@4.0.74",
+    "ai": "npm:ai@7.0.92"
+  }
 }

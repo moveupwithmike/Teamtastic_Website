@@ -35,7 +35,7 @@ export default async function PrivateOfficeLayout({ children }) {
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/deliverability">Delivery</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/incidents">Incidents</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/activity">Activity feed</Link>
-          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/morning-brief">Morning brief</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/morning-brief">Eddie</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/settings">Settings</Link>
           <span className="hidden text-slate-400 md:inline">{user.email}</span>
           <form action={signOutOffice}><button className="rounded-lg border border-white/10 px-4 py-2 hover:bg-white/5">Sign out</button></form>

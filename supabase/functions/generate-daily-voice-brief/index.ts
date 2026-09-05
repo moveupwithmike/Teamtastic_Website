@@ -1,4 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createGateway } from "npm:@ai-sdk/gateway@4.0.74";
+import { experimental_generateSpeech as generateSpeechWithAi } from "npm:ai@7.0.92";
 import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 // Haiku-class model via Vercel AI Gateway -- cost/latency fit for a short
@@ -6,11 +8,11 @@ import { authorizeWebhook, errorText, functionError, serviceClient } from "../_s
 // Re-fetch https://ai-gateway.vercel.sh/v1/models before ever changing this;
 // don't assume this id stays current.
 const SUMMARY_MODEL = "anthropic/claude-haiku-4.5";
-// The AI Gateway speech REST endpoint only supports OpenAI speech models.
+// Vercel's supported speech interface currently exposes OpenAI speech models.
 const SPEECH_MODEL = "openai/tts-1";
 const AUDIO_BUCKET = "daily-report-audio";
 
-const SUMMARY_SYSTEM_PROMPT = `You are narrating a 60-90 second spoken morning brief for a small business owner, built entirely from their sales report data below. Speak in plain, warm, direct English, second person ("you have..."), as continuous spoken sentences -- no markdown, no headers, no bullet points. State only what is in the data. If a section is empty, missing, or the data looks stale, say so plainly (e.g. "no incidents today") rather than inventing anything. End with one clear recommended first action if the data suggests one.`;
+const SUMMARY_SYSTEM_PROMPT = `You are Eddie, narrating a 60-90 second spoken morning brief for a small business owner, built entirely from their sales report data below. Open with exactly "Good morning, this is Eddie." as your first sentence, then continue in plain, warm, direct English, second person ("you have..."), as continuous spoken sentences -- no markdown, no headers, no bullet points. State only what is in the data. If a section is empty, missing, or the data looks stale, say so plainly (e.g. "no incidents today") rather than inventing anything. End with one clear recommended first action if the data suggests one.`;
 
 function reportDate() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -56,21 +58,16 @@ async function generateSummary(gatewayKey: string, summary: unknown, bodyHtml: s
 }
 
 async function generateSpeech(gatewayKey: string, text: string): Promise<Uint8Array> {
-  const response = await fetch("https://ai-gateway.vercel.sh/v4/ai/speech-model", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${gatewayKey}`,
-      "ai-model-id": SPEECH_MODEL,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ text, voice: "alloy", outputFormat: "mp3" }),
-    signal: AbortSignal.timeout(30_000),
+  const gateway = createGateway({ apiKey: gatewayKey });
+  const result = await generateSpeechWithAi({
+    model: gateway.speechModel(SPEECH_MODEL),
+    text,
+    voice: "fable",
+    outputFormat: "mp3",
+    abortSignal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new Error(`AI Gateway speech ${response.status}: ${(await response.text()).slice(0, 500)}`);
-
-  const data = await response.json();
-  if (!data.audio) throw new Error("AI Gateway speech returned no audio");
-  return Uint8Array.from(atob(data.audio), (char: string) => char.charCodeAt(0));
+  if (!result.audio?.uint8Array?.length) throw new Error("AI Gateway speech returned no audio");
+  return result.audio.uint8Array;
 }
 
 Deno.serve(async (request) => {
