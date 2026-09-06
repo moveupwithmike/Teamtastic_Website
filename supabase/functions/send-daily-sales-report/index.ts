@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { buildFamilyDemandSnapshot } from "../_shared/family-demand.ts";
 import { authorizeWebhook, functionError, serviceClient } from "../_shared/runtime.ts";
 import { sendViaResend } from "../_shared/email.ts";
 
@@ -50,12 +51,14 @@ Deno.serve(async (request) => {
   if (existing?.status === "sent") return Response.json({ sent: false, skipped: true, reason: "already_sent" });
 
   const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const familySince = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
   const siteUrl = (Deno.env.get("NEXT_PUBLIC_SITE_URL") || "https://www.teamtastic.events").replace(/\/$/, "");
   const [
     leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult,
     incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult, marketingSnapshotsResult,
+    familyLeadsResult, familyBookingsResult,
   ] = await Promise.all([
-    supabase.from("leads").select("audience_type").gte("created_at", since),
+    supabase.from("leads").select("audience_type,context").gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
     supabase.from("messages").select("message_type,status").eq("direction", "outbound").gte("created_at", since),
     supabase.from("tasks").select("title,priority,due_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(20),
@@ -74,15 +77,20 @@ Deno.serve(async (request) => {
       .eq("status", "review").order("created_at", { ascending: false }).limit(20),
     supabase.from("marketing_performance_snapshots").select("platform,snapshot_date,metrics,error")
       .order("snapshot_date", { ascending: false }).limit(12),
+    supabase.from("leads")
+      .select("id,audience_type,occasion,preferred_event_date,lead_score,landing_page,status,context,created_at")
+      .in("audience_type", ["family", "friends", "other_private_event"])
+      .gte("created_at", familySince).limit(500),
+    supabase.from("bookings").select("lead_id,status").gte("created_at", familySince).limit(500),
   ]);
   const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error
     || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error
     || incidentsResult.error || hotLeadDraftsResult.error || revenueResult.error || outreachDraftsResult.error
-    || marketingSnapshotsResult.error;
+    || marketingSnapshotsResult.error || familyLeadsResult.error || familyBookingsResult.error;
   if (queryError) return functionError("report_query_failed");
 
   const replies = repliesResult.data || [];
-  const leads = leadsResult.data || [];
+  const leads = (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true);
   const outbound = outboundResult.data || [];
   const tasks = tasksResult.data || [];
   const decisions = decisionsResult.data || [];
@@ -102,6 +110,10 @@ Deno.serve(async (request) => {
   const sentCounts = countBy(outbound.filter((row) => row.status === "sent"), (row) => row.message_type);
   const leadAudienceCounts = countBy(leads, (row) => row.audience_type || "corporate");
   const privateLeadCount = (leadAudienceCounts.family || 0) + (leadAudienceCounts.friends || 0) + (leadAudienceCounts.other_private_event || 0);
+  const familyDemand = buildFamilyDemandSnapshot({
+    leads: familyLeadsResult.data || [],
+    bookings: familyBookingsResult.data || [],
+  });
   const now = Date.now();
   const pipelineValue = deals.reduce((sum, deal) => sum + Number(deal.expected_value || 0), 0);
   const revenueByCurrency = revenuePayments.reduce<Record<string, number>>((totals, payment) => {
@@ -157,6 +169,16 @@ Deno.serve(async (request) => {
     ${list(Object.entries(replyCounts).map(([key, value]) => `${escapeHtml(key)}: ${value}`), "No replies received.")}
     <h2>Messages sent</h2>
     ${list(Object.entries(sentCounts).map(([key, value]) => `${escapeHtml(key)}: ${value}`), "No messages sent.")}
+    <h2>Family demand (30 days)</h2>
+    <ul>
+      <li>Private-family inquiries: ${familyDemand.inquiries}</li>
+      <li>Requested dates: ${familyDemand.date_requests}</li>
+      <li>Qualified inquiries: ${familyDemand.qualified_inquiries}</li>
+      <li>Confirmed bookings: ${familyDemand.confirmed_bookings}</li>
+      <li>Strongest occasion: ${familyDemand.strongest_occasion ? `${escapeHtml(familyDemand.strongest_occasion.name)} (${familyDemand.strongest_occasion.count})` : "Not enough data yet"}</li>
+      <li>Strongest page: ${familyDemand.strongest_landing_page ? `${escapeHtml(familyDemand.strongest_landing_page.name)} (${familyDemand.strongest_landing_page.count})` : "Not enough data yet"}</li>
+      <li>Requested dates in the next 14 days: ${familyDemand.upcoming_date_requests.length}</li>
+    </ul>
     <h2>Pipeline</h2>
     <p><strong>Open deals:</strong> ${deals.length}<br><strong>Known pipeline value:</strong> $${pipelineValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
     ${list(deals.map((deal) => {
@@ -206,6 +228,7 @@ Deno.serve(async (request) => {
     revenue_24h: revenueByCurrency,
     pending_outreach_drafts: outreachDrafts.length,
     marketing_platforms_connected: marketingSnapshots.filter((row) => !row.error).map((row) => row.platform),
+    family_demand: familyDemand,
   };
 
   await supabase.from("daily_reports").upsert({

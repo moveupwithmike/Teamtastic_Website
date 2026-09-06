@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createGateway } from "npm:@ai-sdk/gateway@4.0.74";
 import { experimental_generateSpeech as generateSpeechWithAi } from "npm:ai@7.0.92";
+import { buildFamilyDemandSnapshot } from "../_shared/family-demand.ts";
 import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 // Haiku-class model via Vercel AI Gateway -- cost/latency fit for a short
@@ -12,7 +13,7 @@ const SUMMARY_MODEL = "anthropic/claude-haiku-4.5";
 const SPEECH_MODEL = "openai/tts-1";
 const AUDIO_BUCKET = "daily-report-audio";
 
-const SUMMARY_SYSTEM_PROMPT = `You are Eddie, narrating a 60-90 second spoken morning brief for a small business owner, built entirely from their sales report data below. Open with exactly "Good morning, this is Eddie." as your first sentence, then continue in plain, warm, direct English, second person ("you have..."), as continuous spoken sentences -- no markdown, no headers, no bullet points. State only what is in the data. If a section is empty, missing, or the data looks stale, say so plainly (e.g. "no incidents today") rather than inventing anything. If marketing platform data is provided, briefly mention anything notable (e.g. a campaign spending without results); if no marketing platforms are connected yet, say so plainly rather than skipping the topic silently. End with one clear recommended first action if the data suggests one.`;
+const SUMMARY_SYSTEM_PROMPT = `You are Eddie, narrating a 60-90 second spoken morning brief for a small business owner, built entirely from their sales report data below. Open with exactly "Good morning, this is Eddie." as your first sentence, then continue in plain, warm, direct English, second person ("you have..."), as continuous spoken sentences -- no markdown, no headers, no bullet points. State only what is in the data. If a section is empty, missing, or the data looks stale, say so plainly (e.g. "no incidents today") rather than inventing anything. Always include one concise family-demand sentence. The separate Family demand block is authoritative for family metrics because it excludes verified test submissions; ignore older family or total-lead counts in the report summary or HTML if they conflict with it. Mention the 30-day inquiry, requested-date and confirmed-booking counts; mention the strongest occasion or page and near-term requested dates when present. If there are no real family inquiries, say that plainly. If marketing platform data is provided, briefly mention anything notable (e.g. a campaign spending without results); if no marketing platforms are connected yet, say so plainly rather than skipping the topic silently. End with one clear recommended first action if the data suggests one.`;
 
 function reportDate() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -23,11 +24,7 @@ function reportDate() {
   }).format(new Date());
 }
 
-function stripHtml(html: string): string {
-  return String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-async function generateSummary(gatewayKey: string, summary: unknown, bodyHtml: string, marketingSnapshots: unknown[]): Promise<string> {
+async function generateSummary(gatewayKey: string, summary: unknown, marketingSnapshots: unknown[], familyDemand: unknown): Promise<string> {
   const marketingSection = marketingSnapshots.length
     ? `Marketing platform snapshots (most recent per platform; only present when connected):\n${JSON.stringify(marketingSnapshots).slice(0, 3000)}`
     : "No marketing platform data is connected yet.";
@@ -45,7 +42,7 @@ async function generateSummary(gatewayKey: string, summary: unknown, bodyHtml: s
       messages: [
         {
           role: "user",
-          content: `Report summary (structured):\n${JSON.stringify(summary ?? {}).slice(0, 4000)}\n\n${marketingSection}\n\nFull report data (HTML, for extra context only):\n${stripHtml(bodyHtml).slice(0, 6000)}`,
+          content: `Report summary (structured; fresh 24-hour lead counts replace older counts and exclude tests):\n${JSON.stringify(summary ?? {}).slice(0, 4000)}\n\nFamily demand (real private-party inquiries only; test leads excluded):\n${JSON.stringify(familyDemand).slice(0, 3000)}\n\n${marketingSection}`,
         },
       ],
     }),
@@ -126,10 +123,36 @@ Deno.serve(async (request) => {
     seenPlatforms.add(row.platform);
     return true;
   });
+  const familySince = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
+  const leadSince = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const [familyLeadsResult, familyBookingsResult, recentLeadsResult] = await Promise.all([
+    supabase.from("leads")
+      .select("id,audience_type,occasion,preferred_event_date,lead_score,landing_page,status,context,created_at")
+      .in("audience_type", ["family", "friends", "other_private_event"])
+      .gte("created_at", familySince)
+      .limit(500),
+    supabase.from("bookings").select("lead_id,status").gte("created_at", familySince).limit(500),
+    supabase.from("leads").select("audience_type,context").gte("created_at", leadSince).limit(500),
+  ]);
+  const familyDemand = familyLeadsResult.error || familyBookingsResult.error
+    ? { available: false, reason: "family_demand_query_failed" }
+    : buildFamilyDemandSnapshot({ leads: familyLeadsResult.data || [], bookings: familyBookingsResult.data || [] });
+  const realRecentLeads = (recentLeadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true);
+  const leadCounts = realRecentLeads.reduce<Record<string, number>>((counts, lead) => {
+    const audience = String(lead.audience_type || "corporate");
+    counts[audience] = (counts[audience] || 0) + 1;
+    return counts;
+  }, {});
+  const storedSummary = report.summary && typeof report.summary === "object" ? report.summary as Record<string, unknown> : {};
+  const currentSummary = recentLeadsResult.error ? storedSummary : {
+    ...storedSummary,
+    new_leads: realRecentLeads.length,
+    new_leads_by_audience: leadCounts,
+  };
 
   let transcript: string;
   try {
-    transcript = await generateSummary(gatewayKey, report.summary, report.body_html, marketingSnapshots);
+    transcript = await generateSummary(gatewayKey, currentSummary, marketingSnapshots, familyDemand);
   } catch (error) {
     const message = errorText(error);
     console.error("daily-voice-brief summary generation failed:", message);
