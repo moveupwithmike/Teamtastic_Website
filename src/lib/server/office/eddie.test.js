@@ -202,4 +202,34 @@ describe("Eddie conversation", () => {
     expect(assetInserts).toHaveLength(1);
     expect(assetInserts[0]).toMatchObject({ draft_type: "advertising_campaign", recommendation_id: "r1" });
   });
+
+  it("blocks campaign preparation until the owner approves the recommendation", async () => {
+    const recommendation = {
+      id: "r-proposed", recommendation_type: "advertising", title: "Proposed family campaign",
+      target_customer: "Family reunion planners", occasion: "Family reunion",
+      platform: "Google Ads — recommendation only", suggested_daily_budget_cents: 1500, test_days: 14,
+      proposed_keywords: ["virtual family reunion games"], proposed_audience: "Active searchers",
+      advertisement_text: "Bring the whole family together.", creative_brief: "A real family game moment.",
+      landing_page: "/virtual-family-reunion-game-show", expected_result: "Establish a baseline.",
+      reason: "Measure demand safely.", evidence: {}, status: "proposed", updated_at: "2026-09-05T12:00:00Z",
+    };
+    const assetInserts = [];
+    const db = createSupabaseAdminMock({ tables: baseTables({
+      marketing_recommendations: ({ calls }) => calls.some((call) => call.method === "eq")
+        ? { data: recommendation, error: null }
+        : { data: [recommendation], error: null },
+      marketing_asset_drafts: ({ calls }) => {
+        const insert = calls.find((call) => call.method === "insert");
+        if (insert) assetInserts.push(insert.args[0]);
+        return { data: [], error: null };
+      },
+    }) });
+    const fetchImpl = vi.fn(() => modelResponse({ answer: "I can prepare that campaign.", action_type: "prepare_ad_campaign", target_id: "r-proposed" }));
+    const { askEddie } = await import("./eddie");
+
+    const result = await askEddie({ db, user: USER, messages: [{ role: "user", content: "Prepare the proposed family campaign." }], fetchImpl });
+    expect(result.pendingAction).toBeNull();
+    expect(result.message).toContain("couldn't safely prepare that action");
+    expect(assetInserts).toHaveLength(0);
+  });
 });

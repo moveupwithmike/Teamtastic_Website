@@ -9,6 +9,9 @@ import { authorizeWebhook, errorText, functionError, serviceClient } from "../_s
 // others -- same isolation principle as generate-daily-voice-brief.
 
 const LOOKBACK_DAYS = 7;
+// Current supported major version as of September 2026. Keep this explicit so
+// Google Ads can be upgraded independently without changing any permissions.
+const GOOGLE_ADS_API_VERSION = "v25";
 
 function snapshotDate() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -117,8 +120,6 @@ async function syncGoogleAds(): Promise<Record<string, unknown> | null> {
   if (!customerId || !developerToken) return null;
 
   const accessToken = await getGoogleMarketingAccessToken();
-  // Verify the current stable Google Ads API version before enabling in
-  // production -- versions increment roughly yearly and old ones sunset.
   // GOOGLE_ADS_LOGIN_CUSTOMER_ID is optional -- only needed when the
   // reporting account is managed under a manager (MCC) account.
   const loginCustomerId = Deno.env.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID");
@@ -130,7 +131,7 @@ async function syncGoogleAds(): Promise<Record<string, unknown> | null> {
   if (loginCustomerId) headers["login-customer-id"] = loginCustomerId;
 
   const response = await fetch(
-    `https://googleads.googleapis.com/v18/customers/${encodeURIComponent(customerId)}/googleAds:search`,
+    `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${encodeURIComponent(customerId)}/googleAds:search`,
     {
       method: "POST",
       headers,
