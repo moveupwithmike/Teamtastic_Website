@@ -17,8 +17,8 @@ describe("marketing recommendations", () => {
       recommendation_type: "advertising",
       occasion: "Family reunion",
       platform: "Google Ads — recommendation only",
-      suggested_daily_budget_cents: 1500,
-      test_days: 14,
+      suggested_daily_budget_cents: 1000,
+      test_days: 5,
       landing_page: "/virtual-family-reunion-game-show",
     });
     expect(result.expected_result).toContain("no booking result is promised");

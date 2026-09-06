@@ -15,8 +15,8 @@ function pageDetails(page = "") {
 
 function platformDetails(source = "direct") {
   const value = source.toLowerCase();
-  if (["google", "googleads", "google_ads", "adwords"].includes(value)) return { platform: "Google Ads — recommendation only", type: "advertising", dailyBudget: 1500, testDays: 14 };
-  if (["meta", "facebook", "instagram", "fb", "ig"].includes(value)) return { platform: "Meta Ads — recommendation only", type: "advertising", dailyBudget: 1500, testDays: 14 };
+  if (["google", "googleads", "google_ads", "adwords"].includes(value)) return { platform: "Google Ads — recommendation only", type: "advertising", dailyBudget: 1000, testDays: 5 };
+  if (["meta", "facebook", "instagram", "fb", "ig"].includes(value)) return { platform: "Meta Ads — recommendation only", type: "advertising", dailyBudget: 1000, testDays: 7 };
   if (value === "linkedin") return { platform: "LinkedIn Ads — recommendation only", type: "advertising", dailyBudget: 2000, testDays: 14 };
   return { platform: "SEO — recommendation only", type: "seo", dailyBudget: 0, testDays: 0 };
 }
