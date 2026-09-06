@@ -11,6 +11,7 @@ This directory contains the authenticated server-side actions behind the interna
 | `deliverability.js` | Safety review required before resuming automatically paused outbound email. |
 | `distribution.js` | Human review, scheduling, and queue preparation for distribution content. |
 | `eddie.js` | Live sales context, conversational answers, signed confirmations, and a closed set of replay-safe owner actions. |
+| `advertising-controls.js` | Exact, budget-pinned Google and Meta campaign status changes after an Eddie confirmation. |
 | `growth-actions.js` | Thin Server Action adapters for growth workflows and ROI/score updates. |
 | `growth-experiments.js` | Growth brief refresh/review and experiment lifecycle logic. |
 | `incidents.js` | Production incident collection, acknowledgement, monitoring, and resolution. |

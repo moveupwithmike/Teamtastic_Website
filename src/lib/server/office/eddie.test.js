@@ -30,6 +30,15 @@ function baseTables(overrides = {}) {
     marketing_recommendations: { data: [], error: null },
     growth_experiments: { data: [], error: null },
     marketing_asset_drafts: { data: [], error: null },
+    advertising_campaign_controls: { data: [], error: null },
+    system_config: { data: {
+      advertising_master_enabled: false,
+      advertising_safety_monitor_enabled: false,
+      google_ads_write_enabled: false,
+      meta_ads_write_enabled: false,
+      google_ads_daily_cap_cents: 1500,
+      meta_ads_daily_cap_cents: 1000,
+    }, error: null },
     agent_log: { data: null, error: null },
     ...overrides,
   };
@@ -231,5 +240,92 @@ describe("Eddie conversation", () => {
     expect(result.pendingAction).toBeNull();
     expect(result.message).toContain("couldn't safely prepare that action");
     expect(assetInserts).toHaveLength(0);
+  });
+
+  it("shows exact spend controls and changes only the confirmed mapped Google campaign", async () => {
+    process.env.GOOGLE_MARKETING_CLIENT_ID = "client";
+    process.env.GOOGLE_MARKETING_CLIENT_SECRET = "secret";
+    process.env.GOOGLE_MARKETING_REFRESH_TOKEN = "refresh";
+    process.env.GOOGLE_ADS_CUSTOMER_ID = "1234567890";
+    process.env.GOOGLE_ADS_DEVELOPER_TOKEN = "developer";
+    const control = {
+      id: "c1", platform: "google_ads", name: "Family Reunion Search",
+      external_campaign_id: "222", external_budget_id: "333", status: "paused",
+      daily_budget_cents: 1000, hard_daily_cap_cents: 1500, currency: "USD",
+      time_zone: "America/New_York", write_enabled: true, auto_pause_at: null,
+      spend_date: "2026-09-06", today_spend_cents: 0, updated_at: "2026-09-06T13:00:00Z",
+    };
+    const enabledConfig = {
+      advertising_master_enabled: true, advertising_safety_monitor_enabled: true,
+      google_ads_write_enabled: true, meta_ads_write_enabled: false,
+      google_ads_daily_cap_cents: 1500, meta_ads_daily_cap_cents: 1000,
+    };
+    let receipt = null;
+    const requests = [];
+    const controlUpdates = [];
+    const db = createSupabaseAdminMock({ tables: baseTables({
+      advertising_campaign_controls: ({ calls }) => {
+        const update = calls.find((call) => call.method === "update");
+        if (update) {
+          controlUpdates.push(update.args[0]);
+          return { data: { ...control, ...update.args[0] }, error: null };
+        }
+        return calls.some((call) => call.method === "eq") ? { data: control, error: null } : { data: [control], error: null };
+      },
+      system_config: { data: enabledConfig, error: null },
+      advertising_control_requests: ({ calls }) => {
+        const insert = calls.find((call) => call.method === "insert");
+        if (insert) { requests.push(insert.args[0]); return { data: { id: "q1" }, error: null }; }
+        return { data: null, error: null };
+      },
+      eddie_action_receipts: ({ calls }) => {
+        const insert = calls.find((call) => call.method === "insert");
+        if (insert) { receipt = insert.args[0]; return { data: null, error: null }; }
+        const update = calls.find((call) => call.method === "update");
+        if (update) receipt = { ...receipt, ...update.args[0] };
+        return { data: receipt, error: null };
+      },
+    }) });
+    getSupabaseAdmin.mockReturnValue(db);
+    const providerFetch = vi.fn((url) => url.includes("oauth2.googleapis.com")
+      ? Promise.resolve(new Response(JSON.stringify({ access_token: "access" }), { status: 200 }))
+      : Promise.resolve(new Response(JSON.stringify({ results: [{}] }), { status: 200 })));
+    const modelFetch = vi.fn(() => modelResponse({ answer: "I can turn that campaign on for today.", action_type: "set_ad_campaign_status", target_id: "c1", desired_status: "active" }));
+    const { askEddie, executeEddieAction } = await import("./eddie");
+
+    const proposed = await askEddie({ db, user: USER, messages: [{ role: "user", content: "Turn on Google Search for today." }], fetchImpl: modelFetch });
+    expect(proposed.pendingAction.dangerous).toBe(true);
+    expect(proposed.pendingAction.details.join(" ")).toContain("$10.00 per day");
+    expect(proposed.pendingAction.details.join(" ")).toContain("$15.00 today");
+    expect(requests).toHaveLength(0);
+
+    const completed = await executeEddieAction({ db, user: USER, token: proposed.pendingAction.token, fetchImpl: providerFetch });
+    expect(completed.message).toContain("turned on");
+    expect(requests[0]).toMatchObject({ campaign_control_id: "c1", requested_status: "active", daily_budget_cents: 1000, hard_daily_cap_cents: 1500 });
+    expect(controlUpdates).toContainEqual(expect.objectContaining({ status: "active", last_error: null }));
+  });
+
+  it("refuses to prepare an activation while the safety switches are locked", async () => {
+    const control = {
+      id: "c-locked", platform: "meta_ads", name: "Family Parties",
+      external_campaign_id: "444", external_budget_id: "555", status: "paused",
+      daily_budget_cents: 1000, hard_daily_cap_cents: 1000, write_enabled: false,
+      spend_date: null, today_spend_cents: 0, updated_at: "2026-09-06T13:00:00Z",
+    };
+    const db = createSupabaseAdminMock({ tables: baseTables({
+      advertising_campaign_controls: ({ calls }) => calls.some((call) => call.method === "eq") ? { data: control, error: null } : { data: [control], error: null },
+    }) });
+    const modelFetch = vi.fn(() => modelResponse({ answer: "I found the campaign.", action_type: "set_ad_campaign_status", target_id: "c-locked", desired_status: "active" }));
+    const { askEddie } = await import("./eddie");
+
+    const result = await askEddie({ db, user: USER, messages: [{ role: "user", content: "Turn on the Meta campaign." }], fetchImpl: modelFetch });
+    expect(result.pendingAction).toBeNull();
+    expect(result.message).toContain("activation is still locked");
+  });
+
+  it("computes the automatic stop at the next Eastern midnight", async () => {
+    const { nextEasternMidnight } = await import("./eddie");
+    expect(nextEasternMidnight(new Date("2026-09-06T14:00:00Z"))).toBe("2026-09-07T04:00:00.000Z");
+    expect(nextEasternMidnight(new Date("2026-12-06T14:00:00Z"))).toBe("2026-12-07T05:00:00.000Z");
   });
 });

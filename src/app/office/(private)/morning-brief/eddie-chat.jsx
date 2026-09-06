@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 const welcome = {
   id: "welcome",
   role: "assistant",
-  content: "Good morning. Ask me what needs attention, which leads are hottest, or tell me to prepare a sales task. I will always ask before changing anything or sending an email.",
+  content: "Good morning. Ask me what needs attention, which leads are hottest, or tell me to prepare a sales task. Once an approved campaign is connected, you can also tell me to turn it on for today or turn it off. I will always ask before changing anything or spending money.",
 };
 
 function friendlyError(reason) {
@@ -19,6 +19,15 @@ function friendlyError(reason) {
     prospect_changed_since_confirmation: "That prospect changed after you reviewed the action, so Eddie stopped.",
     recommendation_changed_since_confirmation: "That recommendation changed after you reviewed it, so Eddie stopped. Ask him to prepare the action again.",
     deal_changed_since_confirmation: "That deal changed after you reviewed the proposal wording, so Eddie stopped. Ask him to prepare it again.",
+    ad_campaign_changed_since_confirmation: "That advertising campaign changed after you reviewed it, so Eddie stopped. Ask him to prepare the command again.",
+    ad_activation_not_enabled: "Advertising activation is still locked. The campaign, platform permission, master switch, and automatic safety monitor must all be enabled first.",
+    ad_budget_limit_exceeded: "That campaign is above Teamtastic's fixed spending limit, so Eddie did not activate it.",
+    ad_daily_cap_reached: "That campaign has already reached today's safety ceiling, so Eddie did not activate it.",
+    google_ads_write_not_configured: "Google Ads is not authorized for protected changes yet. Nothing was activated.",
+    meta_ads_write_not_configured: "Meta is not authorized for protected changes yet. Nothing was activated.",
+    google_ads_change_failed: "Google did not accept the campaign change. Nothing was recorded as active.",
+    meta_ads_change_failed: "Meta did not accept the campaign change. Nothing was recorded as active.",
+    ad_campaign_record_update_failed: "The advertising safety record could not be confirmed, so Eddie attempted to pause the campaign.",
     action_already_started: "That action is already being processed.",
     action_previously_failed: "That action previously failed. Ask Eddie to prepare a fresh confirmation.",
     slow_down: "Eddie is receiving requests too quickly. Wait a moment and try again.",
@@ -142,7 +151,7 @@ export default function EddieChat() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Talk with Eddie</h2>
-          <p className="mt-1 text-sm text-slate-400">Live sales answers and confirmed actions. Eddie cannot change or send anything without your approval.</p>
+          <p className="mt-1 text-sm text-slate-400">Live sales answers and confirmed actions. Eddie cannot change, send, or activate anything without your approval.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSpeakReplies((value) => !value)} className="rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/5">
@@ -188,7 +197,7 @@ export default function EddieChat() {
           <button type="submit" disabled={busy || !input.trim()} className="flex-1 rounded-xl bg-purple-600 px-5 py-2 text-sm font-semibold hover:bg-purple-500 disabled:opacity-40 sm:flex-none">Ask Eddie</button>
         </div>
       </form>
-      <p className="mt-3 text-xs text-slate-500">Try: “Summarize my hottest leads,” “Approve the family-reunion recommendation,” “Turn that finding into a task,” or “Prepare the approved advertising campaign.”</p>
+      <p className="mt-3 text-xs text-slate-500">Try: “Summarize my hottest leads,” “Prepare the approved advertising campaign,” “Turn on Google Search for today,” or “Turn off the Meta campaign.”</p>
     </section>
   );
 }
