@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Check, Gamepad2, Heart, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Check, Gamepad2, Heart, Sparkles, Users } from "lucide-react";
 import CorporateLeadForm from "@/components/CorporateLeadForm";
+import FamilyDateCheckLink from "@/components/FamilyDateCheckLink";
 import { FAMILY_OCCASIONS } from "@/lib/family-demand";
 
 const icons = [Users, Sparkles, Gamepad2];
@@ -58,9 +59,7 @@ export default function FamilyOccasionPage({ occasion }) {
             <p className="mt-4 text-2xl font-extrabold text-pink-600">{occasion.accent}</p>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-700">{occasion.description}</p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#availability" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#D81B60] px-6 font-bold text-white shadow-lg shadow-pink-600/20 hover:bg-pink-700">
-                Check your date <CalendarDays className="h-5 w-5" />
-              </a>
+              <FamilyDateCheckLink occasion={occasion.occasion} source={occasion.entryPoint} />
               <Link href="/family-trivia-starter" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-purple-200 bg-white px-6 font-bold text-purple-800 hover:border-purple-400">
                 Make free family trivia <ArrowRight className="h-5 w-5" />
               </Link>

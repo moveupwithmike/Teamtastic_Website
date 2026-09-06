@@ -9,4 +9,16 @@ describe("first-party funnel events",()=>{ beforeEach(()=>{vi.resetModules();get
   it("accepts allowlisted anonymous events and strips unknown properties",async()=>{const db=createSupabaseAdminMock({tables:{funnel_events:()=>({data:null,error:null})}});getSupabaseAdmin.mockReturnValue(db);const response=await post(valid);expect(response.status).toBe(202);const builder=db.from.mock.results[0].value;expect(builder.insert).toHaveBeenCalledWith(expect.objectContaining({event_name:"landing_page_viewed",properties:{source:"holiday"}}));});
   it("rejects unknown events",async()=>{expect((await post({...valid,event:"typed_every_key"})).status).toBe(400);});
   it("rejects invalid session identifiers",async()=>{expect((await post({...valid,sessionId:"visitor@example.com"})).status).toBe(400);});
+  it.each([
+    ["family_date_check_clicked", { source:"family_reunion_inline", occasion:"reunion" }],
+    ["family_trivia_preview_generated", { occasion:"birthday", player_count:"10-25", age_range:"three generations" }],
+    ["family_trivia_starter_unlocked", { occasion:"birthday", player_count:"10-25" }],
+  ])("stores the approved %s family-demand event", async (event, properties) => {
+    const db=createSupabaseAdminMock({tables:{funnel_events:()=>({data:null,error:null})}});
+    getSupabaseAdmin.mockReturnValue(db);
+    const response=await post({...valid,event,landingPage:"/family-trivia-starter",properties});
+    expect(response.status).toBe(202);
+    const builder=db.from.mock.results[0].value;
+    expect(builder.insert).toHaveBeenCalledWith(expect.objectContaining({event_name:event,properties}));
+  });
 });

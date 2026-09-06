@@ -2,8 +2,39 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { hashKey, RATE_LIMIT_TIERS, rateLimited } from "@/lib/server/rate-limit";
 
-const EVENTS = new Set(["landing_page_viewed","page_engaged","concierge_modal_opened","quiz_started","lead_submit_attempted","lead_captured","lead_capture_failed","pricing_cta_clicked","deposit_cta_clicked","booking_call_clicked","holiday_checklist_downloaded","free_game_clicked"]);
-const PROPERTY_KEYS = new Set(["source","team_size","vibe","occasion","recommendation","tier_name","tier_cta","code","step","asset","experiment_id","experiment_variant"]);
+const EVENTS = new Set([
+  "landing_page_viewed",
+  "page_engaged",
+  "concierge_modal_opened",
+  "quiz_started",
+  "lead_submit_attempted",
+  "lead_captured",
+  "lead_capture_failed",
+  "pricing_cta_clicked",
+  "deposit_cta_clicked",
+  "booking_call_clicked",
+  "holiday_checklist_downloaded",
+  "free_game_clicked",
+  "family_date_check_clicked",
+  "family_trivia_preview_generated",
+  "family_trivia_starter_unlocked",
+]);
+const PROPERTY_KEYS = new Set([
+  "source",
+  "team_size",
+  "vibe",
+  "occasion",
+  "recommendation",
+  "tier_name",
+  "tier_cta",
+  "code",
+  "step",
+  "asset",
+  "experiment_id",
+  "experiment_variant",
+  "player_count",
+  "age_range",
+]);
 const clean = (value,max=200) => typeof value === "string" ? value.trim().slice(0,max) : "";
 const uuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 
