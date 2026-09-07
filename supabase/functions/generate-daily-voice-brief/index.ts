@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createGateway } from "npm:@ai-sdk/gateway@4.0.74";
 import { experimental_generateSpeech as generateSpeechWithAi } from "npm:ai@7.0.92";
+import { DEFAULT_EDDIE_MODEL_ID, directEddieSpeech, eddieVoiceSettings } from "../_shared/eddie-speech.ts";
 import { buildFamilyDemandSnapshot } from "../_shared/family-demand.ts";
 import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 import { generateSummary, reportDate } from "../_shared/voice-brief.ts";
@@ -14,7 +15,8 @@ async function generateSpeech(gatewayKey: string, text: string): Promise<Uint8Ar
   if (elevenLabsKey) {
     try {
       const voiceId = Deno.env.get("EDDIE_ELEVENLABS_VOICE_ID") || DEFAULT_EDDIE_VOICE_ID;
-      const modelId = Deno.env.get("EDDIE_ELEVENLABS_MODEL_ID") || "eleven_multilingual_v2";
+      const modelId = Deno.env.get("EDDIE_ELEVENLABS_MODEL_ID") || DEFAULT_EDDIE_MODEL_ID;
+      const settings = eddieVoiceSettings(modelId);
       const response = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
         {
@@ -25,14 +27,9 @@ async function generateSpeech(gatewayKey: string, text: string): Promise<Uint8Ar
             "xi-api-key": elevenLabsKey,
           },
           body: JSON.stringify({
-            text,
+            text: directEddieSpeech(text, modelId),
             model_id: modelId,
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.8,
-              style: 0.2,
-              use_speaker_boost: true,
-            },
+            ...(settings ? { voice_settings: settings } : {}),
           }),
           signal: AbortSignal.timeout(30_000),
         },

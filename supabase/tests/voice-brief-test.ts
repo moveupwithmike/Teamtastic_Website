@@ -14,6 +14,7 @@
 // verification, per the project's earlier voice-brief verification plan.
 
 import { generateSummary, reportDate } from "../functions/_shared/voice-brief.ts";
+import { directEddieSpeech, eddieVoiceSettings } from "../functions/_shared/eddie-speech.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -39,6 +40,19 @@ function anthropicResponse(text: string) {
 Deno.test("reportDate returns a YYYY-MM-DD string", () => {
   const date = reportDate();
   assert(/^\d{4}-\d{2}-\d{2}$/.test(date), `expected YYYY-MM-DD, got ${date}`);
+});
+
+Deno.test("Eddie voice direction is expressive without changing the spoken report", () => {
+  const report = "Three leads need your attention.";
+  const directed = directEddieSpeech(report, "eleven_v3");
+  assert(directed.endsWith(report), "must preserve the original report text");
+  assert(directed.startsWith("[warmly] [engaged]"), "must add restrained performance direction");
+  assert(eddieVoiceSettings("eleven_v3") === undefined, "v3 must use stage directions rather than incompatible legacy sliders");
+});
+
+Deno.test("Eddie voice direction treats blockers seriously", () => {
+  const directed = directEddieSpeech("One urgent blocker needs attention.", "eleven_v3");
+  assert(directed.startsWith("[focused] [calmly]"), "must not sound falsely cheerful about a blocker");
 });
 
 Deno.test("generateSummary returns the model's text on a well-formed response", async () => {
