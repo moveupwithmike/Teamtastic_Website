@@ -18,10 +18,10 @@ vi.mock("@/lib/server/office/eddie", () => ({
   EddieError,
 }));
 
-function request(body, { origin = "https://www.teamtastic.events", ip = "203.0.113.40" } = {}) {
+function request(body, { origin = "https://www.teamtastic.events", ip = "203.0.113.40", oidcToken = "runtime-oidc" } = {}) {
   return new Request("https://www.teamtastic.events/api/office/eddie", {
     method: "POST",
-    headers: { "content-type": "application/json", origin, "x-forwarded-for": ip },
+    headers: { "content-type": "application/json", origin, "x-forwarded-for": ip, "x-vercel-oidc-token": oidcToken },
     body: JSON.stringify(body),
   });
 }
@@ -58,7 +58,7 @@ describe("Eddie Office API", () => {
     const response = await POST(request({ mode: "chat", messages }, { ip: "203.0.113.43" }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, message: "Two leads need attention.", pendingAction: null });
-    expect(askEddie).toHaveBeenCalledWith({ db, user, messages });
+    expect(askEddie).toHaveBeenCalledWith({ db, user, messages, gatewayToken: "runtime-oidc" });
   });
 
   it("uses a separate confirmation request to execute a signed action", async () => {

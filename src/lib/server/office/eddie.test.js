@@ -75,6 +75,25 @@ describe("Eddie conversation", () => {
     expect(request.system).toContain("Jordan Rivera");
   });
 
+  it("uses Vercel's runtime OIDC request token when no static gateway key exists", async () => {
+    delete process.env.AI_GATEWAY_API_KEY;
+    delete process.env.VERCEL_OIDC_TOKEN;
+    const db = createSupabaseAdminMock({ tables: baseTables() });
+    const fetchImpl = vi.fn((_url, options) => {
+      expect(options.headers.authorization).toBe("Bearer runtime_oidc_test");
+      return modelResponse({ answer: "Eddie is connected.", action_type: "none" });
+    });
+    const { askEddie } = await import("./eddie");
+
+    await expect(askEddie({
+      db,
+      user: USER,
+      messages: [{ role: "user", content: "Are you connected?" }],
+      fetchImpl,
+      gatewayToken: "runtime_oidc_test",
+    })).resolves.toMatchObject({ message: "Eddie is connected." });
+  });
+
   it("prepares but does not execute a task until the signed token is confirmed", async () => {
     const taskInserts = [];
     const receiptUpdates = [];

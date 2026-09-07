@@ -81,8 +81,8 @@ set_ad_campaign_status is only for an exact campaign in ADVERTISING_CAMPAIGNS. U
 
 Call respond_to_owner exactly once.`;
 
-function gatewayCredential() {
-  return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+function gatewayCredential(runtimeToken = "") {
+  return process.env.AI_GATEWAY_API_KEY || runtimeToken || process.env.VERCEL_OIDC_TOKEN || "";
 }
 
 function signingSecret() {
@@ -462,9 +462,9 @@ async function prepareAction(db, input) {
   throw new EddieError("action_not_allowed", 409);
 }
 
-export async function askEddie({ db, user, messages, fetchImpl = fetch }) {
+export async function askEddie({ db, user, messages, fetchImpl = fetch, gatewayToken = "" }) {
   const conversation = sanitizeConversation(messages);
-  const credential = gatewayCredential();
+  const credential = gatewayCredential(gatewayToken);
   if (!credential) throw new EddieError("ai_gateway_not_configured", 503);
   const context = await collectEddieContext(db);
   const response = await fetchImpl(GATEWAY_URL, {

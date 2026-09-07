@@ -43,7 +43,12 @@ export async function POST(request) {
     const db = getSupabaseAdmin();
     const result = mode === "execute"
       ? await executeEddieAction({ db, user, token: body?.token })
-      : await askEddie({ db, user, messages: body?.messages });
+      : await askEddie({
+        db,
+        user,
+        messages: body?.messages,
+        gatewayToken: request.headers.get("x-vercel-oidc-token") || "",
+      });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     if (error instanceof EddieError) return fail(error.status, error.code);
