@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import styles from "./eddie-chat.module.css";
 
 const welcome = {
   id: "welcome",
@@ -35,11 +36,19 @@ function friendlyError(reason) {
   return messages[reason] || "Eddie could not safely complete that request. Nothing was changed.";
 }
 
-export default function EddieChat() {
+const stateCopy = {
+  ready: ["Eddie is ready", "Tap the microphone or type whenever you want to begin."],
+  listening: ["Eddie is listening", "Your microphone is active. Speak naturally."],
+  thinking: ["Eddie is thinking", "Checking the live Teamtastic sales engine."],
+  speaking: ["Eddie is speaking", "You can follow along in the live transcript."],
+};
+
+export default function EddieChat({ initialBrief = null }) {
   const [messages, setMessages] = useState([welcome]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(true);
   const [pendingAction, setPendingAction] = useState(null);
   const endRef = useRef(null);
@@ -51,12 +60,18 @@ export default function EddieChat() {
     window.speechSynthesis?.cancel();
   }, []);
 
+  const presenceState = listening ? "listening" : busy ? "thinking" : speaking ? "speaking" : "ready";
+  const [presenceTitle, presenceDetail] = stateCopy[presenceState];
+
   function speak(text) {
     if (!speakReplies || !window.speechSynthesis || !text) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     utterance.rate = 0.96;
+    utterance.onstart = () => setSpeaking(true);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
     const voices = window.speechSynthesis.getVoices();
     utterance.voice = voices.find((voice) => voice.lang.startsWith("en") && /Daniel|Alex|Aaron|Arthur|Eddy/i.test(voice.name))
       || voices.find((voice) => voice.lang.startsWith("en"))
@@ -100,6 +115,7 @@ export default function EddieChat() {
       return;
     }
     window.speechSynthesis?.cancel();
+    setSpeaking(false);
     const recognition = new Recognition();
     recognitionRef.current = recognition;
     recognition.lang = "en-US";
@@ -119,6 +135,7 @@ export default function EddieChat() {
     if (!pendingAction?.token || busy) return;
     setBusy(true);
     window.speechSynthesis?.cancel();
+    setSpeaking(false);
     try {
       const response = await fetch("/api/office/eddie", {
         method: "POST",
@@ -141,63 +158,97 @@ export default function EddieChat() {
 
   function clearConversation() {
     window.speechSynthesis?.cancel();
+    setSpeaking(false);
     setMessages([welcome]);
     setPendingAction(null);
     setInput("");
   }
 
+  function toggleSpeakReplies() {
+    if (speakReplies) {
+      window.speechSynthesis?.cancel();
+      setSpeaking(false);
+    }
+    setSpeakReplies((value) => !value);
+  }
+
   return (
-    <section className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/10 to-slate-900/70 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">Talk with Eddie</h2>
-          <p className="mt-1 text-sm text-slate-400">Live sales answers and confirmed actions. Eddie cannot change, send, or activate anything without your approval.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setSpeakReplies((value) => !value)} className="rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/5">
-            {speakReplies ? "Voice replies on" : "Voice replies off"}
-          </button>
-          <button type="button" onClick={clearConversation} disabled={busy} className="rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/5 disabled:opacity-40">New conversation</button>
-        </div>
-      </div>
-
-      <div className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/45 p-4" aria-live="polite">
-        {messages.map((message) => (
-          <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm ${message.role === "user" ? "bg-purple-600 text-white" : message.error ? "bg-red-500/10 text-red-200" : "bg-white/[0.07] text-slate-200"}`}>
-              {message.content}
+    <section className="overflow-hidden rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/10 to-slate-900/70">
+      <div className="grid lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1.28fr)]">
+        <div className={`${styles.presence} flex flex-col items-center justify-center border-b border-white/10 p-6 text-center lg:border-r lg:border-b-0`}>
+          <div className={`${styles.orbWrap} ${styles[presenceState]}`} aria-hidden="true">
+            <div className={styles.ring} />
+            <div className={styles.outerRing} />
+            <div className={styles.orb}>
+              <div className={styles.bars}>{Array.from({ length: 7 }, (_, index) => <span key={index} />)}</div>
             </div>
           </div>
-        ))}
-        {busy && <p className="text-sm text-purple-300">Eddie is checking the live sales engine…</p>}
+          <p className="mt-3 text-xl font-semibold text-white" aria-live="polite">{presenceTitle}</p>
+          <p className="mt-1 max-w-xs text-sm text-slate-400">{presenceDetail}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${presenceState === "listening" ? "bg-sky-500/15 text-sky-200" : presenceState === "thinking" ? "bg-amber-500/15 text-amber-200" : presenceState === "speaking" ? "bg-purple-500/20 text-purple-200" : "bg-emerald-500/15 text-emerald-200"}`}>{presenceState}</span>
+            <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">Live sales data</span>
+          </div>
+          {initialBrief?.audioUrl && (
+            <details className="mt-5 w-full max-w-sm rounded-xl border border-white/10 bg-slate-950/40 p-3 text-left">
+              <summary className="cursor-pointer text-sm font-semibold text-purple-200">Today&apos;s prepared briefing</summary>
+              <audio className="mt-3 w-full" controls preload="none" src={initialBrief.audioUrl}>Your browser does not support inline audio playback.</audio>
+              {initialBrief.transcript && <p className="mt-3 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs text-slate-400">{initialBrief.transcript}</p>}
+            </details>
+          )}
+        </div>
 
-        {pendingAction && !busy && (
-          <div className={`rounded-2xl border p-4 ${pendingAction.dangerous ? "border-red-400/30 bg-red-500/10" : "border-amber-400/30 bg-amber-500/10"}`}>
-            <p className="text-xs font-bold uppercase tracking-wider text-amber-200">Confirmation required</p>
-            <h3 className="mt-1 font-semibold">{pendingAction.title}</h3>
-            <ul className="mt-3 space-y-1 text-sm text-slate-300">
-              {(pendingAction.details || []).map((detail, index) => <li key={`${index}-${detail}`} className="whitespace-pre-wrap">{detail}</li>)}
-            </ul>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={confirmAction} className={`rounded-lg px-4 py-2 text-sm font-semibold ${pendingAction.dangerous ? "bg-red-600 hover:bg-red-500" : "bg-purple-600 hover:bg-purple-500"}`}>Confirm action</button>
-              <button type="button" onClick={() => setPendingAction(null)} className="rounded-lg border border-white/10 px-4 py-2 text-sm hover:bg-white/5">Cancel</button>
+        <div className="flex min-w-0 flex-col p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Good morning, Michael</h2>
+              <p className="mt-1 text-sm text-slate-400">Talk naturally or type. Eddie answers from live Teamtastic data and asks before taking action.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={toggleSpeakReplies} className="rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/5">
+                {speakReplies ? "Voice replies on" : "Voice replies off"}
+              </button>
+              <button type="button" onClick={clearConversation} disabled={busy} className="rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/5 disabled:opacity-40">New conversation</button>
             </div>
           </div>
-        )}
-        <div ref={endRef} />
-      </div>
 
-      <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); submitQuestion(); }}>
-        <label className="sr-only" htmlFor="eddie-question">Ask Eddie</label>
-        <textarea id="eddie-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask: What should I focus on first today?" className="min-h-14 flex-1 resize-none rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-400" />
-        <div className="flex gap-2 sm:flex-col">
-          <button type="button" onClick={startListening} disabled={busy || listening} className={`flex-1 rounded-xl border px-4 py-2 text-sm font-semibold sm:flex-none ${listening ? "border-red-400 bg-red-500/15 text-red-200" : "border-white/10 hover:bg-white/5"}`}>
-            {listening ? "Listening…" : "Speak"}
-          </button>
-          <button type="submit" disabled={busy || !input.trim()} className="flex-1 rounded-xl bg-purple-600 px-5 py-2 text-sm font-semibold hover:bg-purple-500 disabled:opacity-40 sm:flex-none">Ask Eddie</button>
+          <div className="mt-5 max-h-[34rem] min-h-64 space-y-3 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/45 p-4" aria-live="polite">
+            {messages.map((message) => (
+              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm ${message.role === "user" ? "bg-purple-600 text-white" : message.error ? "bg-red-500/10 text-red-200" : "bg-white/[0.07] text-slate-200"}`}>
+                  {message.content}
+                </div>
+              </div>
+            ))}
+            {busy && <p className="text-sm text-purple-300">Eddie is checking the live sales engine…</p>}
+
+            {pendingAction && !busy && (
+              <div className={`rounded-2xl border p-4 ${pendingAction.dangerous ? "border-red-400/30 bg-red-500/10" : "border-amber-400/30 bg-amber-500/10"}`}>
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-200">Confirmation required</p>
+                <h3 className="mt-1 font-semibold">{pendingAction.title}</h3>
+                <ul className="mt-3 space-y-1 text-sm text-slate-300">
+                  {(pendingAction.details || []).map((detail, index) => <li key={`${index}-${detail}`} className="whitespace-pre-wrap">{detail}</li>)}
+                </ul>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" onClick={confirmAction} className={`rounded-lg px-4 py-2 text-sm font-semibold ${pendingAction.dangerous ? "bg-red-600 hover:bg-red-500" : "bg-purple-600 hover:bg-purple-500"}`}>Confirm action</button>
+                  <button type="button" onClick={() => setPendingAction(null)} className="rounded-lg border border-white/10 px-4 py-2 text-sm hover:bg-white/5">Cancel</button>
+                </div>
+              </div>
+            )}
+            <div ref={endRef} />
+          </div>
+
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); submitQuestion(); }}>
+            <button type="button" onClick={startListening} disabled={busy || listening} aria-label={listening ? "Eddie is listening" : "Start talking to Eddie"} className={`min-h-12 rounded-xl border px-4 text-sm font-semibold ${listening ? "border-sky-400 bg-sky-500/15 text-sky-100" : "border-purple-400/30 bg-purple-500/15 text-purple-100 hover:bg-purple-500/25"}`}>
+              {listening ? "Listening…" : "🎙 Talk"}
+            </button>
+            <label className="sr-only" htmlFor="eddie-question">Ask Eddie</label>
+            <textarea id="eddie-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask Eddie a question or give him a task…" className="min-h-12 flex-1 resize-none rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-400" />
+            <button type="submit" disabled={busy || !input.trim()} className="min-h-12 rounded-xl bg-purple-600 px-5 text-sm font-semibold hover:bg-purple-500 disabled:opacity-40">Send</button>
+          </form>
+          <p className="mt-3 text-xs text-slate-500">Try: “What needs my attention?”, “Prepare a follow-up,” or “Turn on Google Search for today.”</p>
         </div>
-      </form>
-      <p className="mt-3 text-xs text-slate-500">Try: “Summarize my hottest leads,” “Prepare the approved advertising campaign,” “Turn on Google Search for today,” or “Turn off the Meta campaign.”</p>
+      </div>
     </section>
   );
 }

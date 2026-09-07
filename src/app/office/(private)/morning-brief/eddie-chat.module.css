@@ -1,0 +1,114 @@
+.presence {
+  background:
+    radial-gradient(circle at 50% 38%, rgb(126 92 239 / 22%), transparent 48%),
+    rgb(15 23 42 / 72%);
+}
+
+.orbWrap {
+  position: relative;
+  display: grid;
+  width: 11rem;
+  height: 11rem;
+  place-items: center;
+}
+
+.ring,
+.outerRing {
+  position: absolute;
+  border: 1px solid rgb(167 139 250 / 36%);
+  border-radius: 9999px;
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+.ring {
+  inset: .5rem;
+}
+
+.outerRing {
+  inset: -.25rem;
+  opacity: .44;
+  animation-delay: .35s;
+}
+
+.orb {
+  position: relative;
+  display: grid;
+  width: 8rem;
+  height: 8rem;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 36% 28%, rgb(255 255 255 / 78%), transparent 10%),
+    radial-gradient(circle at 45% 40%, #b798ff, #7556e8 42%, #3c278e 74%, #17102f);
+  box-shadow: 0 0 2.5rem rgb(126 92 239 / 48%), inset 0 -.9rem 1.5rem rgb(21 11 66 / 35%);
+  transition: box-shadow .25s ease, filter .25s ease;
+}
+
+.bars {
+  display: flex;
+  height: 2.25rem;
+  align-items: center;
+  gap: .25rem;
+}
+
+.bars span {
+  display: block;
+  width: .25rem;
+  height: .625rem;
+  border-radius: 9999px;
+  background: white;
+  animation: wave .85s ease-in-out infinite alternate;
+}
+
+.bars span:nth-child(2),
+.bars span:nth-child(6) {
+  animation-delay: .12s;
+}
+
+.bars span:nth-child(3),
+.bars span:nth-child(5) {
+  animation-delay: .24s;
+}
+
+.bars span:nth-child(4) {
+  animation-delay: .36s;
+}
+
+.ready .bars span {
+  height: .3rem;
+  opacity: .7;
+  animation-play-state: paused;
+}
+
+.listening .orb {
+  box-shadow: 0 0 3rem rgb(56 189 248 / 62%), inset 0 -.9rem 1.5rem rgb(21 11 66 / 35%);
+}
+
+.thinking .orb {
+  animation: think 2s linear infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(.96); opacity: .35; }
+  50% { transform: scale(1.04); opacity: .9; }
+}
+
+@keyframes wave {
+  from { height: .5rem; opacity: .7; }
+  to { height: 1.9rem; opacity: 1; }
+}
+
+@keyframes think {
+  to { filter: hue-rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring,
+  .outerRing,
+  .orb,
+  .bars span {
+    animation: none;
+  }
+}
