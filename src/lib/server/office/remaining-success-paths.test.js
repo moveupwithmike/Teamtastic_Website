@@ -22,6 +22,7 @@ vi.mock("@/lib/server/booking-time", () => ({
 vi.mock("@/lib/server/organic-intent", () => ({
   scoreOrganicIntent: () => ({ score: 90, reasons: ["large_group"], confidence: "high" }),
   organicFingerprint: () => "organic-fingerprint",
+  recommendLandingPage: () => "/virtual-holiday-party",
   createHelpfulDraft: () => ({ bodyText: "Helpful answer", trackedUrl: "https://teamtastic.events/holiday?t=token" }),
 }));
 

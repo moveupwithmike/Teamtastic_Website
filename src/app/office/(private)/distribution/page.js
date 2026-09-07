@@ -9,6 +9,7 @@ import {
   scheduleSocialItem, rescheduleSocialItem, pauseScheduledSocialItem,
   publishSocialItem, retrySocialPublish, runMorningGenerator,
   refreshSocialMeasurement, queueSocialVideoRender,
+  toggleOfficeAutopilot, runOfficeAutopilot,
 } from "../../actions";
 import SocialMediaField from "./social-media-field";
 import VideoRecorder from "./render-video-recorder";
@@ -41,20 +42,24 @@ export default async function DistributionPage({ searchParams }) {
   const params = await searchParams;
   const { db } = await getOfficeDb();
 
-  const [itemsResult, accountsResult, eventsResult, configResult, voiceResult, rendersResult] = await Promise.all([
+  const [itemsResult, accountsResult, eventsResult, configResult, voiceResult, rendersResult, autopilotRunsResult] = await Promise.all([
     db.from("distribution_items").select("*").neq("status", "archived").order("created_at", { ascending: false }).limit(100),
     db.from("social_accounts").select("*").order("platform", { ascending: true }),
     db.from("distribution_item_events").select("distribution_item_id,action,status_before,status_after,actor,created_at").order("created_at", { ascending: false }).limit(30),
-    db.from("system_config").select("social_master_enabled,linkedin_write_enabled,instagram_write_enabled,facebook_write_enabled,x_write_enabled").eq("id", true).maybeSingle(),
+    db.from("system_config").select("social_master_enabled,linkedin_write_enabled,instagram_write_enabled,facebook_write_enabled,x_write_enabled,desk_autopilot_enabled").eq("id", true).maybeSingle(),
     buildVoiceContext(db),
     db.from("social_video_renders").select("*").order("created_at", { ascending: false }).limit(100),
+    db.from("autopilot_runs").select("*").order("started_at", { ascending: false }).limit(3),
   ]);
 
   const items = itemsResult.data || [];
   const accounts = accountsResult.data || [];
+  /** @type {Record<string, any>} */
   const config = configResult.data || {};
   const events = eventsResult.data || [];
   const renders = rendersResult.data || [];
+  const autopilotRuns = autopilotRunsResult.data || [];
+  const latestAutopilotRun = autopilotRuns[0];
   const eventsByItem = {};
   for (const event of events) (eventsByItem[event.distribution_item_id] ||= []).push(event);
   const latestRenderByItem = {};
@@ -94,6 +99,14 @@ export default async function DistributionPage({ searchParams }) {
                 ? "Render queued. The post is unchanged — the produced video attaches as media once the renderer finishes."
               : params.success === "rendered:done"
                 ? "Render complete — the video is attached to the post as media. Review it before approving."
+              : params.success === "autopilot_on"
+                ? "Daily autopilot is on. Each morning it prepares review-only drafts, runs conversation discovery, and refreshes measurement — it never approves or publishes."
+              : params.success === "autopilot_off"
+                ? "Daily autopilot is off. Owner-triggered runs are still available."
+              : params.success === "autopilot:completed"
+                ? "Autopilot loop finished. Review the step results below — nothing was approved or published."
+              : params.success === "autopilot:skipped"
+                ? "Today's autopilot loop already ran. Nothing new was created."
               : "Social desk updated."
           )}
         </p>
@@ -115,6 +128,29 @@ export default async function DistributionPage({ searchParams }) {
         <Card title="Published" tone="green"><p className="text-3xl font-bold text-emerald-300">{statusCounts.published || 0}</p></Card>
         <Card title="Failed publishes" tone="red"><p className="text-3xl font-bold text-red-300">{statusCounts.publish_failed || 0}</p></Card>
       </div>
+
+      <Card title="Daily autopilot">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="max-w-xl text-xs text-slate-500">Automated, review-only prep. While on, the 7:10 Eastern cron runs the morning generator, Reddit conversation discovery, and the measurement roll in one idempotent loop — it never approves, schedules, or publishes. Owner-triggered &ldquo;Run all steps now&rdquo; can bypass this autopilot switch, but the global master switch always stops it.</p>
+          <div className="flex flex-wrap gap-2">
+            <form action={toggleOfficeAutopilot}><input type="hidden" name="enabled" value={config.desk_autopilot_enabled ? "off" : "on"}/><button className={buttonClass}>{config.desk_autopilot_enabled ? "Turn autopilot off" : "Turn autopilot on"}</button></form>
+            <form action={() => runOfficeAutopilot()}><button className={`${buttonClass} bg-white/10 hover:bg-white/15`}>Run all steps now</button></form>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-slate-300">
+          Autopilot: <span className={config.desk_autopilot_enabled ? "font-semibold text-emerald-300" : "text-slate-400"}>{config.desk_autopilot_enabled ? "on" : "off"}</span>
+          {" · "}Last run: {latestAutopilotRun
+            ? `${latestAutopilotRun.status} · ${new Date(latestAutopilotRun.started_at).toLocaleString()}`
+            : "no runs yet"}
+        </p>
+        {latestAutopilotRun && typeof latestAutopilotRun.steps === "object" && latestAutopilotRun.steps?.length ? (
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            {latestAutopilotRun.steps.map((step) => (
+              <span key={step.step} className={`rounded-full px-3 py-1 ${step.error ? "bg-red-500/10 text-red-300" : step.enabled === false ? "bg-white/5 text-slate-400" : "bg-emerald-500/10 text-emerald-300"}`}>{step.step}: {step.error ? "failed" : step.enabled === false ? step.reason : `${step.records_created ?? step.created ?? ""}${step.records_scanned ? ` from ${step.records_scanned} scanned` : ""}`}</span>
+            ))}
+          </div>
+        ) : null}
+      </Card>
 
       <Card title="Measurement">
         <div className="flex flex-wrap items-start justify-between gap-3">

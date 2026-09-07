@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { requireOfficeUser } from "@/lib/server/office-auth";
-import { createHelpfulDraft, organicFingerprint, scoreOrganicIntent } from "@/lib/server/organic-intent";
+import { createHelpfulDraft, organicFingerprint, scoreOrganicIntent, recommendLandingPage } from "@/lib/server/organic-intent";
 import { audit, clean } from "./shared";
 
 function lines(value, limit = 20) {
@@ -27,7 +27,7 @@ export async function createOrganicOpportunity(formData) {
   ]);
   const scored = scoreOrganicIntent(title, excerpt);
   const fingerprint = organicFingerprint(sourceUrl, excerpt);
-  const page = /75|[1-9]\d{2,}|large group/i.test(`${title} ${excerpt}`) ? "/virtual-holiday-party-for-large-groups" : /year[- ]end|inclusive|global/i.test(`${title} ${excerpt}`) ? "/virtual-year-end-team-celebration" : "/virtual-holiday-party";
+  const page = recommendLandingPage(`${title} ${excerpt}`);
   const { data: opportunity, error } = await db.from("organic_opportunities").upsert({ source_id: source?.id, source_url: sourceUrl, title: title || null, excerpt, community: community || null, intent_score: scored.score, score_reasons: scored.reasons, confidence: scored.confidence, status: "review", recommended_page: page, fingerprint, raw_data: { intake: "office", actor: user.email } }, { onConflict: "fingerprint" }).select("id,tracking_token,intent_score").single();
   if (error || !opportunity) redirect("/office/organic?error=create_failed");
   if (opportunity.intent_score >= (config?.organic_min_draft_score ?? 80)) {

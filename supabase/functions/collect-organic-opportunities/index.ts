@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
+import { authorizeServiceRole, authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 
 type RedditChild = { data?: { id?: string; title?: string; selftext?: string; permalink?: string; subreddit_name_prefixed?: string; author?: string; created_utc?: number; over_18?: boolean } };
 
@@ -53,7 +53,7 @@ async function redditToken() {
 
 Deno.serve(async (request) => {
   const unauthorized = await authorizeWebhook(request, "ORGANIC_RESEARCH_WEBHOOK_SECRET");
-  if (unauthorized) return unauthorized;
+  if (unauthorized && !(await authorizeServiceRole(request))) return unauthorized;
   const db = serviceClient();
   const { data: config, error: configError } = await db.from("system_config").select("master_enabled,organic_research_enabled,organic_scoring_enabled,organic_drafting_enabled,organic_daily_opportunity_cap,organic_min_draft_score,organic_reddit_commercial_approval_confirmed").eq("id", true).single();
   if (configError) return functionError("config_query_failed");

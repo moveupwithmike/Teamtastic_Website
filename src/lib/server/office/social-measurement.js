@@ -20,18 +20,30 @@ function easternDate() {
 
 // Rolls the latest day of first-party funnel events into each post's lifetime
 // counters using the tracked link the post carries (utm_content attribution).
+// Core keeps the idempotent, auth-free step callable from the autopilot loop.
+export async function rollSocialMeasurementSnapshot({ db, date = null }) {
+  const snapshotDate = date || easternDate();
+  const { data, error } = await db.rpc("refresh_social_measurement", { p_date: snapshotDate });
+  return {
+    ok: !error,
+    error: error?.message || null,
+    date: snapshotDate,
+    snapshots: Number(data?.snapshots ?? 0),
+    items_updated: Number(data?.items_updated ?? 0),
+  };
+}
+
 export async function refreshSocialMeasurement() {
   const user = await requireOfficeUser();
   const db = getSupabaseAdmin();
-  const snapshotDate = easternDate();
-  const { data, error } = await db.rpc("refresh_social_measurement", { p_date: snapshotDate });
+  const rolled = await rollSocialMeasurementSnapshot({ db });
   await audit("refresh_social_measurement", user, {
-    snapshot_date: snapshotDate,
-    snapshots: data?.snapshots ?? 0,
-    items_updated: data?.items_updated ?? 0,
-  }, null, error ? "failed" : "completed", error ? "measurement_failed" : null);
+    snapshot_date: rolled.date,
+    snapshots: rolled.snapshots,
+    items_updated: rolled.items_updated,
+  }, null, rolled.ok ? "completed" : "failed", rolled.ok ? null : "measurement_failed");
   revalidatePath(DISTRIBUTION_PATH);
-  return redirect(error
-    ? `${DISTRIBUTION_PATH}?error=measurement_failed`
-    : `${DISTRIBUTION_PATH}?success=measured`);
+  return redirect(rolled.ok
+    ? `${DISTRIBUTION_PATH}?success=measured`
+    : `${DISTRIBUTION_PATH}?error=measurement_failed`);
 }

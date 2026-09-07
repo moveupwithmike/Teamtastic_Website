@@ -1,9 +1,16 @@
 import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card, buttonClass, inputClass } from "../../office-ui";
-import { createOrganicOpportunity, reviewOrganicOpportunity, updateOrganicSourceConfig } from "../../actions";
+import { createOrganicOpportunity, reviewOrganicOpportunity, updateOrganicSourceConfig, runOrganicDiscovery } from "../../actions";
 
 export default async function OrganicIntentPage({ searchParams }) {
   const params = await searchParams;
+  const discoveryGateMessages = {
+    "discovery:master_off": "Discovery did not run because the global master automation switch is off.",
+    "discovery:reddit_commercial_approval_not_confirmed": "Discovery did not run because Reddit commercial-use approval has not been confirmed.",
+    "discovery:discovery_off": "Discovery did not run because organic research is off.",
+    "discovery:scoring_off": "Discovery did not run because organic scoring is off.",
+    "discovery:daily_cap_reached": "Discovery did not run because today's collection limit has already been reached.",
+  };
   const db = (await getOfficeDb()).db;
   const nowDate = new Date();
   const sevenDaysAgo = new Date(nowDate.getTime() - 7 * 86400000).toISOString();
@@ -18,7 +25,7 @@ export default async function OrganicIntentPage({ searchParams }) {
     db.from("organic_attribution").select("revenue").eq("touch_type", "revenue").gte("occurred_at", sevenDaysAgo),
   ]);
   return <div className="space-y-8">
-    {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>{params.error ? "That action could not be completed." : "Saved."}</p>}
+    {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>{params.error === "discovery_failed" ? "Conversation discovery could not be completed — check the collector's last error below and try again." : discoveryGateMessages[params.success] || (typeof params.success === "string" && params.success.startsWith("discovery_completed:") ? `Discovery completed — ${params.success.split(":")[1] || "0"} new review-only conversation${params.success.split(":")[1] === "1" ? "" : "s"} captured.` : params.error ? "That action could not be completed." : "Saved.")}</p>}
     <div><h2 className="text-3xl font-bold">Organic intent radar</h2><p className="mt-2 text-slate-400">Research and draft queue. Nothing here posts, messages, or emails automatically.</p></div>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Card title="Found · 7 days"><p className="text-3xl font-bold text-purple-300">{opportunitiesMetric.count || 0}</p></Card><Card title="Posted · 7 days"><p className="text-3xl font-bold text-sky-300">{postedMetric.count || 0}</p></Card><Card title="Leads · 7 days"><p className="text-3xl font-bold text-emerald-300">{leadsMetric.count || 0}</p></Card><Card title="Revenue · 7 days"><p className="text-3xl font-bold text-amber-300">${(revenueMetric.data || []).reduce((sum, row) => sum + Number(row.revenue || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p></Card></div>
     <Card title="Safety status"><p className="text-sm text-slate-300">Research: {config?.organic_research_enabled ? "on" : "off"} · Scoring: {config?.organic_scoring_enabled ? "on" : "off"} · Drafting: {config?.organic_drafting_enabled ? "on" : "off"}</p></Card>
@@ -32,7 +39,11 @@ export default async function OrganicIntentPage({ searchParams }) {
       </form>
     </Card>
     <Card title="Recent automated research runs">
-      <div className="space-y-3">{(runs || []).map((run) => <div key={run.id} className="rounded-lg bg-white/5 p-3 text-sm"><p className="font-semibold">{run.status} · {run.records_created} created from {run.records_scanned} scanned</p><p className="mt-1 text-xs text-slate-400">{run.error || run.decision?.reason || new Date(run.started_at).toLocaleString()}</p></div>)}{!runs?.length && <p className="text-sm text-slate-400">No automated runs yet. Disabled collectors do not spend API capacity.</p>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-300">Collector: <span className={source?.enabled ? "text-emerald-300" : "text-slate-500"}>{source?.enabled ? "enabled" : "off"}</span>{source?.last_error ? <span className="ml-2 text-red-300">Last error: {source.last_error}</span> : null}</p>
+        <form action={() => runOrganicDiscovery()}><button className={buttonClass}>Run discovery now</button></form>
+      </div>
+      <div className="mt-4 space-y-3">{(runs || []).map((run) => <div key={run.id} className="rounded-lg bg-white/5 p-3 text-sm"><p className="font-semibold">{run.status} · {run.records_created} created from {run.records_scanned} scanned</p><p className="mt-1 text-xs text-slate-400">{run.error || run.decision?.reason || new Date(run.started_at).toLocaleString()}</p></div>)}{!runs?.length && <p className="text-sm text-slate-400">No automated runs yet. Disabled collectors do not spend API capacity.</p>}</div>
     </Card>
     <Card title="Add a public opportunity">
       <form action={createOrganicOpportunity} className="space-y-4">

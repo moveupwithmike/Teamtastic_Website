@@ -22,6 +22,12 @@ export function scoreOrganicIntent(title, excerpt) {
   return { score, reasons, confidence: Math.min(0.95, 0.35 + reasons.length * 0.1) };
 }
 
+export function recommendLandingPage(text) {
+  if (/75|[1-9]\d{2,}|large group/i.test(text)) return "/virtual-holiday-party-for-large-groups";
+  if (/year[- ]end|inclusive|global/i.test(text)) return "/virtual-year-end-team-celebration";
+  return "/virtual-holiday-party";
+}
+
 export function organicFingerprint(sourceUrl, excerpt) {
   return createHash("sha256").update(`${sourceUrl.trim().toLowerCase()}|${excerpt.trim().toLowerCase()}`).digest("hex");
 }

@@ -8,6 +8,7 @@ import * as incidents from "@/lib/server/office/incidents";
 import * as intelligence from "@/lib/server/office/intelligence";
 import * as outreach from "@/lib/server/office/outreach";
 import * as organic from "@/lib/server/office/organic";
+import * as organicDiscovery from "@/lib/server/office/organic-discovery";
 import * as growth from "@/lib/server/office/growth-actions";
 import * as salesResponse from "@/lib/server/office/sales-response-actions";
 import * as signals from "@/lib/server/office/relationship-signals";
@@ -20,6 +21,7 @@ import * as socialAccounts from "@/lib/server/office/social-accounts";
 import * as voiceActions from "@/lib/server/office/voice-actions";
 import * as socialMeasurement from "@/lib/server/office/social-measurement";
 import * as videoRender from "@/lib/server/office/video-render";
+import * as autopilot from "@/lib/server/office/autopilot";
 
 export async function requestMagicLink(v) { return authentication.requestMagicLink(v); }
 export async function signOutOffice() { return authentication.signOutOffice(); }
@@ -40,6 +42,7 @@ export async function reviewOutreachDraft(v) { return outreach.reviewOutreachDra
 export async function createOrganicOpportunity(v) { return organic.createOrganicOpportunity(v); }
 export async function reviewOrganicOpportunity(v) { return organic.reviewOrganicOpportunity(v); }
 export async function updateOrganicSourceConfig(v) { return organic.updateOrganicSourceConfig(v); }
+export async function runOrganicDiscovery() { return organicDiscovery.runOrganicDiscoveryAction(); }
 export async function refreshGrowthBrief() { return growth.refreshGrowthBrief(); }
 export async function saveCampaignAdSpend(v) { return growth.saveCampaignAdSpend(v); }
 export async function overrideLeadScore(v) { return growth.overrideLeadScore(v); }
@@ -85,3 +88,5 @@ export async function refreshSocialMeasurement() { return socialMeasurement.refr
 export async function queueSocialVideoRender(v) { return videoRender.queueSocialVideoRender(v); }
 export async function prepareSocialVideoUpload(v) { return videoRender.prepareSocialVideoUpload(v); }
 export async function finishSocialVideoRender(v) { return videoRender.finishSocialVideoRender(v); }
+export async function toggleOfficeAutopilot(v) { return autopilot.toggleOfficeAutopilot(v); }
+export async function runOfficeAutopilot() { return autopilot.runOfficeAutopilot(); }

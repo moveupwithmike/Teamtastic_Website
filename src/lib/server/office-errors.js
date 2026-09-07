@@ -47,6 +47,7 @@ const OFFICE_ERROR_MESSAGES = {
   // Organic intent radar
   queries_required: "At least one search query is required.",
   source_config_failed: "The source configuration could not be saved.",
+  discovery_failed: "Conversation discovery could not be completed. Check the collector's last error and try again.",
 
   // Growth brief / experiments
   experiment_missing: "That experiment could not be found.",
@@ -104,6 +105,10 @@ const OFFICE_ERROR_MESSAGES = {
   video_render_missing: "That video post doesn't exist anymore.",
   video_render_format: "Rendering is for video-format posts only.",
   video_render_failed: "The render job couldn't be queued. The post is unchanged.",
+
+  // Daily autopilot
+  autopilot_failed: "The daily autopilot run could not complete.",
+  autopilot_switch_failed: "The autopilot switch could not be saved.",
 
   // System settings
   settings_save_failed: "The settings could not be saved. Please try again.",

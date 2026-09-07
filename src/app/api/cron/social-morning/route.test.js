@@ -22,7 +22,7 @@ describe("morning social Cron", () => {
   });
 
   it("recognizes 8:10 Eastern across daylight-saving time", async () => {
-    const { isEasternMorningWindow } = await import("./route");
+    const { isEasternMorningWindow } = await import("@/lib/server/office/cron-windows");
     expect(isEasternMorningWindow(new Date("2026-07-10T12:10:00Z"))).toBe(true);
     expect(isEasternMorningWindow(new Date("2026-01-10T13:10:00Z"))).toBe(true);
     expect(isEasternMorningWindow(new Date("2026-07-10T13:10:00Z"))).toBe(false);
