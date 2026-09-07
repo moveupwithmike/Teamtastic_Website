@@ -11,6 +11,7 @@ import {
   refreshSocialMeasurement, queueSocialVideoRender,
 } from "../../actions";
 import SocialMediaField from "./social-media-field";
+import VideoRecorder from "./render-video-recorder";
 
 const SELECT_CLASS = "mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-purple-400";
 const STATUS_TONE = { draft: "text-slate-300", approved: "text-sky-300", scheduled: "text-amber-300", paused: "text-amber-300", publish_failed: "text-red-300", published: "text-emerald-300", rejected: "text-slate-400" };
@@ -91,6 +92,8 @@ export default async function DistributionPage({ searchParams }) {
                 ? "Measurement refreshed — clicks, engagement, and leads rolled up from today's first-party funnel events."
               : params.success === "rendered:queued"
                 ? "Render queued. The post is unchanged — the produced video attaches as media once the renderer finishes."
+              : params.success === "rendered:done"
+                ? "Render complete — the video is attached to the post as media. Review it before approving."
               : "Social desk updated."
           )}
         </p>
@@ -321,6 +324,10 @@ export default async function DistributionPage({ searchParams }) {
                   <form action={retrySocialPublish}><input type="hidden" name="id" value={item.id} /><button className={buttonClass}>Retry publish</button></form>
                 )}
               </div>
+
+              {item.format === "video" && latestRenderByItem[item.id]?.status === "pending" && (
+                <VideoRecorder itemId={item.id} renderJobId={latestRenderByItem[item.id].id} title={item.title} hook={item.hook} cta={item.cta} destination={item.destination} shots={item.source_evidence?.video?.shot_list} />
+              )}
 
               {itemEvents.length > 0 && (
                 <details className="mt-4">

@@ -6,7 +6,9 @@ import { vi } from "vitest";
 // `.from(tableName)` chain — lets a single test disambiguate multiple queries
 // against the same table by inspecting which columns/filters were used.
 // `rpc[fnName]` is a function `(args) => ({ data, error })`.
-export function createSupabaseAdminMock({ tables = {}, rpc = {} } = {}) {
+// `storage[bucketName]` is an object of vi.fn storage methods (upload,
+// createSignedUrl, ...). Buckets not listed get a no-op upload/signed-url stub.
+export function createSupabaseAdminMock({ tables = {}, rpc = {}, storage = {} } = {}) {
   function eqValue(calls, key) {
     return calls.find((c) => c.method === "eq" && c.args[0] === key)?.args[1];
   }
@@ -45,5 +47,15 @@ export function createSupabaseAdminMock({ tables = {}, rpc = {} } = {}) {
       const result = typeof handler === "function" ? handler(args) : (handler || { data: null, error: null });
       return Promise.resolve(result ?? { data: null, error: null });
     }),
+    storage: {
+      from: (bucket) => {
+        const configured = storage[bucket];
+        if (configured) return configured;
+        return {
+          upload: vi.fn(async () => ({ data: {}, error: null })),
+          createSignedUrl: vi.fn(async () => ({ data: { signedUrl: "https://cdn.example/signed" }, error: null })),
+        };
+      },
+    },
   };
 }

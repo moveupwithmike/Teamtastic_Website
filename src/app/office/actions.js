@@ -83,3 +83,5 @@ export async function deleteVoiceEntry(v) { return voiceActions.deleteVoiceEntry
 export async function runMorningGenerator() { return socialDesk.runMorningGenerator(); }
 export async function refreshSocialMeasurement() { return socialMeasurement.refreshSocialMeasurement(); }
 export async function queueSocialVideoRender(v) { return videoRender.queueSocialVideoRender(v); }
+export async function prepareSocialVideoUpload(v) { return videoRender.prepareSocialVideoUpload(v); }
+export async function finishSocialVideoRender(v) { return videoRender.finishSocialVideoRender(v); }
