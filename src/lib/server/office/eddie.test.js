@@ -45,6 +45,8 @@ function baseTables(overrides = {}) {
       { record_type: "lead", record_id: "l1", classification: "production", classified_at: null },
     ], error: null },
     launch_readiness_snapshots: { data: { status: "ready", blocker_count: 0, warning_count: 0, checks: [], created_at: "2026-09-05T12:00:00Z" }, error: null },
+    protected_lead_searches: { data: [], error: null },
+    apify_approved_sources: { data: [], error: null },
     agent_log: { data: null, error: null },
     ...overrides,
   };

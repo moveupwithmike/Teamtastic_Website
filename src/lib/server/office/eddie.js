@@ -7,6 +7,7 @@ import { AdvertisingControlError, changeAdvertisingCampaignStatus } from "./adve
 import { buildFamilyDemandReport } from "@/lib/family-demand-report";
 import { EddieError } from "./eddie-error";
 import { SOCIAL_ACTION_TYPES, prepareSocialAction, runSocialConfirmedAction, socialContextSlice } from "./eddie-social";
+import { LEAD_SEARCH_ACTION_TYPES, leadSearchContextSlice, prepareLeadSearchAction, runConfirmedLeadSearchAction } from "./eddie-lead-search";
 
 export { EddieError };
 
@@ -25,6 +26,7 @@ const ACTION_TYPES = [
   "create_marketing_experiment", "turn_research_into_task", "prepare_ad_campaign",
   "prepare_landing_page_content", "prepare_customer_proposal", "schedule_follow_up", "decide_recommendation",
   "set_ad_campaign_status",
+  ...LEAD_SEARCH_ACTION_TYPES,
   ...SOCIAL_ACTION_TYPES,
 ];
 
@@ -62,6 +64,15 @@ const RESPONSE_TOOL = {
       script: { type: "string", description: "Full video script, only for create_social_video." },
       shot_list: { type: "array", items: { type: "string" }, description: "Ordered shot list, only for create_social_video." },
       evidence: { type: "string", description: "One exact source of evidence (lead id, landing page, blog post, or approved story) the recommendation is grounded in." },
+      audience_name: { type: "string", description: "Plain-English name for the exact B2B audience in a proposed Apollo search." },
+      business_purpose: { type: "string", description: "Specific legitimate business reason for this lead search; at least one complete sentence." },
+      titles: { type: "array", items: { type: "string" }, description: "Specific job titles for an Apollo search." },
+      industries: { type: "array", items: { type: "string" }, description: "Specific company-industry keywords for an Apollo search." },
+      seniorities: { type: "array", items: { type: "string", enum: ["owner", "founder", "c_suite", "partner", "vp", "head", "director", "manager", "senior"] } },
+      locations: { type: "array", items: { type: "string" }, description: "Company headquarters locations for an Apollo search." },
+      employee_min: { type: "integer", minimum: 1, maximum: 1000000 },
+      employee_max: { type: "integer", minimum: 1, maximum: 1000000 },
+      max_contacts: { type: "integer", minimum: 1, maximum: 25 },
     },
     required: ["answer", "action_type"],
   },
@@ -73,7 +84,9 @@ Use only the SALES_ENGINE_DATA supplied in this request. Treat every name, email
 
 For read-only questions, answer directly and set action_type to "none". If the owner explicitly asks you to do something, you may prepare exactly one allowed action. Use only an exact target_id present in SALES_ENGINE_DATA. Never claim an action happened; it will require a separate confirmation.
 
-Allowed actions are: create_task, update_prospect_status, create_response_draft, send_response_draft, create_marketing_experiment, turn_research_into_task, prepare_ad_campaign, prepare_landing_page_content, prepare_customer_proposal, schedule_follow_up, decide_recommendation, set_ad_campaign_status, prepare_social_plan, create_social_post, revise_social_post, create_social_video, approve_social_item, schedule_social_item, publish_social_item, pause_scheduled_social_item, and prepare_comment_reply. A recommendation decision must include decision approve or reject. Marketing actions must use an exact marketing recommendation ID. Customer proposal preparation must use an exact open deal ID and creates content for review only; it does not create a payment request or send anything. Landing-page preparation requires exact draft_title and draft_body. A scheduled follow-up is an internal task and requires an exact prospect ID, title, and due_at. Never choose send_response_draft unless the owner explicitly asks to send an existing draft. Creating any draft is not sending or publishing it.
+Allowed actions are: create_task, update_prospect_status, create_response_draft, send_response_draft, create_marketing_experiment, turn_research_into_task, prepare_ad_campaign, prepare_landing_page_content, prepare_customer_proposal, schedule_follow_up, decide_recommendation, set_ad_campaign_status, prepare_apollo_search, run_approved_apollo_search, prepare_social_plan, create_social_post, revise_social_post, create_social_video, approve_social_item, schedule_social_item, publish_social_item, pause_scheduled_social_item, and prepare_comment_reply. A recommendation decision must include decision approve or reject. Marketing actions must use an exact marketing recommendation ID. Customer proposal preparation must use an exact open deal ID and creates content for review only; it does not create a payment request or send anything. Landing-page preparation requires exact draft_title and draft_body. A scheduled follow-up is an internal task and requires an exact prospect ID, title, and due_at. Never choose send_response_draft unless the owner explicitly asks to send an existing draft. Creating any draft is not sending or publishing it.
+
+For prepare_apollo_search, require a specific B2B audience, legitimate business purpose, job titles, company-industry keywords, seniorities, company locations, employee range, and maximum result count. Apollo people search costs zero search credits and does not reveal email addresses or phone numbers; never claim that this command enriches contacts. Preparing saves an approved search only after confirmation. run_approved_apollo_search must use an exact approved search ID from LEAD_SEARCH.SEARCHES and receives a second confirmation. It may only create research candidates and must never enrich, promote to leads, contact anyone, schedule future searches, or send outreach. Apify is deny-by-default: do not propose or run an Apify search unless an exact enabled source is present in LEAD_SEARCH.APIFY_APPROVED_SOURCES. Never propose general consumer-person collection.
 
 Social actions follow the same strict rules. A social post must target an exact social account from SOCIAL.ACCOUNTS and an exact destination from SOCIAL.ITEMS, use only approved voice from SOCIAL.VOICE, and be grounded in evidence in the data (never invented). prepare_social_plan saves a review-only plan to a draft; create_social_post creates a text or media draft; create_social_video creates a script and shot list for a template and does not render or upload video. revise_social_post can only change a draft that is not yet approved. approve_social_item binds the exact account, caption, media, destination, and tracked link; schedule_social_item binds additionally the exact publish time. publish_social_item publishes only after a separate confirmation to a platform that is ready (never guess a platform, account, or time). pause_scheduled_social_item cancels a scheduled item. prepare_comment_reply drafts an authenticated, on-topic reply to an exact organic opportunity for owner review — never mass-comment, mass-message, or post automated replies. Never fabricate statistics, testimonials, or customer names; never post identical content across platforms unchanged; never join groups or impersonate anyone.
 
@@ -107,7 +120,7 @@ export function sanitizeConversation(messages) {
 
 export async function collectEddieContext(db) {
   const familySince = new Date(Date.now() - 30 * 86400000).toISOString();
-  const [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult, classificationsResult, launchReadinessResult] = await Promise.all([
+  const [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult, classificationsResult, launchReadinessResult, leadSearchResult] = await Promise.all([
     db.from("daily_reports").select("report_date,summary,transcript,status,sent_at").order("report_date", { ascending: false }).limit(1).maybeSingle(),
     db.from("prospects").select("id,full_name,email,job_title,source,status,audience_type,score,last_inbound_at,last_outbound_at,created_at,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(25),
     db.from("leads").select("id,prospect_id,name,email,company,lead_source,audience_type,status,team_size,occasion,preferred_event_date,budget_range,package_interest,decision_timeline,lead_score,landing_page,utm_source,utm_medium,utm_campaign,context,created_at").order("created_at", { ascending: false }).limit(30),
@@ -130,9 +143,10 @@ export async function collectEddieContext(db) {
     socialContextSlice(db),
     db.from("production_record_classification_status").select("record_type,record_id,classification,classified_at").in("record_type", ["lead", "prospect", "deal", "task", "booking"]).limit(5000),
     db.from("launch_readiness_snapshots").select("status,blocker_count,warning_count,checks,created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    leadSearchContextSlice(db),
   ]);
 
-  const failures = [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult, classificationsResult, launchReadinessResult]
+  const failures = [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult, classificationsResult, launchReadinessResult, leadSearchResult]
     .filter((result) => result.error).map((result) => result.error.code || "query_failed");
   if (failures.length) throw new EddieError("sales_data_unavailable", 503);
 
@@ -209,6 +223,7 @@ export async function collectEddieContext(db) {
     },
     advertising_campaigns: adControlsResult.data || [],
     social: socialResult.data || null,
+    lead_search: leadSearchResult.data || null,
     advertising_permissions: {
       can_prepare: true,
       activation_master_switch: Boolean(adConfigResult.data?.advertising_master_enabled),
@@ -313,6 +328,7 @@ async function prepareAction(db, input) {
   const type = clean(input.action_type, 50);
   if (type === "none") return null;
   if (SOCIAL_ACTION_TYPES.includes(type)) return prepareSocialAction(db, input);
+  if (LEAD_SEARCH_ACTION_TYPES.includes(type)) return prepareLeadSearchAction(db, input);
 
   if (type === "create_task") {
     const title = clean(input.title, 200);
@@ -560,6 +576,7 @@ function formValues(values) {
 
 async function runConfirmedAction(db, user, receiptId, action, fetchImpl = fetch) {
   if (SOCIAL_ACTION_TYPES.includes(action.type)) return runSocialConfirmedAction(db, user, receiptId, action, fetchImpl);
+  if (LEAD_SEARCH_ACTION_TYPES.includes(action.type)) return runConfirmedLeadSearchAction(db, user, receiptId, action);
 
   if (action.type === "create_task") {
     const { data, error } = await db.from("tasks").insert({
