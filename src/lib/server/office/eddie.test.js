@@ -38,7 +38,13 @@ function baseTables(overrides = {}) {
       meta_ads_write_enabled: false,
       google_ads_daily_cap_cents: 1500,
       meta_ads_daily_cap_cents: 1000,
+      sales_reporting_since: null,
     }, error: null },
+    production_record_classification_status: { data: [
+      { record_type: "prospect", record_id: "p1", classification: "production", classified_at: null },
+      { record_type: "lead", record_id: "l1", classification: "production", classified_at: null },
+    ], error: null },
+    launch_readiness_snapshots: { data: { status: "ready", blocker_count: 0, warning_count: 0, checks: [], created_at: "2026-09-05T12:00:00Z" }, error: null },
     agent_log: { data: null, error: null },
     ...overrides,
   };
@@ -73,6 +79,54 @@ describe("Eddie conversation", () => {
     expect(request.tool_choice).toEqual({ type: "tool", name: "respond_to_owner" });
     expect(request.system).toContain("SALES_ENGINE_DATA");
     expect(request.system).toContain("Jordan Rivera");
+  });
+
+  it("keeps pre-baseline and non-production sales records out of Eddie's context", async () => {
+    const db = createSupabaseAdminMock({ tables: baseTables({
+      daily_reports: { data: { report_date: "2026-09-06", transcript: "Old fake pipeline report.", sent_at: "2026-09-06T12:00:00Z" }, error: null },
+      prospects: { data: [
+        { id: "p-old", full_name: "Old Test Prospect", created_at: "2026-09-06T12:00:00Z" },
+        { id: "p-live", full_name: "New Live Prospect", created_at: "2026-09-07T16:01:00Z" },
+      ], error: null },
+      leads: { data: [
+        { id: "l-test", prospect_id: "p-old", name: "Fake Lead", created_at: "2026-09-06T12:00:00Z", context: {} },
+        { id: "l-live", prospect_id: "p-live", name: "Real Lead", created_at: "2026-09-07T16:02:00Z", context: {} },
+      ], error: null },
+      tasks: { data: [
+        { id: "t-launch", title: "B2B launch readiness status", source: "launch_watchlist", created_at: "2026-09-07T16:03:00Z" },
+        { id: "t-test", title: "Fake task", source: "eddie", created_at: "2026-09-07T16:03:00Z" },
+      ], error: null },
+      deals: { data: [
+        { id: "d-test", title: "Fake deal", created_at: "2026-09-07T16:03:00Z" },
+      ], error: null },
+      system_config: { data: {
+        advertising_master_enabled: false, advertising_safety_monitor_enabled: false,
+        google_ads_write_enabled: false, meta_ads_write_enabled: false,
+        google_ads_daily_cap_cents: 1500, meta_ads_daily_cap_cents: 1000,
+        sales_reporting_since: "2026-09-07T16:00:00Z",
+      }, error: null },
+      production_record_classification_status: { data: [
+        { record_type: "prospect", record_id: "p-old", classification: "test_qa", classified_at: "2026-09-07T16:00:00Z" },
+        { record_type: "prospect", record_id: "p-live", classification: "production", classified_at: null },
+        { record_type: "lead", record_id: "l-test", classification: "test_qa", classified_at: "2026-09-07T16:00:00Z" },
+        { record_type: "lead", record_id: "l-live", classification: "production", classified_at: null },
+        { record_type: "task", record_id: "t-launch", classification: "production", classified_at: null },
+        { record_type: "task", record_id: "t-test", classification: "test_qa", classified_at: "2026-09-07T16:00:00Z" },
+        { record_type: "deal", record_id: "d-test", classification: "certification", classified_at: null },
+      ], error: null },
+      launch_readiness_snapshots: { data: { status: "blocked", blocker_count: 1, warning_count: 0, checks: [{ key: "final_certification", blocking: true }] }, error: null },
+    }) });
+    const { collectEddieContext } = await import("./eddie");
+
+    const context = await collectEddieContext(db);
+
+    expect(context.reporting_baseline).toBe("2026-09-07T16:00:00Z");
+    expect(context.latest_report).toBeNull();
+    expect(context.prospects.map((row) => row.id)).toEqual(["p-live"]);
+    expect(context.leads.map((row) => row.id)).toEqual(["l-live"]);
+    expect(context.open_tasks).toEqual([]);
+    expect(context.open_deals).toEqual([]);
+    expect(context.launch_readiness).toMatchObject({ status: "blocked", blocker_count: 1 });
   });
 
   it("uses Vercel's runtime OIDC request token when no static gateway key exists", async () => {

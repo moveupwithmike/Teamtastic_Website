@@ -107,13 +107,13 @@ export function sanitizeConversation(messages) {
 
 export async function collectEddieContext(db) {
   const familySince = new Date(Date.now() - 30 * 86400000).toISOString();
-  const [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult] = await Promise.all([
+  const [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult, classificationsResult, launchReadinessResult] = await Promise.all([
     db.from("daily_reports").select("report_date,summary,transcript,status,sent_at").order("report_date", { ascending: false }).limit(1).maybeSingle(),
-    db.from("prospects").select("id,full_name,email,job_title,source,status,audience_type,score,last_inbound_at,last_outbound_at,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(25),
+    db.from("prospects").select("id,full_name,email,job_title,source,status,audience_type,score,last_inbound_at,last_outbound_at,created_at,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(25),
     db.from("leads").select("id,prospect_id,name,email,company,lead_source,audience_type,status,team_size,occasion,preferred_event_date,budget_range,package_interest,decision_timeline,lead_score,landing_page,utm_source,utm_medium,utm_campaign,context,created_at").order("created_at", { ascending: false }).limit(30),
     db.from("tasks").select("id,prospect_id,title,description,status,priority,due_at,source,created_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(30),
     db.from("sales_response_drafts").select("id,lead_id,prospect_id,recipient_email,response_type,subject,body_text,status,updated_at,created_at").in("status", ["draft", "send_failed"]).order("created_at", { ascending: false }).limit(20),
-    db.from("deals").select("id,prospect_id,title,stage,outcome,expected_value,next_action,next_action_due_at,package_name,updated_at").eq("outcome", "open").order("updated_at", { ascending: false }).limit(25),
+    db.from("deals").select("id,prospect_id,title,stage,outcome,expected_value,next_action,next_action_due_at,package_name,created_at,updated_at").eq("outcome", "open").order("updated_at", { ascending: false }).limit(25),
     db.from("messages").select("id,prospect_id,direction,classification,subject,decision_reason,received_at,sent_at,created_at").order("created_at", { ascending: false }).limit(30),
     db.from("production_incidents").select("id,title,severity,status,description,created_at").neq("status", "resolved").order("created_at", { ascending: false }).limit(10),
     db.from("marketing_recommendations").select("id,recommendation_type,title,target_customer,occasion,platform,suggested_daily_budget_cents,test_days,proposed_keywords,proposed_audience,advertisement_text,creative_brief,landing_page,expected_result,reason,evidence,status,updated_at").neq("status", "archived").order("created_at", { ascending: false }).limit(20),
@@ -126,13 +126,46 @@ export async function collectEddieContext(db) {
     db.from("family_competitor_research_runs").select("id,status,sources_checked,sources_changed,recommendations_created,results,started_at,completed_at,error").order("started_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("marketing_performance_snapshots").select("platform,snapshot_date,metrics,fetched_at,error").order("snapshot_date", { ascending: false }).limit(12),
     db.from("advertising_campaign_controls").select("id,platform,name,status,daily_budget_cents,hard_daily_cap_cents,currency,time_zone,write_enabled,auto_pause_at,spend_date,today_spend_cents,last_command_at,provider_updated_at,last_error,updated_at").neq("status", "archived").order("created_at", { ascending: false }).limit(20),
-    db.from("system_config").select("advertising_master_enabled,advertising_safety_monitor_enabled,google_ads_write_enabled,meta_ads_write_enabled,google_ads_daily_cap_cents,meta_ads_daily_cap_cents").eq("id", true).maybeSingle(),
+    db.from("system_config").select("advertising_master_enabled,advertising_safety_monitor_enabled,google_ads_write_enabled,meta_ads_write_enabled,google_ads_daily_cap_cents,meta_ads_daily_cap_cents,sales_reporting_since").eq("id", true).maybeSingle(),
     socialContextSlice(db),
+    db.from("production_record_classification_status").select("record_type,record_id,classification,classified_at").in("record_type", ["lead", "prospect", "deal", "task", "booking"]).limit(5000),
+    db.from("launch_readiness_snapshots").select("status,blocker_count,warning_count,checks,created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
-  const failures = [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult]
+  const failures = [reportResult, prospectsResult, leadsResult, tasksResult, draftsResult, dealsResult, messagesResult, incidentsResult, recommendationsResult, experimentsResult, marketingDraftsResult, familyRoiResult, familyLeadsResult, familyBookingsResult, competitorSourcesResult, competitorRunResult, marketingSnapshotsResult, adControlsResult, adConfigResult, socialResult, classificationsResult, launchReadinessResult]
     .filter((result) => result.error).map((result) => result.error.code || "query_failed");
   if (failures.length) throw new EddieError("sales_data_unavailable", 503);
+
+  const reportingSince = adConfigResult.data?.sales_reporting_since || null;
+  const reportingSinceMs = reportingSince ? Date.parse(reportingSince) : 0;
+  const classifications = new Map((classificationsResult.data || []).map((row) => [`${row.record_type}:${row.record_id}`, row]));
+  const isAfterBaseline = (row) => {
+    if (!reportingSinceMs) return true;
+    const createdMs = Date.parse(row?.created_at || "");
+    return Number.isFinite(createdMs) && createdMs >= reportingSinceMs;
+  };
+  const isProduction = (recordType, recordId) => classifications.get(`${recordType}:${recordId}`)?.classification === "production";
+  const wasPromotedAfterBaseline = (recordType, recordId) => {
+    if (!reportingSinceMs) return false;
+    const classifiedMs = Date.parse(classifications.get(`${recordType}:${recordId}`)?.classified_at || "");
+    return Number.isFinite(classifiedMs) && classifiedMs >= reportingSinceMs;
+  };
+  const isLiveRecord = (recordType, row) => isProduction(recordType, row.id)
+    && (isAfterBaseline(row) || wasPromotedAfterBaseline(recordType, row.id));
+  const liveProspects = (prospectsResult.data || []).filter((row) => isLiveRecord("prospect", row));
+  const liveLeads = (leadsResult.data || []).filter((row) => row.context?.synthetic_test !== true && isLiveRecord("lead", row));
+  const liveTasks = (tasksResult.data || []).filter((row) => row.source !== "launch_watchlist" && isLiveRecord("task", row));
+  const liveDeals = (dealsResult.data || []).filter((row) => isLiveRecord("deal", row));
+  const liveResponseDrafts = (draftsResult.data || []).filter((row) => isAfterBaseline(row)
+    && ((row.lead_id && isProduction("lead", row.lead_id)) || (row.prospect_id && isProduction("prospect", row.prospect_id))));
+  const liveMessages = (messagesResult.data || []).filter((row) => isAfterBaseline(row)
+    && row.prospect_id && isProduction("prospect", row.prospect_id));
+  const familyLeads = (familyLeadsResult.data || []).filter((row) => row.context?.synthetic_test !== true && isLiveRecord("lead", row));
+  const familyLeadIds = new Set(familyLeads.map((row) => row.id));
+  const familyBookings = (familyBookingsResult.data || []).filter((row) => familyLeadIds.has(row.lead_id) && isLiveRecord("booking", row));
+  const latestReport = reportResult.data && (!reportingSinceMs || Date.parse(reportResult.data.sent_at || "") >= reportingSinceMs)
+    ? reportResult.data
+    : null;
 
   const marketingSnapshots = marketingSnapshotsResult.data || [];
   const latestMarketingSnapshot = (platform) => {
@@ -143,21 +176,23 @@ export async function collectEddieContext(db) {
 
   return {
     generated_at: new Date().toISOString(),
-    latest_report: reportResult.data || null,
-    prospects: prospectsResult.data || [],
-    leads: (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true).map(({ context: _context, ...lead }) => lead),
-    open_tasks: tasksResult.data || [],
-    response_drafts: draftsResult.data || [],
-    open_deals: dealsResult.data || [],
-    recent_message_activity: messagesResult.data || [],
+    reporting_baseline: reportingSince,
+    latest_report: latestReport,
+    launch_readiness: launchReadinessResult.data || null,
+    prospects: liveProspects,
+    leads: liveLeads.map(({ context: _context, ...lead }) => lead),
+    open_tasks: liveTasks,
+    response_drafts: liveResponseDrafts,
+    open_deals: liveDeals,
+    recent_message_activity: liveMessages,
     open_incidents: incidentsResult.data || [],
     marketing_recommendations: recommendationsResult.data || [],
     marketing_experiments: experimentsResult.data || [],
     marketing_asset_drafts: marketingDraftsResult.data || [],
     family_demand: buildFamilyDemandReport({
       campaigns: familyRoiResult.data?.campaigns || [],
-      leads: (familyLeadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true),
-      bookings: familyBookingsResult.data || [],
+      leads: familyLeads,
+      bookings: familyBookings,
       days: 30,
     }),
     family_competitor_research: {

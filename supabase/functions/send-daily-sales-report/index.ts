@@ -36,7 +36,7 @@ Deno.serve(async (request) => {
   const supabase = serviceClient();
   const { data: config, error: configError } = await supabase
     .from("system_config")
-    .select("master_enabled,daily_report_enabled,daily_report_recipient,daily_prospecting_cap,outbound_auto_paused")
+    .select("master_enabled,daily_report_enabled,daily_report_recipient,daily_prospecting_cap,outbound_auto_paused,sales_reporting_since")
     .eq("id", true)
     .single();
   if (configError) return functionError("config_query_failed");
@@ -50,27 +50,28 @@ Deno.serve(async (request) => {
   const { data: existing } = await supabase.from("daily_reports").select("status").eq("report_date", date).maybeSingle();
   if (existing?.status === "sent") return Response.json({ sent: false, skipped: true, reason: "already_sent" });
 
-  const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const familySince = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
+  const baselineMs = Date.parse(config.sales_reporting_since || "") || 0;
+  const since = new Date(Math.max(Date.now() - 24 * 60 * 60_000, baselineMs)).toISOString();
+  const familySince = new Date(Math.max(Date.now() - 30 * 24 * 60 * 60_000, baselineMs)).toISOString();
   const siteUrl = (Deno.env.get("NEXT_PUBLIC_SITE_URL") || "https://www.teamtastic.events").replace(/\/$/, "");
   const [
     leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult,
     incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult, marketingSnapshotsResult,
-    familyLeadsResult, familyBookingsResult, socialRunResult,
+    familyLeadsResult, familyBookingsResult, socialRunResult, classificationsResult,
   ] = await Promise.all([
-    supabase.from("leads").select("audience_type,context").gte("created_at", since),
-    supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
-    supabase.from("messages").select("message_type,status").eq("direction", "outbound").gte("created_at", since),
-    supabase.from("tasks").select("title,priority,due_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(20),
+    supabase.from("leads").select("id,prospect_id,audience_type,context,created_at").gte("created_at", since),
+    supabase.from("messages").select("id,prospect_id,classification,subject,received_at,created_at").eq("direction", "inbound").gte("created_at", since),
+    supabase.from("messages").select("id,prospect_id,message_type,status,created_at").eq("direction", "outbound").gte("created_at", since),
+    supabase.from("tasks").select("id,prospect_id,title,priority,due_at,source,created_at").in("status", ["open", "in_progress"]).gte("created_at", new Date(baselineMs || 0).toISOString()).order("due_at", { ascending: true }).limit(20),
     supabase.from("agent_log").select("agent_name,action,outcome,decision,created_at")
       .in("outcome", ["blocked", "skipped", "failed", "escalated"]).gte("created_at", since).order("created_at", { ascending: false }).limit(30),
-    supabase.from("deals").select("id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date")
-      .eq("outcome", "open").order("next_action_due_at", { ascending: true, nullsFirst: false }),
+    supabase.from("deals").select("id,prospect_id,title,stage,outcome,expected_value,currency,next_action,next_action_due_at,decision_date,created_at")
+      .eq("outcome", "open").gte("created_at", new Date(baselineMs || 0).toISOString()).order("next_action_due_at", { ascending: true, nullsFirst: false }),
     supabase.from("sequence_enrollments").select("id,prospect_id,sequence_id,current_step,updated_at")
       .eq("status", "active").is("next_action_at", null).limit(20),
     supabase.from("production_incidents").select("id,category,severity,status,title,occurrences,last_seen_at")
       .neq("status", "resolved").in("severity", ["critical", "high"]).order("last_seen_at", { ascending: false }).limit(20),
-    supabase.from("sales_response_drafts").select("id,response_type,recipient_email,created_at")
+    supabase.from("sales_response_drafts").select("id,lead_id,prospect_id,response_type,recipient_email,created_at")
       .eq("status", "draft").order("created_at", { ascending: false }).limit(20),
     supabase.from("deal_payments").select("amount,currency,paid_at").gte("paid_at", since),
     supabase.from("outreach_drafts").select("id,prospect_id,subject,created_at")
@@ -81,29 +82,37 @@ Deno.serve(async (request) => {
       .select("id,audience_type,occasion,preferred_event_date,lead_score,landing_page,status,context,created_at")
       .in("audience_type", ["family", "friends", "other_private_event"])
       .gte("created_at", familySince).limit(500),
-    supabase.from("bookings").select("lead_id,status").gte("created_at", familySince).limit(500),
+    supabase.from("bookings").select("id,lead_id,status,created_at").gte("created_at", familySince).limit(500),
     supabase.from("social_generation_runs")
       .select("generation_date,status,created_count,result,error,completed_at")
       .eq("generation_date", date).maybeSingle(),
+    supabase.from("production_record_classification_status")
+      .select("record_type,record_id,classification")
+      .in("record_type", ["lead", "prospect", "deal", "task", "booking"]).limit(5000),
   ]);
   const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error
     || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error
     || incidentsResult.error || hotLeadDraftsResult.error || revenueResult.error || outreachDraftsResult.error
     || marketingSnapshotsResult.error || familyLeadsResult.error || familyBookingsResult.error
-    || socialRunResult.error;
+    || socialRunResult.error || classificationsResult.error;
   if (queryError) return functionError("report_query_failed");
 
-  const replies = repliesResult.data || [];
-  const leads = (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true);
-  const outbound = outboundResult.data || [];
-  const tasks = tasksResult.data || [];
+  const classifications = new Map((classificationsResult.data || []).map((row) => [`${row.record_type}:${row.record_id}`, row.classification]));
+  const isProduction = (recordType: string, recordId: string | null | undefined) => Boolean(recordId)
+    && classifications.get(`${recordType}:${recordId}`) === "production";
+  const isProductionConversation = (row: { prospect_id?: string | null }) => isProduction("prospect", row.prospect_id);
+  const replies = (repliesResult.data || []).filter(isProductionConversation);
+  const leads = (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true && isProduction("lead", lead.id));
+  const outbound = (outboundResult.data || []).filter(isProductionConversation);
+  const tasks = (tasksResult.data || []).filter((task) => task.source !== "launch_watchlist" && isProduction("task", task.id));
   const decisions = decisionsResult.data || [];
-  const deals = dealsResult.data || [];
-  const stuckEnrollments = stuckEnrollmentsResult.data || [];
+  const deals = (dealsResult.data || []).filter((deal) => isProduction("deal", deal.id));
+  const stuckEnrollments = (stuckEnrollmentsResult.data || []).filter((row) => isProduction("prospect", row.prospect_id));
   const incidents = incidentsResult.data || [];
-  const hotLeadDrafts = hotLeadDraftsResult.data || [];
+  const hotLeadDrafts = (hotLeadDraftsResult.data || []).filter((row) =>
+    isProduction("lead", row.lead_id) || isProduction("prospect", row.prospect_id));
   const revenuePayments = revenueResult.data || [];
-  const outreachDrafts = outreachDraftsResult.data || [];
+  const outreachDrafts = (outreachDraftsResult.data || []).filter((row) => isProduction("prospect", row.prospect_id));
   const seenMarketingPlatforms = new Set<string>();
   const marketingSnapshots = (marketingSnapshotsResult.data || []).filter((row) => {
     if (seenMarketingPlatforms.has(row.platform)) return false;
@@ -115,8 +124,8 @@ Deno.serve(async (request) => {
   const leadAudienceCounts = countBy(leads, (row) => row.audience_type || "corporate");
   const privateLeadCount = (leadAudienceCounts.family || 0) + (leadAudienceCounts.friends || 0) + (leadAudienceCounts.other_private_event || 0);
   const familyDemand = buildFamilyDemandSnapshot({
-    leads: familyLeadsResult.data || [],
-    bookings: familyBookingsResult.data || [],
+    leads: (familyLeadsResult.data || []).filter((row) => isProduction("lead", row.id)),
+    bookings: (familyBookingsResult.data || []).filter((row) => isProduction("booking", row.id)),
   });
   const socialMorning = socialRunResult.data
     ? {
@@ -234,6 +243,7 @@ Deno.serve(async (request) => {
     ${deliverabilityHtml}
   `;
   const summary = {
+    reporting_baseline: config.sales_reporting_since || null,
     new_leads: leads.length,
     new_leads_by_audience: leadAudienceCounts,
     replies: replyCounts,
