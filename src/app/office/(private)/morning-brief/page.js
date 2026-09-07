@@ -28,7 +28,10 @@ export default async function MorningBriefPage() {
           Listen to your daily briefing, then ask follow-up questions or give Eddie a task.
         </p>
       </div>
-      <EddieChat realtimeConfigured={Boolean(process.env.OPENAI_API_KEY)} />
+      <EddieChat
+        realtimeConfigured={Boolean(process.env.OPENAI_API_KEY)}
+        elevenLabsConfigured={Boolean(process.env.ELEVENLABS_API_KEY)}
+      />
       <Card title="Recent briefs from Eddie" count={withSignedUrls.length} tone={withSignedUrls.length ? "purple" : "green"}>
         <div className="space-y-4">
           {withSignedUrls.map((row) => (

@@ -45,7 +45,7 @@ const stateCopy = {
   speaking: ["Eddie is speaking", "You can follow along in the live transcript."],
 };
 
-export default function EddieChat({ initialBrief = null, realtimeConfigured = false }) {
+export default function EddieChat({ initialBrief = null, realtimeConfigured = false, elevenLabsConfigured = false }) {
   const [messages, setMessages] = useState([welcome]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,6 +56,8 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
   const [pendingAction, setPendingAction] = useState(null);
   const endRef = useRef(null);
   const recognitionRef = useRef(null);
+  const voiceAudioRef = useRef(null);
+  const speechRequestRef = useRef(0);
   const peerRef = useRef(null);
   const channelRef = useRef(null);
   const microphoneRef = useRef(null);
@@ -68,6 +70,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
   useEffect(() => { busyRef.current = busy; }, [busy]);
 
   function stopRealtime() {
+    stopVoiceOutput();
     channelRef.current?.close?.();
     peerRef.current?.close?.();
     microphoneRef.current?.getTracks?.().forEach((track) => track.stop());
@@ -84,6 +87,8 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
   useEffect(() => () => {
     recognitionRef.current?.abort?.();
     window.speechSynthesis?.cancel();
+    speechRequestRef.current += 1;
+    voiceAudioRef.current?.pause?.();
     channelRef.current?.close?.();
     peerRef.current?.close?.();
     microphoneRef.current?.getTracks?.().forEach((track) => track.stop());
@@ -91,6 +96,18 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
 
   const presenceState = listening ? "listening" : busy ? "thinking" : speaking ? "speaking" : "ready";
   const [presenceTitle, presenceDetail] = stateCopy[presenceState];
+
+  function stopVoiceOutput() {
+    speechRequestRef.current += 1;
+    window.speechSynthesis?.cancel();
+    const audio = voiceAudioRef.current;
+    if (audio) {
+      audio.pause();
+      if (audio.src?.startsWith("blob:")) URL.revokeObjectURL(audio.src);
+      voiceAudioRef.current = null;
+    }
+    setSpeaking(false);
+  }
 
   function speakBrowser(text) {
     if (!speakReplies || !window.speechSynthesis || !text) return;
@@ -122,11 +139,51 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
     return true;
   }
 
-  function speakReply(text, preferRealtime = liveVoice === "on") {
+  async function speakElevenLabs(text, preferRealtime) {
+    if (!elevenLabsConfigured || !text) return false;
+    const requestNumber = ++speechRequestRef.current;
+    let audioUrl = "";
+    try {
+      const response = await fetch("/api/office/eddie/speech", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: String(text).slice(0, 4_000) }),
+      });
+      if (!response.ok || requestNumber !== speechRequestRef.current) return false;
+      audioUrl = URL.createObjectURL(await response.blob());
+      if (requestNumber !== speechRequestRef.current) {
+        URL.revokeObjectURL(audioUrl);
+        return false;
+      }
+      const audio = new Audio(audioUrl);
+      voiceAudioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (voiceAudioRef.current === audio) voiceAudioRef.current = null;
+        setSpeaking(false);
+        if (preferRealtime) setListening(true);
+      };
+      audio.onerror = audio.onended;
+      setSpeaking(true);
+      await audio.play();
+      return true;
+    } catch {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (voiceAudioRef.current) {
+        voiceAudioRef.current.pause();
+        voiceAudioRef.current = null;
+      }
+      if (requestNumber === speechRequestRef.current) setSpeaking(false);
+      return false;
+    }
+  }
+
+  async function speakReply(text, preferRealtime = liveVoice === "on") {
     if (!speakReplies) {
       if (preferRealtime) setListening(true);
       return;
     }
+    if (await speakElevenLabs(text, preferRealtime)) return;
     if (preferRealtime && speakRealtime(text)) return;
     speakBrowser(text);
   }
@@ -165,7 +222,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
     if (!realtimeConfigured || liveVoice !== "off" || busyRef.current) return;
     setLiveVoice("connecting");
     recognitionRef.current?.abort?.();
-    window.speechSynthesis?.cancel();
+    stopVoiceOutput();
     try {
       const peer = new RTCPeerConnection();
       const remoteAudio = document.createElement("audio");
@@ -192,7 +249,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
         try { message = JSON.parse(event.data); } catch { return; }
         if (message.type === "input_audio_buffer.speech_started") {
           setListening(true);
-          setSpeaking(false);
+          stopVoiceOutput();
           if (channel.readyState === "open") {
             channel.send(JSON.stringify({ type: "response.cancel" }));
             channel.send(JSON.stringify({ type: "output_audio_buffer.clear" }));
@@ -252,8 +309,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: "Voice input is not supported by this browser. You can still type your request below.", error: true }]);
       return;
     }
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
+    stopVoiceOutput();
     const recognition = new Recognition();
     recognitionRef.current = recognition;
     recognition.lang = "en-US";
@@ -273,8 +329,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
     if (!pendingAction?.token || busy) return;
     busyRef.current = true;
     setBusy(true);
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
+    stopVoiceOutput();
     try {
       const response = await fetch("/api/office/eddie", {
         method: "POST",
@@ -298,8 +353,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
 
   function clearConversation() {
     stopRealtime();
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
+    stopVoiceOutput();
     setMessages([welcome]);
     setPendingAction(null);
     setInput("");
@@ -307,12 +361,11 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
 
   function toggleSpeakReplies() {
     if (speakReplies) {
-      window.speechSynthesis?.cancel();
+      stopVoiceOutput();
       if (channelRef.current?.readyState === "open") {
         channelRef.current.send(JSON.stringify({ type: "response.cancel" }));
         channelRef.current.send(JSON.stringify({ type: "output_audio_buffer.clear" }));
       }
-      setSpeaking(false);
     }
     setSpeakReplies((value) => !value);
   }
@@ -334,6 +387,7 @@ export default function EddieChat({ initialBrief = null, realtimeConfigured = fa
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${presenceState === "listening" ? "bg-sky-500/15 text-sky-200" : presenceState === "thinking" ? "bg-amber-500/15 text-amber-200" : presenceState === "speaking" ? "bg-purple-500/20 text-purple-200" : "bg-emerald-500/15 text-emerald-200"}`}>{presenceState}</span>
             <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">Live sales data</span>
             {liveVoice === "on" && <span className="rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-200">Continuous voice</span>}
+            {elevenLabsConfigured && <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-semibold text-purple-200">Eddie voice selected</span>}
           </div>
           {initialBrief?.audioUrl && (
             <details className="mt-5 w-full max-w-sm rounded-xl border border-white/10 bg-slate-950/40 p-3 text-left">

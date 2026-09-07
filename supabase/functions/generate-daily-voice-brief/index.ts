@@ -5,11 +5,49 @@ import { buildFamilyDemandSnapshot } from "../_shared/family-demand.ts";
 import { authorizeWebhook, errorText, functionError, serviceClient } from "../_shared/runtime.ts";
 import { generateSummary, reportDate } from "../_shared/voice-brief.ts";
 
-// Vercel's supported speech interface currently exposes OpenAI speech models.
 const SPEECH_MODEL = "openai/tts-1";
+const DEFAULT_EDDIE_VOICE_ID = "uznTibduhI714GjhEXrS";
 const AUDIO_BUCKET = "daily-report-audio";
 
 async function generateSpeech(gatewayKey: string, text: string): Promise<Uint8Array> {
+  const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
+  if (elevenLabsKey) {
+    try {
+      const voiceId = Deno.env.get("EDDIE_ELEVENLABS_VOICE_ID") || DEFAULT_EDDIE_VOICE_ID;
+      const modelId = Deno.env.get("EDDIE_ELEVENLABS_MODEL_ID") || "eleven_multilingual_v2";
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            accept: "audio/mpeg",
+            "content-type": "application/json",
+            "xi-api-key": elevenLabsKey,
+          },
+          body: JSON.stringify({
+            text,
+            model_id: modelId,
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.8,
+              style: 0.2,
+              use_speaker_boost: true,
+            },
+          }),
+          signal: AbortSignal.timeout(30_000),
+        },
+      );
+      if (!response.ok) throw new Error(`ElevenLabs speech failed (${response.status})`);
+      const audio = new Uint8Array(await response.arrayBuffer());
+      if (!audio.length) throw new Error("ElevenLabs returned no audio");
+      return audio;
+    } catch (error) {
+      console.warn("ElevenLabs speech unavailable; using the emergency OpenAI voice", error);
+    }
+  }
+
+  // Keep the proven provider as an emergency fallback so the report is never
+  // lost solely because the preferred voice provider is unavailable.
   const gateway = createGateway({ apiKey: gatewayKey });
   const result = await generateSpeechWithAi({
     model: gateway.speechModel(SPEECH_MODEL),
