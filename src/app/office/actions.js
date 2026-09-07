@@ -15,6 +15,8 @@ import * as distribution from "@/lib/server/office/distribution";
 import * as configuration from "@/lib/server/office/configuration";
 import * as proposals from "@/lib/server/office/proposals";
 import * as capacity from "@/lib/server/office/capacity";
+import * as socialDesk from "@/lib/server/office/social-desk";
+import * as socialAccounts from "@/lib/server/office/social-accounts";
 
 export async function requestMagicLink(v) { return authentication.requestMagicLink(v); }
 export async function signOutOffice() { return authentication.signOutOffice(); }
@@ -59,3 +61,16 @@ export async function reconcileProposalSend(v) { return proposals.reconcilePropo
 export async function createEventCapacityHold(v) { return capacity.createEventCapacityHold(v); }
 export async function releaseEventCapacityHold(v) { return capacity.releaseEventCapacityHold(v); }
 export async function updateEventCapacityHost(v) { return capacity.updateEventCapacityHost(v); }
+export async function uploadSocialMedia(v) { return socialDesk.uploadSocialMedia(v); }
+export async function createSocialItem(v) { return socialDesk.createSocialItem(v); }
+export async function reviseSocialItem(v) { return socialDesk.reviseSocialItem(v); }
+export async function approveSocialItem(v) { return socialDesk.approveSocialItem(v); }
+export async function rejectSocialItem(v) { return socialDesk.rejectSocialItem(v); }
+export async function scheduleSocialItem(v) { return socialDesk.scheduleSocialItem(v); }
+export async function rescheduleSocialItem(v) { return socialDesk.rescheduleSocialItem(v); }
+export async function pauseScheduledSocialItem(v) { return socialDesk.pauseScheduledSocialItem(v); }
+export async function publishSocialItem(v) { return socialDesk.publishSocialItem(v); }
+export async function retrySocialPublish(v) { return socialDesk.retrySocialPublish(v); }
+export async function createSocialAccount(v) { return socialAccounts.createSocialAccount(v); }
+export async function updateSocialAccount(v) { return socialAccounts.updateSocialAccount(v); }
+export async function updateSocialConfig(v) { return socialAccounts.updateSocialConfig(v); }

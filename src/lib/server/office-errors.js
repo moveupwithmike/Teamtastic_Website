@@ -73,6 +73,21 @@ const OFFICE_ERROR_MESSAGES = {
   posted_url_required: "Enter the URL where this was posted.",
   schedule_required: "Choose a date and time to schedule this for.",
 
+  // Social desk
+  account_missing: "Choose a connected account that matches this platform.",
+  content_changed: "The content changed since approval, so publishing is blocked for safety.",
+  media_required: "Attach the media before approving this post.",
+  media_invalid: "The uploaded media list is invalid.",
+  media_invalid_type: "Only image, video, and document files are supported.",
+  media_too_large: "The media file is too large (max 100 MB).",
+  media_upload_failed: "The media could not be uploaded. Please try again.",
+  not_yet_due: "This post is scheduled for later — it cannot publish before its exact time.",
+  platform_invalid: "That platform isn't a supported social channel.",
+  provider_id_required: "A provider handle or ID is required when saving credentials.",
+  publish_failed: "Publishing failed. The attempt was recorded — review its status before retrying.",
+  manual_token_mixed: "Choose either manual copy-and-post or connector credentials, not both.",
+  time_changed: "The scheduled time changed since confirmation, so publishing is blocked for safety.",
+
   // System settings
   settings_save_failed: "The settings could not be saved. Please try again.",
 
