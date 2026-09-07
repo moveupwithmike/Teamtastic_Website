@@ -14,6 +14,7 @@ import {
 import { platformStatus } from "./social-publishers";
 import { formatRequiresMedia, attemptSocialPublish } from "./social-publish";
 import { recordDistributionEvent } from "./social-events";
+import { buildMorningProposals } from "./social-generator";
 
 const DISTRIBUTION_PATH = "/office/distribution";
 const MEDIA_BUCKET = "distribution-media";
@@ -287,4 +288,22 @@ export async function publishSocialItem(formData) {
 
 export async function retrySocialPublish(formData) {
   return publishSocialItem(formData);
+}
+
+export async function runMorningGenerator() {
+  const user = await requireOfficeUser();
+  const db = getSupabaseAdmin();
+  const result = await buildMorningProposals({ db });
+  await audit("run_morning_generator", user, {
+    batch_id: result.batch_id || null,
+    created: result.created || 0,
+    reason: result.reason || null,
+    automatic_publishing: false,
+  }, null, result.enabled ? "completed" : "failed", result.reason || null);
+  revalidatePath(DISTRIBUTION_PATH);
+  redirect(result.enabled
+    ? result.already_generated
+      ? `${DISTRIBUTION_PATH}?success=already-generated:${result.previous_created || 0}`
+      : `${DISTRIBUTION_PATH}?success=proposed:${result.created}`
+    : `${DISTRIBUTION_PATH}?error=${result.reason === "generator_failed" ? "generator_failed" : "generator_off"}`);
 }

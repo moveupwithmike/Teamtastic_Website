@@ -77,7 +77,7 @@ Deno.serve(async (request) => {
   });
   const familySince = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
   const leadSince = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const [familyLeadsResult, familyBookingsResult, recentLeadsResult] = await Promise.all([
+  const [familyLeadsResult, familyBookingsResult, recentLeadsResult, socialRunResult] = await Promise.all([
     supabase.from("leads")
       .select("id,audience_type,occasion,preferred_event_date,lead_score,landing_page,status,context,created_at")
       .in("audience_type", ["family", "friends", "other_private_event"])
@@ -85,6 +85,9 @@ Deno.serve(async (request) => {
       .limit(500),
     supabase.from("bookings").select("lead_id,status").gte("created_at", familySince).limit(500),
     supabase.from("leads").select("audience_type,context").gte("created_at", leadSince).limit(500),
+    supabase.from("social_generation_runs")
+      .select("generation_date,status,created_count,result,error,completed_at")
+      .eq("generation_date", date).maybeSingle(),
   ]);
   const familyDemand = familyLeadsResult.error || familyBookingsResult.error
     ? { available: false, reason: "family_demand_query_failed" }
@@ -101,10 +104,21 @@ Deno.serve(async (request) => {
     new_leads: realRecentLeads.length,
     new_leads_by_audience: leadCounts,
   };
+  const socialMorning = socialRunResult.error
+    ? { available: false, reason: "social_generation_query_failed" }
+    : socialRunResult.data
+      ? {
+        available: true,
+        status: socialRunResult.data.status,
+        created: Number(socialRunResult.data.created_count || 0),
+        result: socialRunResult.data.result || {},
+        error: socialRunResult.data.error || null,
+      }
+      : { available: true, status: "not_run", created: 0 };
 
   let transcript: string;
   try {
-    transcript = await generateSummary(gatewayKey, currentSummary, marketingSnapshots, familyDemand);
+    transcript = await generateSummary(gatewayKey, currentSummary, marketingSnapshots, familyDemand, socialMorning);
   } catch (error) {
     const message = errorText(error);
     console.error("daily-voice-brief summary generation failed:", message);

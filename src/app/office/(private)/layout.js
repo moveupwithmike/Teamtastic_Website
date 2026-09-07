@@ -26,6 +26,7 @@ export default async function PrivateOfficeLayout({ children }) {
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/respond">Respond</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/distribution">Social desk</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/social-accounts">Social accounts</Link>
+          <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/voice">Voice</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/audience">Audience</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/health">Health</Link>
           <Link className="rounded-lg bg-white/5 px-4 py-2 hover:bg-white/10" href="/office/launch">Launch</Link>

@@ -11,13 +11,14 @@ export default async function SocialAccountsPage({ searchParams }) {
   const { db } = await getOfficeDb();
   const [accountsResult, configResult] = await Promise.all([
     db.from("social_accounts").select("*").order("platform", { ascending: true }).order("created_at", { ascending: true }),
-    db.from("system_config").select("social_master_enabled,linkedin_write_enabled,instagram_write_enabled,facebook_write_enabled,x_write_enabled").eq("id", true).maybeSingle(),
+    db.from("system_config").select("social_master_enabled,social_generator_enabled,linkedin_write_enabled,instagram_write_enabled,facebook_write_enabled,x_write_enabled").eq("id", true).maybeSingle(),
   ]);
   const accounts = accountsResult.data || [];
   const config = configResult.data || {};
 
   const switches = [
     ["social_master_enabled", "Social desk master switch — gate for every automated Social Desk action"],
+    ["social_generator_enabled", "Morning generator — proposes the day's social drafts for review (never publishes)"],
     ["linkedin_write_enabled", "LinkedIn write permission"],
     ["instagram_write_enabled", "Instagram write permission"],
     ["facebook_write_enabled", "Facebook write permission"],

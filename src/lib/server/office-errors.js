@@ -88,6 +88,23 @@ const OFFICE_ERROR_MESSAGES = {
   manual_token_mixed: "Choose either manual copy-and-post or connector credentials, not both.",
   time_changed: "The scheduled time changed since confirmation, so publishing is blocked for safety.",
 
+  // Social voice management
+  voice_kind_invalid: "That voice entry kind isn't supported.",
+  voice_entry_missing: "That voice entry no longer exists.",
+  voice_entry_failed: "The voice entry could not be saved. Please try again.",
+
+  // Morning generator
+  generator_off: "The morning generator is switched off (toggle it on from Social accounts).",
+  generator_failed: "The morning generator could not complete. No drafts were changed.",
+
+  // Social measurement
+  measurement_failed: "Measurement could not be refreshed. The existing counts are unchanged.",
+
+  // Video rendering queue
+  video_render_missing: "That video post doesn't exist anymore.",
+  video_render_format: "Rendering is for video-format posts only.",
+  video_render_failed: "The render job couldn't be queued. The post is unchanged.",
+
   // System settings
   settings_save_failed: "The settings could not be saved. Please try again.",
 

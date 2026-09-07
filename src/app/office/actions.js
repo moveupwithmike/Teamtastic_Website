@@ -17,6 +17,9 @@ import * as proposals from "@/lib/server/office/proposals";
 import * as capacity from "@/lib/server/office/capacity";
 import * as socialDesk from "@/lib/server/office/social-desk";
 import * as socialAccounts from "@/lib/server/office/social-accounts";
+import * as voiceActions from "@/lib/server/office/voice-actions";
+import * as socialMeasurement from "@/lib/server/office/social-measurement";
+import * as videoRender from "@/lib/server/office/video-render";
 
 export async function requestMagicLink(v) { return authentication.requestMagicLink(v); }
 export async function signOutOffice() { return authentication.signOutOffice(); }
@@ -74,3 +77,9 @@ export async function retrySocialPublish(v) { return socialDesk.retrySocialPubli
 export async function createSocialAccount(v) { return socialAccounts.createSocialAccount(v); }
 export async function updateSocialAccount(v) { return socialAccounts.updateSocialAccount(v); }
 export async function updateSocialConfig(v) { return socialAccounts.updateSocialConfig(v); }
+export async function createVoiceEntry(v) { return voiceActions.createVoiceEntry(v); }
+export async function updateVoiceEntry(v) { return voiceActions.updateVoiceEntry(v); }
+export async function deleteVoiceEntry(v) { return voiceActions.deleteVoiceEntry(v); }
+export async function runMorningGenerator() { return socialDesk.runMorningGenerator(); }
+export async function refreshSocialMeasurement() { return socialMeasurement.refreshSocialMeasurement(); }
+export async function queueSocialVideoRender(v) { return videoRender.queueSocialVideoRender(v); }

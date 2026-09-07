@@ -5,9 +5,10 @@ import { platformStatus } from "@/lib/server/office/social-publishers";
 import { SOCIAL_FORMATS, SOCIAL_OBJECTIVES, SOCIAL_PLATFORMS } from "@/lib/server/office/social-shared";
 import { buildVoiceContext } from "@/lib/server/office/social-voice";
 import {
-  prepareDistributionQueue, createSocialItem, reviseSocialItem,
-  approveSocialItem, rejectSocialItem, scheduleSocialItem, rescheduleSocialItem,
-  pauseScheduledSocialItem, publishSocialItem, retrySocialPublish,
+  createSocialItem, reviseSocialItem, approveSocialItem, rejectSocialItem,
+  scheduleSocialItem, rescheduleSocialItem, pauseScheduledSocialItem,
+  publishSocialItem, retrySocialPublish, runMorningGenerator,
+  refreshSocialMeasurement, queueSocialVideoRender,
 } from "../../actions";
 import SocialMediaField from "./social-media-field";
 
@@ -39,21 +40,34 @@ export default async function DistributionPage({ searchParams }) {
   const params = await searchParams;
   const { db } = await getOfficeDb();
 
-  const [itemsResult, accountsResult, eventsResult, configResult, voiceResult] = await Promise.all([
+  const [itemsResult, accountsResult, eventsResult, configResult, voiceResult, rendersResult] = await Promise.all([
     db.from("distribution_items").select("*").neq("status", "archived").order("created_at", { ascending: false }).limit(100),
     db.from("social_accounts").select("*").order("platform", { ascending: true }),
     db.from("distribution_item_events").select("distribution_item_id,action,status_before,status_after,actor,created_at").order("created_at", { ascending: false }).limit(30),
     db.from("system_config").select("social_master_enabled,linkedin_write_enabled,instagram_write_enabled,facebook_write_enabled,x_write_enabled").eq("id", true).maybeSingle(),
     buildVoiceContext(db),
+    db.from("social_video_renders").select("*").order("created_at", { ascending: false }).limit(100),
   ]);
 
   const items = itemsResult.data || [];
   const accounts = accountsResult.data || [];
   const config = configResult.data || {};
   const events = eventsResult.data || [];
+  const renders = rendersResult.data || [];
   const eventsByItem = {};
   for (const event of events) (eventsByItem[event.distribution_item_id] ||= []).push(event);
+  const latestRenderByItem = {};
+  for (const render of renders) {
+    if (!latestRenderByItem[render.item_id]) latestRenderByItem[render.item_id] = render;
+  }
   const signatures = voiceResult.signatures;
+
+  const measured = items.filter((item) => item.utm_content);
+  const totals = measured.reduce((acc, item) => ({
+    visitors: acc.visitors + (item.visitors || 0),
+    engaged: acc.engaged + (item.engaged || 0),
+    leads: acc.leads + (item.leads || 0),
+  }), { visitors: 0, engaged: 0, leads: 0 });
 
   const itemsWithMedia = await Promise.all(items.map(async (item) => ({ item, media: await signedMedia(item) })));
   const statusCounts = {};
@@ -68,7 +82,17 @@ export default async function DistributionPage({ searchParams }) {
     <div className="space-y-8">
       {(params?.success || params?.error) && (
         <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-300" : "bg-emerald-500/10 text-emerald-300"}`}>
-          {params.error ? `The action couldn't be completed (${params.error}). The item stayed where it was — review it before trying again.` : "Social desk updated."}
+          {params.error ? `The action couldn't be completed (${params.error}). The item stayed where it was — review it before trying again.` : (
+            typeof params.success === "string" && params.success.startsWith("proposed:")
+              ? `Morning generator proposed ${params.success.split(":")[1]} review-only draft${params.success.split(":")[1] === "1" ? "" : "s"}. Nothing is approved or published until you review them.`
+              : typeof params.success === "string" && params.success.startsWith("already-generated:")
+                ? `Eddie already prepared today's ${params.success.split(":")[1]} review-only social draft${params.success.split(":")[1] === "1" ? "" : "s"}. The retry created nothing extra.`
+              : params.success === "measured"
+                ? "Measurement refreshed — clicks, engagement, and leads rolled up from today's first-party funnel events."
+              : params.success === "rendered:queued"
+                ? "Render queued. The post is unchanged — the produced video attaches as media once the renderer finishes."
+              : "Social desk updated."
+          )}
         </p>
       )}
 
@@ -78,7 +102,7 @@ export default async function DistributionPage({ searchParams }) {
           <p className="mt-2 text-slate-400">Owned and approved social content with tracked links. Nothing publishes until you approve the exact content, and automation stays off until you turn it on.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <form action={prepareDistributionQueue}><button className={`${buttonClass} bg-white/10 hover:bg-white/15`}>Generate this month&apos;s drafts</button></form>
+          <form action={runMorningGenerator}><button className={`${buttonClass} bg-white/10 hover:bg-white/15`}>Propose today&apos;s post drafts</button></form>
         </div>
       </div>
 
@@ -88,6 +112,57 @@ export default async function DistributionPage({ searchParams }) {
         <Card title="Published" tone="green"><p className="text-3xl font-bold text-emerald-300">{statusCounts.published || 0}</p></Card>
         <Card title="Failed publishes" tone="red"><p className="text-3xl font-bold text-red-300">{statusCounts.publish_failed || 0}</p></Card>
       </div>
+
+      <Card title="Measurement">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="max-w-xl text-xs text-slate-500">Lifetime clicks, engagement, and leads from first-party funnel events, matched to each post by its tracked link (utm_content). Refresh pulls in the latest full day; totals are recomputed from every stored snapshot.</p>
+          <form action={refreshSocialMeasurement}><button className={buttonClass}>Refresh counts for today</button></form>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-wide text-slate-500">
+                <th className="py-1 pr-3">Post</th>
+                <th className="px-3 py-1">Platform</th>
+                <th className="px-3 py-1">Status</th>
+                <th className="px-3 py-1 text-right">Clicks</th>
+                <th className="px-3 py-1 text-right">Engaged</th>
+                <th className="px-3 py-1 text-right">Leads</th>
+                <th className="px-3 py-1 text-right">Lead rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {measured.map((item) => {
+                const rate = item.visitors > 0 ? Math.round((100 * (item.leads || 0)) / item.visitors) : null;
+                return (
+                  <tr key={item.id} className="border-t border-white/5 text-slate-300">
+                    <td className="max-w-xs truncate py-2 pr-3 text-slate-200">{item.title}</td>
+                    <td className="px-3 py-2">{item.channel}</td>
+                    <td className="px-3 py-2"><StatusBadge item={item} /></td>
+                    <td className="px-3 py-2 text-right">{item.visitors || 0}</td>
+                    <td className="px-3 py-2 text-right">{item.engaged || 0}</td>
+                    <td className="px-3 py-2 text-right">{item.leads || 0}</td>
+                    <td className="px-3 py-2 text-right">{rate === null ? "—" : `${rate}%`}</td>
+                  </tr>
+                );
+              })}
+              {!measured.length && (
+                <tr className="border-t border-white/5"><td colSpan={7} className="py-2 text-xs text-slate-500">No tracked posts yet — refresh once a post is live.</td></tr>
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-white/10 font-semibold text-slate-100">
+                <td className="py-2 pr-3">Totals</td>
+                <td colSpan={2}></td>
+                <td className="px-3 py-2 text-right">{totals.visitors}</td>
+                <td className="px-3 py-2 text-right">{totals.engaged}</td>
+                <td className="px-3 py-2 text-right">{totals.leads}</td>
+                <td className="px-3 py-2 text-right">{totals.visitors > 0 ? `${Math.round((100 * totals.leads) / totals.visitors)}%` : "—"}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </Card>
 
       <Card title="New post">
         <form action={createSocialItem} className="grid gap-4 sm:grid-cols-2">
@@ -156,7 +231,7 @@ export default async function DistributionPage({ searchParams }) {
       {signatures.length > 0 && (
         <Card title="Voice signatures to keep in mind">
           <div className="flex flex-wrap gap-2 text-xs">
-            {signatures.map((s) => <span key={s.label} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">{s.body}</span>)}
+            {signatures.map((s) => <span key={s.id} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">{s.body}</span>)}
           </div>
         </Card>
       )}
@@ -176,6 +251,8 @@ export default async function DistributionPage({ searchParams }) {
                 {item.funnel_stage && <><span>·</span><span>{item.funnel_stage}</span></>}
                 {item.published_at ? <><span>·</span><span>published {formatDate(item.published_at)}</span></> : null}
                 {item.provider_post_id ? <><span>·</span><span>provider {item.provider_post_id}</span></> : null}
+                {latestRenderByItem[item.id] && <><span>·</span><span className="text-amber-300/80">render {latestRenderByItem[item.id].status}</span></>}
+                {(item.visitors || item.leads) ? <><span>·</span><span>{item.visitors || 0} clicks · {item.leads || 0} leads</span></> : null}
               </div>
 
               <div className="space-y-2 text-sm">
@@ -204,6 +281,9 @@ export default async function DistributionPage({ searchParams }) {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
+                {item.format === "video" && !latestRenderByItem[item.id] && (
+                  <form action={queueSocialVideoRender}><input type="hidden" name="id" value={item.id} /><button className="rounded-lg border border-white/10 px-3 py-2 text-sm">Queue render</button></form>
+                )}
                 {item.status === "draft" && (
                   <>
                     <form action={approveSocialItem}><input type="hidden" name="id" value={item.id} /><button className={buttonClass}>Approve exact content</button></form>

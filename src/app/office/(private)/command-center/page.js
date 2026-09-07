@@ -131,7 +131,10 @@ export default async function CommandCenterPage({ searchParams }) {
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-bold uppercase tracking-[0.2em] text-purple-300">Eddie Command Center</p><h2 className="mt-1 text-3xl font-bold sm:text-4xl">The business at a glance</h2><p className="mt-2 text-slate-400">Sales, marketing, market intelligence and Eddie&apos;s work in one place.</p></div><CommandCenterControls televisionMode={televisionMode}/></div>
 
     <section><div className="mb-4 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-purple-300">Today</p><h3 className="text-2xl font-bold">Talk with Eddie</h3></div><Link href="/office/morning-brief" className="text-sm text-purple-300">Open briefing history →</Link></div>
-      <EddieChat initialBrief={report ? { audioUrl: signedAudioUrl, transcript: report.transcript } : null}/>
+      <EddieChat
+        initialBrief={report ? { audioUrl: signedAudioUrl, transcript: report.transcript } : null}
+        realtimeConfigured={Boolean(process.env.OPENAI_API_KEY)}
+      />
       <div className="mt-5 grid gap-4 sm:grid-cols-3"><Metric label="Open tasks" value={(tasksResult.data || []).length} tone="text-amber-300"/><Metric label="Messages" value={messages.length} tone="text-sky-300"/><Metric label="Awaiting approval" value={approvalCount} tone="text-purple-300"/></div>
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
       <Card title="Important tasks" count={(tasksResult.data || []).length} tone="gold">{(tasksResult.data || []).length ? <div className="space-y-2">{(tasksResult.data || []).slice(0, 6).map((task) => <div key={task.id} className="rounded-lg bg-white/5 p-3"><div className="flex justify-between gap-3"><p className="font-medium">{task.title}</p><StatusPill tone={task.priority === "urgent" ? "red" : task.priority === "high" ? "gold" : "slate"}>{task.priority}</StatusPill></div><p className="mt-1 text-xs text-slate-500">{task.due_at ? `Due ${formatDate(task.due_at)}` : "No due date"}</p></div>)}</div> : <Empty/>}</Card>

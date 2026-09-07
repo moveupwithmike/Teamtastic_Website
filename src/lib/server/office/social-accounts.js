@@ -77,7 +77,7 @@ export async function updateSocialConfig(formData) {
   const user = await requireOfficeUser();
   const db = getSupabaseAdmin();
   const patch = {};
-  for (const flag of ["social_master_enabled", "linkedin_write_enabled", "instagram_write_enabled", "facebook_write_enabled", "x_write_enabled"]) {
+  for (const flag of ["social_master_enabled", "social_generator_enabled", "linkedin_write_enabled", "instagram_write_enabled", "facebook_write_enabled", "x_write_enabled"]) {
     if (formData.has(flag)) patch[flag] = formData.get(flag) === "on";
   }
   if (!Object.keys(patch).length) redirect(`${ACCOUNTS_PATH}?success=updated`);

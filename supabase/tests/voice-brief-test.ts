@@ -141,3 +141,19 @@ Deno.test("generateSummary includes marketing snapshots in the prompt when prese
   );
   assert(capturedBody.includes("google_analytics"), "must pass real marketing snapshot data into the prompt when present");
 });
+
+Deno.test("generateSummary includes review-only morning social results", async () => {
+  let capturedBody = "";
+  await withStubbedFetch(
+    (_input, init) => {
+      capturedBody = String(init?.body || "");
+      return anthropicResponse("Good morning, this is Eddie. I prepared three drafts for your review.");
+    },
+    async () => {
+      await generateSummary("test-key", {}, [], {}, { available: true, status: "completed", created: 3 });
+    },
+  );
+  const prompt = JSON.parse(capturedBody).messages[0].content;
+  assert(prompt.includes('"created":3'), "must pass the social draft count into the spoken brief");
+  assert(prompt.includes("never claim they were published"), "must preserve the review-only boundary");
+});

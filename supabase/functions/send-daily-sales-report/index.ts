@@ -56,7 +56,7 @@ Deno.serve(async (request) => {
   const [
     leadsResult, repliesResult, outboundResult, tasksResult, decisionsResult, dealsResult, stuckEnrollmentsResult,
     incidentsResult, hotLeadDraftsResult, revenueResult, outreachDraftsResult, marketingSnapshotsResult,
-    familyLeadsResult, familyBookingsResult,
+    familyLeadsResult, familyBookingsResult, socialRunResult,
   ] = await Promise.all([
     supabase.from("leads").select("audience_type,context").gte("created_at", since),
     supabase.from("messages").select("classification,subject,received_at").eq("direction", "inbound").gte("created_at", since),
@@ -82,11 +82,15 @@ Deno.serve(async (request) => {
       .in("audience_type", ["family", "friends", "other_private_event"])
       .gte("created_at", familySince).limit(500),
     supabase.from("bookings").select("lead_id,status").gte("created_at", familySince).limit(500),
+    supabase.from("social_generation_runs")
+      .select("generation_date,status,created_count,result,error,completed_at")
+      .eq("generation_date", date).maybeSingle(),
   ]);
   const queryError = leadsResult.error || repliesResult.error || outboundResult.error || tasksResult.error
     || decisionsResult.error || dealsResult.error || stuckEnrollmentsResult.error
     || incidentsResult.error || hotLeadDraftsResult.error || revenueResult.error || outreachDraftsResult.error
-    || marketingSnapshotsResult.error || familyLeadsResult.error || familyBookingsResult.error;
+    || marketingSnapshotsResult.error || familyLeadsResult.error || familyBookingsResult.error
+    || socialRunResult.error;
   if (queryError) return functionError("report_query_failed");
 
   const replies = repliesResult.data || [];
@@ -114,6 +118,15 @@ Deno.serve(async (request) => {
     leads: familyLeadsResult.data || [],
     bookings: familyBookingsResult.data || [],
   });
+  const socialMorning = socialRunResult.data
+    ? {
+      status: socialRunResult.data.status,
+      created: Number(socialRunResult.data.created_count || 0),
+      completed_at: socialRunResult.data.completed_at,
+      result: socialRunResult.data.result || {},
+      error: socialRunResult.data.error || null,
+    }
+    : { status: "not_run", created: 0 };
   const now = Date.now();
   const pipelineValue = deals.reduce((sum, deal) => sum + Number(deal.expected_value || 0), 0);
   const revenueByCurrency = revenuePayments.reduce<Record<string, number>>((totals, payment) => {
@@ -204,6 +217,13 @@ Deno.serve(async (request) => {
     <h2>Marketing platforms</h2>
     <p><a href="${siteUrl}/office/command-center">Review Command Center →</a></p>
     ${list(marketingSnapshots.map((row) => `<strong>${escapeHtml(row.platform.replaceAll("_", " "))}</strong>: ${row.error ? `last sync failed — ${escapeHtml(row.error)}` : `synced ${escapeHtml(row.snapshot_date)}`}`), "No marketing platform (Google Analytics, Search Console, Google Ads, Meta Ads) is connected yet — read-only reporting only, no spend or campaign control.")}
+    <h2>Eddie's social drafts</h2>
+    <p><a href="${siteUrl}/office/distribution">Review social drafts →</a></p>
+    <p>${socialMorning.status === "completed"
+      ? `Eddie prepared <strong>${socialMorning.created}</strong> review-only social draft${socialMorning.created === 1 ? "" : "s"} this morning. Nothing was published automatically.`
+      : socialMorning.status === "failed"
+        ? `The morning social generator failed. Nothing was published. Review the Social Desk before retrying.`
+        : `The morning social generator has not completed yet. Nothing was published automatically.`}</p>
     <h2>What needs Michael</h2>
     ${list(tasks.map((task) => `<strong>${escapeHtml(task.priority)}</strong>: ${escapeHtml(task.title)}${task.due_at ? ` — due ${escapeHtml(task.due_at)}` : ""}`), "No open tasks.")}
     <h2>What the system chose not to do</h2>
@@ -228,6 +248,7 @@ Deno.serve(async (request) => {
     revenue_24h: revenueByCurrency,
     pending_outreach_drafts: outreachDrafts.length,
     marketing_platforms_connected: marketingSnapshots.filter((row) => !row.error).map((row) => row.platform),
+    social_morning: socialMorning,
     family_demand: familyDemand,
   };
 
