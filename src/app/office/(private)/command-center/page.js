@@ -5,6 +5,7 @@ import { refreshMarketingRecommendations, reviewMarketingRecommendation } from "
 import CommandCenterControls from "./command-center-controls";
 import EddieChat from "../morning-brief/eddie-chat";
 import { buildFamilyDemandReport } from "@/lib/family-demand-report";
+import { loadLiveRecordFilter } from "@/lib/server/office/live-records";
 
 const AUDIO_BUCKET = "daily-report-audio";
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
@@ -55,14 +56,14 @@ export default async function CommandCenterPage({ searchParams }) {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
 
-  const [reportResult, tasksResult, messagesResult, leadsResult, prospectsResult, bookingsResult, paymentsResult, roiResult, recommendationsResult, experimentsResult, audienceResult, agendaResult, organicResult, actionsResult, agentLogResult, incidentsResult, draftsResult, competitorSourcesResult, competitorRunResult, adControlsResult, adConfigResult] = await Promise.all([
+  const [reportResult, tasksResult, messagesResult, leadsResult, prospectsResult, bookingsResult, paymentsResult, roiResult, recommendationsResult, experimentsResult, audienceResult, agendaResult, organicResult, actionsResult, agentLogResult, incidentsResult, draftsResult, competitorSourcesResult, competitorRunResult, adControlsResult, adConfigResult, liveRecords] = await Promise.all([
     db.from("daily_reports").select("report_date,summary,transcript,audio_url,voice_brief_status").order("report_date", { ascending: false }).limit(1).maybeSingle(),
     db.from("tasks").select("id,prospect_id,title,description,status,priority,due_at,source,created_at").in("status", ["open", "in_progress"]).order("due_at", { ascending: true }).limit(12),
     db.from("messages").select("id,prospect_id,subject,classification,received_at,from_address").eq("direction", "inbound").gte("received_at", sevenDaysAgo).order("received_at", { ascending: false }).limit(12),
     db.from("leads").select("id,prospect_id,name,email,company,audience_type,lead_source,lead_score,occasion,status,preferred_event_date,landing_page,created_at,context").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(500),
-    db.from("prospects").select("id,full_name,email,score,status,audience_type,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(8),
+    db.from("prospects").select("id,full_name,email,score,status,audience_type,created_at,updated_at").not("status", "in", "(suppressed,disqualified)").order("score", { ascending: false }).limit(8),
     db.from("bookings").select("id,lead_id,status,starts_at,created_at").gte("created_at", thirtyDaysAgo),
-    db.from("deal_payments").select("id,amount,currency,payment_kind,paid_at").gte("paid_at", thirtyDaysAgo),
+    db.from("deal_payments").select("id,deal_id,amount,currency,payment_kind,paid_at").gte("paid_at", thirtyDaysAgo),
     db.rpc("get_lead_source_roi", { p_days: 30 }),
     db.from("marketing_recommendations").select("*").neq("status", "archived").order("created_at", { ascending: false }).limit(20),
     db.from("growth_experiments").select("id,title,status,recommendation,proposed_action,review_due_at,updated_at").neq("status", "rejected").order("updated_at", { ascending: false }).limit(8),
@@ -77,6 +78,7 @@ export default async function CommandCenterPage({ searchParams }) {
     db.from("family_competitor_research_runs").select("id,status,sources_checked,sources_changed,recommendations_created,results,started_at,completed_at,error").order("started_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("advertising_campaign_controls").select("id,platform,name,status,daily_budget_cents,hard_daily_cap_cents,write_enabled,auto_pause_at,spend_date,today_spend_cents,last_command_at,last_command_by,last_error").neq("status", "archived").order("created_at", { ascending: false }).limit(12),
     db.from("system_config").select("advertising_master_enabled,advertising_safety_monitor_enabled,google_ads_write_enabled,meta_ads_write_enabled,google_ads_daily_cap_cents,meta_ads_daily_cap_cents").eq("id", true).maybeSingle(),
+    loadLiveRecordFilter(db, ["lead", "prospect", "task", "booking", "deal"]),
   ]);
 
   const report = reportResult.data;
@@ -85,23 +87,26 @@ export default async function CommandCenterPage({ searchParams }) {
     const { data } = await db.storage.from(AUDIO_BUCKET).createSignedUrl(report.audio_url, SIGNED_URL_TTL_SECONDS);
     signedAudioUrl = data?.signedUrl || null;
   }
-  const leads = (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true);
+  const leads = (leadsResult.data || []).filter((lead) => lead.context?.synthetic_test !== true && liveRecords.isLiveRecord("lead", lead));
+  const tasks = (tasksResult.data || []).filter((task) => task.source !== "launch_watchlist" && liveRecords.isLiveRecord("task", task));
+  const prospects = (prospectsResult.data || []).filter((prospect) => liveRecords.isLiveRecord("prospect", prospect));
+  const bookings = (bookingsResult.data || []).filter((booking) => liveRecords.isLiveRecord("booking", booking));
   const newLeads = leads.filter((lead) => new Date(lead.created_at) >= new Date(sevenDaysAgo));
   const privateLeads = newLeads.filter((lead) => ["family", "friends", "other_private_event"].includes(lead.audience_type));
   const corporateLeads = newLeads.filter((lead) => lead.audience_type === "corporate");
-  const payments = paymentsResult.data || [];
+  const payments = (paymentsResult.data || []).filter((payment) => liveRecords.isLiveId("deal", payment.deal_id, payment.paid_at));
   const deposits = payments.filter((payment) => payment.payment_kind === "deposit");
   const revenue = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const roi = roiResult.data || {};
   const roiSummary = roi.summary || {};
   const campaigns = roi.campaigns || [];
-  const familyDemand = buildFamilyDemandReport({ campaigns, leads, bookings: bookingsResult.data || [], days: 30 });
+  const familyDemand = buildFamilyDemandReport({ campaigns, leads, bookings, days: 30 });
   const familySummary = familyDemand.summary;
   const bestCampaign = campaigns.find((campaign) => campaign.qualified_leads > 0 || Number(campaign.revenue) > 0) || campaigns[0];
   const worstCampaign = campaigns.find((campaign) => campaign.traffic_without_qualified_leads);
   const recommendations = recommendationsResult.data || [];
   const proposedRecommendations = recommendations.filter((item) => item.status === "proposed");
-  const messages = (messagesResult.data || []).filter((message) => HOT_MESSAGE_TYPES.includes(message.classification));
+  const messages = (messagesResult.data || []).filter((message) => HOT_MESSAGE_TYPES.includes(message.classification) && liveRecords.isLiveId("prospect", message.prospect_id, message.received_at));
   const approvalCount = proposedRecommendations.length + messages.length;
   const agendaItems = Array.isArray(agendaResult.data?.items) ? agendaResult.data.items : [];
   const audienceRecommendations = Array.isArray(audienceResult.data?.recommendations) ? audienceResult.data.recommendations : [];
@@ -127,6 +132,7 @@ export default async function CommandCenterPage({ searchParams }) {
   };
 
   const content = <div className="space-y-8">
+    {!liveRecords.ready && <p className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-amber-200">Live-record verification is temporarily unavailable. Sales totals are hidden rather than mixing in rehearsal data.</p>}
     {(params?.success || params?.error) && <p className={`rounded-xl p-4 text-sm ${params.error ? "bg-red-500/10 text-red-200" : "bg-emerald-500/10 text-emerald-200"}`}>{params.error ? "That update could not be completed. Nothing was launched or spent." : "Saved. No advertisement was launched and no budget was spent."}</p>}
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-bold uppercase tracking-[0.2em] text-purple-300">Eddie Command Center</p><h2 className="mt-1 text-3xl font-bold sm:text-4xl">The business at a glance</h2><p className="mt-2 text-slate-400">Sales, marketing, market intelligence and Eddie&apos;s work in one place.</p></div><CommandCenterControls televisionMode={televisionMode}/></div>
 
@@ -134,15 +140,16 @@ export default async function CommandCenterPage({ searchParams }) {
       <EddieChat
         initialBrief={report ? { audioUrl: signedAudioUrl, transcript: report.transcript } : null}
         realtimeConfigured={Boolean(process.env.OPENAI_API_KEY)}
+        elevenLabsConfigured={Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID)}
       />
-      <div className="mt-5 grid gap-4 sm:grid-cols-3"><Metric label="Open tasks" value={(tasksResult.data || []).length} tone="text-amber-300"/><Metric label="Messages" value={messages.length} tone="text-sky-300"/><Metric label="Awaiting approval" value={approvalCount} tone="text-purple-300"/></div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-3"><Metric label="Open tasks" value={tasks.length} tone="text-amber-300"/><Metric label="Messages" value={messages.length} tone="text-sky-300"/><Metric label="Awaiting approval" value={approvalCount} tone="text-purple-300"/></div>
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
-      <Card title="Important tasks" count={(tasksResult.data || []).length} tone="gold">{(tasksResult.data || []).length ? <div className="space-y-2">{(tasksResult.data || []).slice(0, 6).map((task) => <div key={task.id} className="rounded-lg bg-white/5 p-3"><div className="flex justify-between gap-3"><p className="font-medium">{task.title}</p><StatusPill tone={task.priority === "urgent" ? "red" : task.priority === "high" ? "gold" : "slate"}>{task.priority}</StatusPill></div><p className="mt-1 text-xs text-slate-500">{task.due_at ? `Due ${formatDate(task.due_at)}` : "No due date"}</p></div>)}</div> : <Empty/>}</Card>
+      <Card title="Important tasks" count={tasks.length} tone="gold">{tasks.length ? <div className="space-y-2">{tasks.slice(0, 6).map((task) => <div key={task.id} className="rounded-lg bg-white/5 p-3"><div className="flex justify-between gap-3"><p className="font-medium">{task.title}</p><StatusPill tone={task.priority === "urgent" ? "red" : task.priority === "high" ? "gold" : "slate"}>{task.priority}</StatusPill></div><p className="mt-1 text-xs text-slate-500">{task.due_at ? `Due ${formatDate(task.due_at)}` : "No due date"}</p></div>)}</div> : <Empty/>}</Card>
       <Card title="Actions awaiting confirmation" count={approvalCount} tone="purple">{approvalCount ? <div className="space-y-2">{proposedRecommendations.slice(0, 4).map((item) => <Recommendation key={item.id} item={item} compact/>)}{messages.slice(0, 3).map((message) => <div key={message.id} className="rounded-lg bg-white/5 p-3 text-sm"><p className="font-medium">{message.subject || "Customer message"}</p><p className="mt-1 text-xs text-slate-500">{message.classification?.replaceAll("_", " ")} · {formatDate(message.received_at)}</p></div>)}</div> : <Empty/>}</Card>
       </div>
     </section>
 
-    <section><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300">Sales</p><h3 className="text-2xl font-bold">Leads, bookings and revenue</h3></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Corporate leads · 7d" value={corporateLeads.length}/><Metric label="Private-party leads · 7d" value={privateLeads.length} tone="text-purple-300"/><Metric label="Bookings · 30d" value={(bookingsResult.data || []).length}/><Metric label="Deposits · 30d" value={deposits.length} tone="text-amber-300"/><Metric label="Revenue · 30d" value={formatMoney(revenue)} tone="text-emerald-300"/></div><div className="mt-5 grid gap-5 lg:grid-cols-2"><Card title="Hottest prospects" count={(prospectsResult.data || []).length}>{(prospectsResult.data || []).length ? <div className="space-y-2">{(prospectsResult.data || []).map((prospect) => <div key={prospect.id} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 p-3"><ProspectLink id={prospect.id} name={prospect.full_name} email={prospect.email}/><span className="font-bold text-purple-300">{Math.round(Number(prospect.score || 0))}</span></div>)}</div> : <Empty/>}</Card><Card title="Sales funnel · 30 days"><div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Visitors" value={roiSummary.visitors || 0}/><Metric label="Leads" value={roiSummary.leads || 0}/><Metric label="Qualified" value={roiSummary.qualified_leads || 0}/><Metric label="Proposals" value={roiSummary.proposals_sent || 0}/></div></Card></div></section>
+    <section><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300">Sales</p><h3 className="text-2xl font-bold">Leads, bookings and revenue</h3></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Corporate leads · 7d" value={corporateLeads.length}/><Metric label="Private-party leads · 7d" value={privateLeads.length} tone="text-purple-300"/><Metric label="Bookings · 30d" value={bookings.length}/><Metric label="Deposits · 30d" value={deposits.length} tone="text-amber-300"/><Metric label="Revenue · 30d" value={formatMoney(revenue)} tone="text-emerald-300"/></div><div className="mt-5 grid gap-5 lg:grid-cols-2"><Card title="Hottest prospects" count={prospects.length}>{prospects.length ? <div className="space-y-2">{prospects.map((prospect) => <div key={prospect.id} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 p-3"><ProspectLink id={prospect.id} name={prospect.full_name} email={prospect.email}/><span className="font-bold text-purple-300">{Math.round(Number(prospect.score || 0))}</span></div>)}</div> : <Empty/>}</Card><Card title="Sales funnel · 30 days"><div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Visitors" value={roiSummary.visitors || 0}/><Metric label="Leads" value={roiSummary.leads || 0}/><Metric label="Qualified" value={roiSummary.qualified_leads || 0}/><Metric label="Proposals" value={roiSummary.proposals_sent || 0}/></div></Card></div></section>
 
     <section><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-300">Family Demand</p><h3 className="text-2xl font-bold">Private-family interest · 30 days</h3><p className="mt-1 text-sm text-slate-400">First-party results from the seven occasion pages and the free Family Trivia Starter.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Family-page visitors" value={familySummary.visitors}/><Metric label="Private inquiries" value={familySummary.leads} tone="text-purple-300"/><Metric label="Date requests" value={familySummary.date_requests} tone="text-sky-300"/><Metric label="Qualified inquiries" value={familySummary.qualified_leads} tone="text-amber-300"/><Metric label="Confirmed bookings" value={familySummary.bookings} tone="text-emerald-300"/></div><div className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_0.6fr]"><Card title="Family page performance" count={familyDemand.pages.length}><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="text-slate-400"><tr><th className="pb-3">Page</th><th>Visitors</th><th>Inquiries</th><th>Date requests</th><th>Qualified</th><th>Bookings</th><th>Conversion</th></tr></thead><tbody>{familyDemand.pages.map((row) => <tr key={row.landing_page} className="border-t border-white/10"><td className="py-3 pr-4"><Link href={row.landing_page} className="font-medium text-purple-200 hover:text-purple-100">{row.title}</Link><span className="block max-w-[260px] truncate text-xs text-slate-500">{row.landing_page}</span></td><td>{row.visitors}</td><td>{row.leads}</td><td>{row.date_requests}</td><td>{row.qualified_leads}</td><td>{row.bookings}</td><td>{row.visitor_to_lead_rate == null ? "—" : `${(row.visitor_to_lead_rate * 100).toFixed(1)}%`}</td></tr>)}</tbody></table></div></Card><Card title="What families want">{familyDemand.occasions.length ? <div className="space-y-2">{familyDemand.occasions.slice(0, 8).map((row) => <div key={row.occasion} className="flex items-center justify-between rounded-lg bg-white/5 p-3 text-sm"><span className="capitalize">{row.occasion}</span><strong className="text-pink-300">{row.count}</strong></div>)}</div> : <Empty>No private-family inquiry has named an occasion yet.</Empty>}<p className="mt-4 rounded-lg border border-white/10 p-3 text-xs text-slate-400">{familySummary.unattributed_leads ? `${familySummary.unattributed_leads} private inquiry${familySummary.unattributed_leads === 1 ? " is" : " are"} not tied to one of these pages yet.` : "Every private inquiry in this window is tied to a tracked family page."}</p></Card></div></section>
 

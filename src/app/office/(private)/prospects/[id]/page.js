@@ -4,6 +4,7 @@ import { getOfficeDb } from "@/lib/server/office-auth";
 import { Card, formatDate, formatMoney, inputClass, buttonClass } from "../../../office-ui";
 import { cancelHostedEvent, markEventNoShow } from "@/lib/server/office/deal-events";
 import { computeCancellationPolicy } from "@/lib/cancellation-policy";
+import AskEddieActions from "./ask-eddie-actions";
 
 function TimelineItem({ date, label, title, detail, tone = "purple" }) {
   const colors = { purple: "bg-purple-400", green: "bg-emerald-400", gold: "bg-amber-400", red: "bg-red-400", blue: "bg-sky-400" };
@@ -71,6 +72,10 @@ export default async function ProspectDetail({ params }) {
   return <div className="space-y-6">
     <Link href="/office/prospects" className="text-sm text-purple-300">← Back to prospects</Link>
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-3xl font-bold">{prospect.full_name || prospect.email}</h2><p className="mt-1 text-slate-400">{prospect.email}{prospect.job_title ? ` · ${prospect.job_title}` : ""}</p></div><span className="rounded-full bg-purple-500/10 px-4 py-2 text-sm text-purple-300">{prospect.status.replaceAll("_", " ")} · score {prospect.score ?? "—"}</span></div>
+    <Card title="Ask Eddie about this person">
+      <AskEddieActions label={prospect.full_name || prospect.email} prospectId={prospect.id} openDeals={deals.filter((deal) => deal.outcome === "open").map(({ id: dealId, title }) => ({ id: dealId, title }))} />
+      <p className="mt-3 text-xs text-slate-500">Opens the Eddie panel with the question already asked. Anything that changes data still needs your confirmation there.</p>
+    </Card>
     <div className="grid gap-5 lg:grid-cols-3">
       <Card title="Contact"><dl className="space-y-2 text-sm"><div><dt className="text-slate-500">Email</dt><dd>{prospect.email || "—"}</dd></div><div><dt className="text-slate-500">Phone</dt><dd>{prospect.phone || "—"}</dd></div><div><dt className="text-slate-500">Source</dt><dd>{prospect.source}</dd></div></dl></Card>
       <Card title="Company"><dl className="space-y-2 text-sm"><div><dt className="text-slate-500">Name</dt><dd>{companyResult.data?.name || "—"}</dd></div><div><dt className="text-slate-500">Domain</dt><dd>{companyResult.data?.domain || "—"}</dd></div><div><dt className="text-slate-500">Size</dt><dd>{companyResult.data?.employee_count_range || "—"}</dd></div></dl></Card>
