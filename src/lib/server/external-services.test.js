@@ -14,12 +14,13 @@ describe("external service adapters", () => {
   afterEach(() => { process.env = { ...originalEnv }; vi.unstubAllGlobals(); });
 
   it("creates privileged and cookie-aware Supabase clients", async () => {
-    Object.assign(process.env, { NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable" });
+    Object.assign(process.env, { NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", SUPABASE_SECRET_KEY: "secret", SUPABASE_SERVICE_ROLE_KEY: "legacy-service", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable" });
     createClient.mockReturnValue({ admin: true });
     createServerClient.mockReturnValue({ server: true });
     const { getSupabaseAdmin } = await import("./supabase-admin");
     const { createSupabaseServerClient } = await import("../supabase/server");
     expect(getSupabaseAdmin()).toEqual({ admin: true });
+    expect(createClient).toHaveBeenCalledWith("https://example.supabase.co", "secret", expect.any(Object));
     expect(await createSupabaseServerClient()).toEqual({ server: true });
     const options = createServerClient.mock.calls[0][2];
     options.cookies.setAll([{ name: "session", value: "x", options: { secure: true } }]);
@@ -28,6 +29,7 @@ describe("external service adapters", () => {
 
   it("rejects missing Supabase credentials", async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.SUPABASE_SECRET_KEY;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     const { getSupabaseAdmin } = await import("./supabase-admin");
     expect(() => getSupabaseAdmin()).toThrow("not configured");

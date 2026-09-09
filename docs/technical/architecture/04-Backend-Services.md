@@ -54,7 +54,7 @@ Deno function, deployed with JWT verification off; authenticates via `x-webhook-
 | Where | Keys |
 |---|---|
 | Browser (`NEXT_PUBLIC_*`) | Supabase URL/anon (legacy—reads only, client lib deleted), Turnstile site key, PostHog key/host, Calendly URL, 2 Stripe links |
-| Next.js server | `SUPABASE_SERVICE_ROLE_KEY`, `TURNSTILE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `INTERNAL_NOTIFICATION_EMAIL` |
+| Next.js server | `SUPABASE_SECRET_KEY` (with legacy `SUPABASE_SERVICE_ROLE_KEY` fallback), `TURNSTILE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `INTERNAL_NOTIFICATION_EMAIL` |
 | Supabase Vault | `lead_notification_function_url`, `lead_notification_webhook_secret` |
 | Edge Function secrets | `LEAD_NOTIFICATION_WEBHOOK_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `INTERNAL_NOTIFICATION_EMAIL` (+ auto-injected `SUPABASE_URL`/`SERVICE_ROLE_KEY`) |
 

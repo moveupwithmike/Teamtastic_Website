@@ -99,7 +99,10 @@ function gatewayCredential(runtimeToken = "") {
 }
 
 function signingSecret() {
-  return process.env.EDDIE_ACTION_SIGNING_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  return process.env.EDDIE_ACTION_SIGNING_SECRET
+    || process.env.SUPABASE_SECRET_KEY
+    || process.env.SUPABASE_SERVICE_ROLE_KEY
+    || "";
 }
 
 function contentFingerprint(draft) {
