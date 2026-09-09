@@ -2,9 +2,30 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.1";
 
 export type ServiceClient = ReturnType<typeof createClient>;
 
+type NamedKeys = Record<string, unknown>;
+
+export function resolveInjectedSecretKey() {
+  const rawNamedKeys = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (rawNamedKeys) {
+    try {
+      const parsed: unknown = JSON.parse(rawNamedKeys);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const defaultKey = (parsed as NamedKeys).default;
+        if (typeof defaultKey === "string" && defaultKey.trim()) return defaultKey.trim();
+        const keys = Object.values(parsed as NamedKeys)
+          .filter((value): value is string => typeof value === "string" && Boolean(value.trim()));
+        if (keys.length === 1) return keys[0].trim();
+      }
+    } catch {
+      // Invalid JSON must never be interpreted as a key.
+    }
+  }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() || undefined;
+}
+
 export function serviceClient() {
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const key = resolveInjectedSecretKey();
   if (!url || !key) throw new Error("Supabase service configuration is missing");
   return createClient(url, key);
 }
@@ -37,8 +58,9 @@ export async function authorizeWebhook(request: Request, secretName: string) {
 }
 
 export async function authorizeServiceRole(request: Request) {
-  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const expected = resolveInjectedSecretKey();
+  const provided = request.headers.get("apikey")
+    || request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   return Boolean(expected && provided && await timingSafeEqual(provided, expected));
 }
 
